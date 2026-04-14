@@ -1,5 +1,39 @@
 {
-  "firestore": {
-    "indexes": "firestore.indexes.json"
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "allo-dakar-b6a20",
+          "appId": "1:743590908369:android:0977a33f9a146ebb5cd0f0",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "allo-dakar-b6a20",
+          "configurations": {
+            "android": "1:743590908369:android:0977a33f9a146ebb5cd0f0",
+            "ios": "1:743590908369:ios:2a1e5bef86b5bf805cd0f0",
+            "macos": "1:743590908369:ios:2a1e5bef86b5bf805cd0f0",
+            "web": "1:743590908369:web:cf0175ea723116d55cd0f0",
+            "windows": "1:743590908369:web:c9217fa181e417815cd0f0"
+          }
+        }
+      }
+    }
+  },
+  "hosting": {
+    "public": "build/web",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
   }
 }
