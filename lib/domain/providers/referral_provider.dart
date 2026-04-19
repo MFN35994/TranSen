@@ -26,12 +26,20 @@ class ReferralNotifier extends StateNotifier<AsyncValue<String?>> {
         return false;
       }
 
+      // 1. Marquer l'utilisateur actuel comme parrainé
       await FirebaseFirestore.instance.collection('users').doc(userId).set({
         'referredBy': referrerId,
         'referralRewardClaimed': false,
+        'bonusPoints': 500, // Petit bonus de bienvenue pour le filleul
       }, SetOptions(merge: true));
 
-      state = AsyncValue.data(referrerId);
+      // 2. Donner un bonus au parrain
+      await FirebaseFirestore.instance.collection('users').doc(referrerId).update({
+        'bonusPoints': FieldValue.increment(1000), // Bonus pour le parrain
+        'referralCount': FieldValue.increment(1),
+      });
+
+      state = const AsyncValue.data("Code appliqué avec succès ! +500 points bonus.");
       return true;
     } catch (e) {
       state = AsyncValue.error(e, StackTrace.current);

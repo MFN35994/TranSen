@@ -291,12 +291,22 @@ class TripRepository {
         .where('rating', isNull: false)
         .snapshots()
         .map((snapshot) {
-          if (snapshot.docs.isEmpty) return 5.0;
+          if (snapshot.docs.isEmpty) return 0.0;
           double total = 0;
           for (var doc in snapshot.docs) {
             total += (doc.data()['rating'] as int).toDouble();
           }
           return total / snapshot.docs.length;
+        });
+  }
+
+  Stream<List<Map<String, dynamic>>> watchDriverReviews(String driverId) {
+    return _firestore.collection('trips')
+        .where('driverId', isEqualTo: driverId)
+        .where('rating', isNull: false)
+        .snapshots()
+        .map((snapshot) {
+          return snapshot.docs.map((doc) => doc.data()).toList();
         });
   }
 

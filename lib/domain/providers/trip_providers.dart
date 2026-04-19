@@ -14,6 +14,27 @@ final driverRatingProvider = StreamProvider.family<double, String>((ref, driverI
   return ref.watch(tripRepositoryProvider).watchDriverRating(driverId);
 });
 
+final driverRatingCountProvider = StreamProvider.family<int, String>((ref, driverId) {
+  return FirebaseFirestore.instance.collection('trips')
+      .where('driverId', isEqualTo: driverId)
+      .where('rating', isNull: false)
+      .snapshots()
+      .map((snap) => snap.docs.length);
+});
+
+final driverReviewsProvider = StreamProvider.family<List<Map<String, dynamic>>, String>((ref, driverId) {
+  return ref.watch(tripRepositoryProvider).watchDriverReviews(driverId).map((reviews) {
+    // Trier en mémoire pour éviter de demander un index composite à l'utilisateur
+    final sorted = List<Map<String, dynamic>>.from(reviews);
+    sorted.sort((a, b) {
+      final dateA = (a['acceptedAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+      final dateB = (b['acceptedAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
+      return dateB.compareTo(dateA);
+    });
+    return sorted;
+  });
+});
+
 final activeTripProvider = StreamProvider<TripModel?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null) return Stream.value(null);

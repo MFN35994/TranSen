@@ -10,6 +10,7 @@ import '../../domain/providers/trip_providers.dart' as providers;
 import '../../domain/models/trip_model.dart';
 import '../widgets/profile_drawer.dart';
 import './trip_tracking_screen.dart';
+import '../widgets/driver_reviews_sheet.dart';
 
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
   return FirebaseFirestore.instance
@@ -296,9 +297,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 4),
-                                          const Text(
-                                            "Réserver",
-                                            style: TextStyle(fontSize: 9, color: Colors.grey, decoration: TextDecoration.underline),
+                                          Row(
+                                            children: [
+                                              InkWell(
+                                                onTap: () {
+                                                  DriverReviewsSheet.show(
+                                                    context, 
+                                                    m.markerId.value, 
+                                                    m.infoWindow.title ?? 'Chauffeur'
+                                                  );
+                                                },
+                                                child: Consumer(builder: (context, ref, child) {
+                                                  final ratingAsync = ref.watch(providers.driverRatingProvider(m.markerId.value));
+                                                  final countAsync = ref.watch(providers.driverRatingCountProvider(m.markerId.value));
+                                                  
+                                                  return Row(
+                                                    children: [
+                                                      const Icon(Icons.star, color: Colors.amber, size: 14),
+                                                      const SizedBox(width: 2),
+                                                      Text(
+                                                        ratingAsync.value?.toStringAsFixed(1) ?? '0.0',
+                                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                      ),
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        "(${countAsync.value ?? 0})",
+                                                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                                                      ),
+                                                    ],
+                                                  );
+                                                }),
+                                              ),
+                                              const Spacer(),
+                                              const Text(
+                                                "Réserver",
+                                                style: TextStyle(fontSize: 9, color: Colors.grey, decoration: TextDecoration.underline),
+                                              ),
+                                            ],
                                           ),
                                         ],
                                       ),
