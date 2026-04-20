@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/referral_provider.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -208,7 +210,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
               onPressed: () => setState(() => _isLogin = !_isLogin),
               child: Text(
                 _isLogin ? "Pas de compte ? Inscrivez-vous" : "Déjà inscrit ? Connectez-vous",
-                style: TextStyle(color: Colors.orange.shade800, fontWeight: FontWeight.bold),
+                style: const TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold),
+
               ),
             ),
             const SizedBox(height: 30),
@@ -222,35 +225,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.only(top: 70, bottom: 30),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Colors.orange.shade600, Colors.amber.shade400],
+          colors: [TranSenColors.primaryGreen, TranSenColors.darkGreen],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(80)),
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(80)),
         boxShadow: [
           BoxShadow(
-            color: Colors.orange.withValues(alpha: 0.3),
+            color: Colors.black26,
             blurRadius: 20,
-            offset: const Offset(0, 10),
+            offset: Offset(0, 10),
           )
         ],
       ),
       child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
-            ),
-            child: Icon(Icons.local_shipping, color: Colors.orange.shade800, size: 45),
-          ),
+            Image.asset('assets/images/logo.png', height: 100),
+
           const SizedBox(height: 15),
           const Text(
-            "Bienvenue sur Allô Dakar",
+            "Bienvenue sur TranSen",
             style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
           const Text(
@@ -277,7 +273,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
         dividerColor: Colors.transparent,
         indicator: BoxDecoration(
           borderRadius: BorderRadius.circular(30),
-          color: Colors.orange.shade800,
+          color: TranSenColors.primaryGreen,
         ),
         onTap: (index) => setState(() {}),
         tabs: const [
@@ -318,14 +314,16 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
           ],
           const SizedBox(height: 25),
           if (_isLoading)
-            const CircularProgressIndicator(color: Colors.orange)
+            const CircularProgressIndicator(color: TranSenColors.primaryGreen)
+
           else
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
                 onPressed: _handleAuth,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade800,
+                  backgroundColor: TranSenColors.primaryGreen,
+
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -361,7 +359,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
           ],
           const SizedBox(height: 25),
           if (_isLoading)
-            const CircularProgressIndicator(color: Colors.orange)
+            const CircularProgressIndicator(color: TranSenColors.primaryGreen)
+
           else
             SizedBox(
               width: double.infinity,
@@ -399,7 +398,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> with SingleTickerProv
       decoration: InputDecoration(
         labelText: label,
         labelStyle: TextStyle(color: Colors.grey.shade600),
-        prefixIcon: Icon(icon, color: Colors.orange.shade800),
+        prefixIcon: Icon(icon, color: TranSenColors.primaryGreen),
+
         filled: true,
         fillColor: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),

@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Allô Dakar</string>
+	<string>TranSen</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>allo_dakar</string>
+	<string>transen</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -33,19 +33,19 @@
 
 	<!-- Permissions de localisation (obligatoires pour iOS) -->
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Allô Dakar utilise votre position pour afficher votre emplacement sur la carte et vous connecter avec les chauffeurs proches.</string>
+	<string>TranSen utilise votre position pour afficher votre emplacement sur la carte et vous connecter avec les chauffeurs proches.</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Allô Dakar utilise votre position en arrière-plan pour permettre le suivi de votre trajet en temps réel.</string>
+	<string>TranSen utilise votre position en arrière-plan pour permettre le suivi de votre trajet en temps réel.</string>
 	<key>NSLocationAlwaysUsageDescription</key>
-	<string>Allô Dakar utilise votre position pour le suivi des trajets même lorsque l'application est en arrière-plan.</string>
+	<string>TranSen utilise votre position pour le suivi des trajets même lorsque l'application est en arrière-plan.</string>
 
 	<!-- Permissions microphone (optionnel, pour une future fonctionnalité appel) -->
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Allô Dakar peut utiliser le microphone pour les appels avec les chauffeurs.</string>
+	<string>TranSen peut utiliser le microphone pour les appels avec les chauffeurs.</string>
 
 	<!-- Permissions caméra (optionnel, pour photo de profil) -->
 	<key>NSCameraUsageDescription</key>
-	<string>Allô Dakar peut utiliser la caméra pour votre photo de profil.</string>
+	<string>TranSen peut utiliser la caméra pour votre photo de profil.</string>
 
 	<!-- Sécurité réseau : autoriser les connexions Firebase / Google APIs -->
 	<key>NSAppTransportSecurity</key>

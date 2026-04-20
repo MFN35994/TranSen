@@ -1,4 +1,4 @@
-package com.allodakar.allo_dakar
+package com.transen.app
 
 import io.flutter.embedding.android.FlutterActivity
 

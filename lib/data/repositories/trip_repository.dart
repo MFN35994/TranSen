@@ -106,8 +106,8 @@ class TripRepository {
     final userDoc = await _firestore.collection('users').doc(driverId).get();
     final userData = userDoc.data() ?? {};
     
-    String driverName = userData['name'] ?? 'Chauffeur Allô Dakar';
-    if (driverName == 'Chauffeur Allô Dakar' && userData['firstName'] != null) {
+    String driverName = userData['name'] ?? 'Chauffeur TranSen';
+    if (driverName == 'Chauffeur TranSen' && userData['firstName'] != null) {
       driverName = "${userData['firstName']} ${userData['lastName'] ?? ''}";
     }
     final driverPhone = userData['phone'] ?? '';
@@ -226,8 +226,8 @@ class TripRepository {
     final userDoc = await _firestore.collection('users').doc(driverId).get();
     final userData = userDoc.data() ?? {};
     
-    String driverName = userData['name'] ?? 'Chauffeur Allô Dakar';
-    if (driverName == 'Chauffeur Allô Dakar' && userData['firstName'] != null) {
+    String driverName = userData['name'] ?? 'Chauffeur TranSen';
+    if (driverName == 'Chauffeur TranSen' && userData['firstName'] != null) {
       driverName = "${userData['firstName']} ${userData['lastName'] ?? ''}";
     }
     final driverPhone = userData['phone'] ?? '';

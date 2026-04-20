@@ -52,14 +52,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU',
-    appId: '1:743590908369:android:0977a33f9a146ebb5cd0f0',
+    appId: '1:743590908369:android:cd3fd414ced552195cd0f0',
     messagingSenderId: '743590908369',
     projectId: 'allo-dakar-b6a20',
     storageBucket: 'allo-dakar-b6a20.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDYumSjUA4ewHRHgnk71hvY1wkpnaLkmSk',
+    apiKey: 'AIzaSyDDzVsYHhMYHEtLOpxRphtZu1hF25BmkEo',
     appId: '1:743590908369:ios:2a1e5bef86b5bf805cd0f0',
     messagingSenderId: '743590908369',
     projectId: 'allo-dakar-b6a20',
@@ -68,7 +68,7 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyDYumSjUA4ewHRHgnk71hvY1wkpnaLkmSk',
+    apiKey: 'AIzaSyDDzVsYHhMYHEtLOpxRphtZu1hF25BmkEo',
     appId: '1:743590908369:ios:2a1e5bef86b5bf805cd0f0',
     messagingSenderId: '743590908369',
     projectId: 'allo-dakar-b6a20',

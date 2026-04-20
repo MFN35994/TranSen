@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart';
@@ -16,7 +17,7 @@ class ReferralScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Parrainage & Gains'),
-        backgroundColor: Colors.orange,
+        backgroundColor: TranSenColors.primaryGreen,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<DocumentSnapshot>(
@@ -40,7 +41,7 @@ class ReferralScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                const Icon(Icons.card_giftcard, size: 100, color: Colors.orange),
+                const Icon(Icons.card_giftcard, size: 100, color: TranSenColors.primaryGreen),
                 const SizedBox(height: 20),
                 const Text(
                   "Invitez vos amis et gagnez des cadeaux !",
@@ -59,9 +60,9 @@ class ReferralScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Colors.orange, width: 2),
+                    border: Border.all(color: TranSenColors.primaryGreen, width: 2),
                   ),
                   child: Column(
                     children: [
@@ -94,13 +95,13 @@ class ReferralScreen extends ConsumerWidget {
                 ElevatedButton.icon(
                   onPressed: () {
                     Share.share(
-                      "🚗 Allô Dakar : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et profite de réductions sur tes trajets.\n\n📲 Demande-moi l'APK pour l'installer maintenant et commence à voyager !",
+                      "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et profite de réductions sur tes trajets.\n\n📲 Demande-moi l'APK pour l'installer maintenant et commence à voyager !",
                     );
                   },
                   icon: const Icon(Icons.share),
                   label: const Text("PARTAGER MON CODE"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: TranSenColors.primaryGreen,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 18),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -129,7 +130,7 @@ class ReferralScreen extends ConsumerWidget {
       padding: const EdgeInsets.only(bottom: 15),
       child: Row(
         children: [
-          Icon(icon, color: Colors.orange, size: 20),
+          Icon(icon, color: TranSenColors.primaryGreen, size: 20),
           const SizedBox(width: 15),
           Expanded(child: Text(text)),
         ],

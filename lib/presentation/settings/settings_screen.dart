@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
+import '../../core/theme/transen_colors.dart';
+
 import '../../domain/providers/theme_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
@@ -13,7 +15,7 @@ class SettingsScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Paramètres'),
-        backgroundColor: auth?.role == 'driver' ? Colors.black87 : Colors.orange,
+        backgroundColor: auth?.role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: ListView(
@@ -84,7 +86,8 @@ class SettingsScreen extends ConsumerWidget {
                 ref.read(themeProvider.notifier).state = val ? ThemeMode.dark : ThemeMode.light;
               }
             }, 
-            activeThumbColor: Colors.orange
+            activeThumbColor: Theme.of(context).colorScheme.primary
+
           )
         : const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: () {

@@ -31,7 +31,7 @@ class _RatingDialogState extends State<RatingDialog> {
             ),
             const SizedBox(height: 10),
             const Text(
-              'Votre avis aide à améliorer la qualité d\'Allô Dakar.',
+              'Votre avis aide à améliorer la qualité de TranSen.',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -83,7 +83,7 @@ class _RatingDialogState extends State<RatingDialog> {
                     if (context.mounted) Navigator.pop(context);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
+                    backgroundColor: const Color(0xFF1A8B44),
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(

@@ -1,5 +1,6 @@
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../data/repositories/user_repository.dart';
@@ -15,7 +16,7 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Profil'),
-        backgroundColor: auth?.role == 'driver' ? Colors.black87 : Colors.orange,
+        backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
         foregroundColor: Colors.white,
       ),
       body: userId.isEmpty 
@@ -37,7 +38,7 @@ class ProfileScreen extends ConsumerWidget {
               }
               if (name.isEmpty) {
                 // Fallback ultime
-                name = auth?.role == 'driver' ? 'Chauffeur Allô Dakar' : 'Client Allô Dakar';
+                name = auth?.role == 'driver' ? 'Chauffeur TranSen' : 'Client TranSen';
               }
               
               final String email = userData?['email'] ?? 'Non renseigné';
@@ -70,7 +71,7 @@ class ProfileScreen extends ConsumerWidget {
                             child: Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: auth?.role == 'driver' ? Colors.black : Colors.orange,
+                                color: auth?.role == 'driver' ? Colors.black : TranSenColors.primaryGreen,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
@@ -98,9 +99,9 @@ class ProfileScreen extends ConsumerWidget {
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.warning_amber_rounded, color: Colors.orange),
+                                Icon(Icons.warning_amber_rounded, color: TranSenColors.primaryGreen),
                                 SizedBox(width: 10),
-                                Text("Compte non vérifié", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                                Text("Compte non vérifié", style: TextStyle(fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen)),
                               ],
                             ),
                             const SizedBox(height: 10),
@@ -112,13 +113,13 @@ class ProfileScreen extends ConsumerWidget {
                             ElevatedButton.icon(
                               onPressed: () {
                                 // Redirection WhatsApp pour la vérification manuelle pour le lancement
-                                final whatsappUri = Uri.parse("https://wa.me/221773418501?text=Bonjour, je souhaite vérifier mon compte chauffeur Allô Dakar.");
+                                final whatsappUri = Uri.parse("https://wa.me/221773418501?text=Bonjour, je souhaite vérifier mon compte chauffeur TranSen.");
                                 launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
                               },
                               icon: const Icon(Icons.send),
                               label: const Text("VÉRIFIER MES DOCUMENTS"),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.orange,
+                                backgroundColor: TranSenColors.primaryGreen,
                                 foregroundColor: Colors.white,
                                 elevation: 0,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -139,7 +140,7 @@ class ProfileScreen extends ConsumerWidget {
                           );
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: auth?.role == 'driver' ? Colors.black87 : Colors.orange,
+                          backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),

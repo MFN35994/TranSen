@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 
 class PoolProgressIndicator extends StatelessWidget {
   final int current;
@@ -32,7 +33,7 @@ class PoolProgressIndicator extends StatelessWidget {
               '$current / $total',
               style: const TextStyle(
                 fontWeight: FontWeight.w900,
-                color: Colors.deepOrange,
+                color: TranSenColors.primaryGreen,
                 fontSize: 16,
               ),
             ),
@@ -44,7 +45,7 @@ class PoolProgressIndicator extends StatelessWidget {
           child: LinearProgressIndicator(
             value: current / total,
             backgroundColor: Colors.grey.shade200,
-            color: Colors.deepOrange,
+            color: TranSenColors.primaryGreen,
             minHeight: 12,
           ),
         ),

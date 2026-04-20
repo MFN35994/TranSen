@@ -6,6 +6,8 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../home/trip_tracking_screen.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 class ReceiptScreen extends StatefulWidget {
   final String orderId;
@@ -50,7 +52,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
       await file.writeAsBytes(buffer);
 
       await Share.shareXFiles([XFile(file.path)],
-          text: 'Mon reçu Allô Dakar 🚗');
+          text: 'Mon reçu TranSen 🚕');
+
     } catch (e) {
       debugPrint("Erreur capture reçu: $e");
     }
@@ -231,7 +234,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                       color: Colors.white),
                 ),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepOrange,
+                  backgroundColor: TranSenColors.primaryGreen,
+
                   padding: const EdgeInsets.symmetric(vertical: 18),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(30),

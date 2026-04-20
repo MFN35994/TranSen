@@ -9,46 +9,18 @@
       "client_info": {
         "mobilesdk_app_id": "1:743590908369:android:cd3fd414ced552195cd0f0",
         "android_client_info": {
-          "package_name": "com.allodakar.allo_dakar"
+          "package_name": "com.transen.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
-              "client_type": 3
-            },
-            {
-              "client_id": "743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc.apps.googleusercontent.com",
-              "client_type": 2,
-              "ios_info": {
-                "bundle_id": "com.example.alloDakar"
-              }
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:743590908369:android:0977a33f9a146ebb5cd0f0",
-        "android_client_info": {
-          "package_name": "com.example.allo_dakar"
-        }
-      },
-      "oauth_client": [
+          "client_id": "743590908369-1shrse5ro1ue26akrbb412rk3he0es3u.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.transen.app",
+            "certificate_hash": "b71c69a6e33bb001c41cd5145a9a2c5886d1d25f"
+          }
+        },
         {
           "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
           "client_type": 3

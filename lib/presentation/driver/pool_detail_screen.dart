@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/transen_colors.dart';
+
 import '../../domain/models/pool_model.dart';
 import '../../domain/utils/itinerary_optimizer.dart';
 import '../../data/repositories/trip_repository.dart';
@@ -96,7 +98,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         setState(() {
           _polylines.add(Polyline(
             polylineId: const PolylineId("route"),
-            color: Colors.orange,
+            color: TranSenColors.primaryGreen,
+
             width: 5,
             points: polylineCoordinates,
           ));
@@ -142,7 +145,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           position: LatLng(passenger['lat'], passenger['lng']),
           infoWindow: InfoWindow(title: pName, snippet: passenger['phone']),
           icon:
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
+
         ));
       }
     }
@@ -165,10 +169,12 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.all(20),
-                  color: Colors.orange.withValues(alpha: 0.1),
+                  color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+
                   child: Row(
                     children: [
-                      const Icon(Icons.route, color: Colors.orange),
+                      const Icon(Icons.route, color: TranSenColors.primaryGreen),
+
                       const SizedBox(width: 15),
                       Expanded(
                         child: Column(
@@ -279,7 +285,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: pool.status == 'accepted'
-                          ? Colors.orange
+                          ? TranSenColors.accentGold
+
                           : Colors.black87,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 18),
@@ -308,7 +315,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
+
         boxShadow: [
           BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),

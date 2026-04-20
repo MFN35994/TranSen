@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/wallet_provider.dart';
 
@@ -12,7 +13,7 @@ class WalletScreen extends ConsumerWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Mon Portefeuille'),
-        backgroundColor: Colors.orange,
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       body: Column(
@@ -72,7 +73,7 @@ class WalletScreen extends ConsumerWidget {
                 Row(
                   children: [
                     Text(
-                      'ALLO DAKAR',
+                      'TRANSEN',
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 12,
@@ -84,7 +85,7 @@ class WalletScreen extends ConsumerWidget {
                       width: 50,
                       height: 25,
                       decoration: BoxDecoration(
-                        color: Colors.orange.shade400,
+                        color: Theme.of(context).colorScheme.secondary,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Center(
@@ -117,7 +118,7 @@ class WalletScreen extends ConsumerWidget {
                 _buildRechargeButton(
                   context,
                   'Orange Money',
-                  Colors.deepOrange,
+                  TranSenColors.primaryGreen,
                   Icons.account_balance_wallet,
                 ),
               ],

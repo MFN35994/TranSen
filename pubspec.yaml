@@ -1,4 +1,4 @@
-name: allo_dakar
+name: transen
 description: "A new Flutter project for transport and delivery."
 publish_to: 'none'
 
@@ -38,4 +38,6 @@ flutter:
   uses-material-design: true
 
   assets:
+    - assets/images/logo.png
     - assets/images/car_top.png
+

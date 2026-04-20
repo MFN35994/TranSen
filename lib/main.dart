@@ -13,6 +13,7 @@ import 'presentation/auth/role_selection_screen.dart';
 import 'presentation/home/home_screen.dart';
 import 'presentation/driver/driver_home_screen.dart';
 import 'domain/providers/auth_provider.dart';
+import 'core/theme/transen_colors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,11 +21,12 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    FirebaseFirestore.instance.settings = const Settings(persistenceEnabled: true);
-    
+    FirebaseFirestore.instance.settings =
+        const Settings(persistenceEnabled: true);
+
     // Configurer le gestionnaire de messages en arrière-plan
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    
+
     // Écouter les messages au premier plan
     NotificationService.listenToMessages();
   } catch (e) {
@@ -45,33 +47,37 @@ class MyApp extends ConsumerWidget {
     final themeMode = ref.watch(themeProvider);
 
     return MaterialApp(
-      title: 'Allô Dakar',
+      title: 'TranSen',
       debugShowCheckedModeBanner: false,
       themeMode: themeMode,
       theme: ThemeData(
-        colorScheme: ColorScheme.light(
-          primary: Colors.orange.shade800,
+        colorScheme: const ColorScheme.light(
+          primary: TranSenColors.primaryGreen,
           onPrimary: Colors.white,
-          surface: Colors.white,
-          onSurface: Colors.grey.shade900,
+          secondary: TranSenColors.accentGold,
+          surface: TranSenColors.backgroundWhite,
+          onSurface: TranSenColors.textDark,
         ),
-        scaffoldBackgroundColor: const Color(0xFFF8F9FA),
+        scaffoldBackgroundColor: TranSenColors.backgroundWhite,
         useMaterial3: true,
         textTheme: GoogleFonts.montserratTextTheme(
           Theme.of(context).textTheme,
         ),
       ),
       darkTheme: ThemeData(
-        colorScheme: ColorScheme.dark(
-          primary: Colors.orange.shade800,
+        colorScheme: const ColorScheme.dark(
+          primary: TranSenColors.primaryGreen,
           onPrimary: Colors.white,
-          surface: const Color(0xFF1A1A1A),
+          secondary: TranSenColors.accentGold,
+          surface: Color(0xFF1A1A1A),
           onSurface: Colors.white,
         ),
         scaffoldBackgroundColor: const Color(0xFF121212),
         useMaterial3: true,
         textTheme: GoogleFonts.montserratTextTheme(
-          Theme.of(context).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
+          Theme.of(context)
+              .textTheme
+              .apply(bodyColor: Colors.white, displayColor: Colors.white),
         ),
       ),
       home: const AuthGate(),

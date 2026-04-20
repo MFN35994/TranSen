@@ -6,6 +6,8 @@ import '../auth/role_selection_screen.dart';
 import '../home/home_screen.dart';
 import '../driver/driver_home_screen.dart';
 import '../../domain/providers/auth_provider.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
@@ -66,39 +68,19 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.orange.shade400, Colors.deepOrange.shade700],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.deepOrange.withValues(alpha: 0.4),
-                    spreadRadius: 8,
-                    blurRadius: 25,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.local_shipping,
-                color: Colors.white,
-                size: 60,
-              ),
+            Image.asset(
+              'assets/images/logo.png',
+              width: 180,
+              height: 180,
             ),
             const SizedBox(height: 30),
             const Text(
-              'Allô Dakar',
+              'TranSen',
               style: TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: Colors.orange,
-                letterSpacing: 1.2,
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+                color: TranSenColors.primaryGreen,
+                letterSpacing: 2.0,
               ),
             ),
             const SizedBox(height: 10),

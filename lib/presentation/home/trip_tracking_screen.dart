@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -35,7 +36,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     final canvas = Canvas(recorder);
     const size = 48.0;
 
-    final paint = Paint()..color = Colors.orange;
+    final paint = Paint()..color = TranSenColors.primaryGreen;
     // Corps voiture
     canvas.drawRRect(
       RRect.fromRectAndRadius(const Rect.fromLTWH(8, 16, 32, 20), const Radius.circular(6)),
@@ -144,14 +145,14 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Suivi de ma demande'),
-        backgroundColor: Colors.orange,
+        backgroundColor: TranSenColors.primaryGreen,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<TripModel?>(
         stream: tripRepo.watchTrip(widget.tripId),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator(color: Colors.orange));
+            return const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen));
           }
           final trip = snapshot.data;
           if (trip == null) {
@@ -192,7 +193,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
               if (trip.status == 'departed')
                 Positioned(
                   top: 20, left: 20, right: 20,
-                  child: _buildStatusBanner("Trajet démarré ! Préparez-vous.", Colors.orange),
+                  child: _buildStatusBanner("Trajet démarré ! Préparez-vous.", TranSenColors.primaryGreen),
                 ),
               Positioned(
                 bottom: 0,
@@ -233,7 +234,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             errorBuilder: (context, error, stackTrace) => const Center(
               child: SizedBox(
                 width: 100, height: 100,
-                child: CircularProgressIndicator(color: Colors.orange),
+                child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
               ),
             ),
           ),
@@ -411,7 +412,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           stream: FirebaseFirestore.instance.collection('active_drivers').doc(trip.driverId).snapshots(),
           builder: (context, activeSnapshot) {
             // --- Caching Logic ---
-            String driverName = trip.driverName ?? "Chauffeur Allô Dakar";
+            String driverName = trip.driverName ?? "Chauffeur TranSen";
             String driverPhone = trip.driverPhone ?? "";
 
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
@@ -428,7 +429,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
             if (activeSnapshot.hasData && activeSnapshot.data!.exists) {
               final activeData = activeSnapshot.data!.data() as Map<String, dynamic>;
-              if (driverName == "Chauffeur Allô Dakar" || driverName.isEmpty) {
+              if (driverName == "Chauffeur TranSen" || driverName.isEmpty) {
                 driverName = activeData['driverName'] ?? driverName;
               }
               if (driverPhone.isEmpty) {
@@ -460,7 +461,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Text("VOTRE PROFIL", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                            Text(trip.clientName ?? "Client Allô Dakar", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                            Text(trip.clientName ?? "Client TranSen", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                           ],
                         ),
                       ),
@@ -479,8 +480,8 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                     children: [
                       CircleAvatar(
                         radius: 25, 
-                        backgroundColor: Colors.orange.withValues(alpha: 0.1), 
-                        child: const Icon(Icons.directions_car, color: Colors.orange)
+                        backgroundColor: TranSenColors.primaryGreen.withValues(alpha: 0.1), 
+                        child: const Icon(Icons.directions_car, color: TranSenColors.primaryGreen)
                       ),
                       const SizedBox(width: 15),
                       Expanded(
@@ -501,7 +502,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                               children: [
                                 Text(
                                   trip.status == 'departed' ? "Trajet en cours" : "En route vers vous", 
-                                  style: TextStyle(color: trip.status == 'departed' ? Colors.orange : Colors.green, fontSize: 12, fontWeight: FontWeight.bold)
+                                  style: TextStyle(color: trip.status == 'departed' ? TranSenColors.primaryGreen : Colors.green, fontSize: 12, fontWeight: FontWeight.bold)
                                 ),
                                 const SizedBox(width: 8),
                                 Consumer(builder: (context, ref, child) {
@@ -661,7 +662,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             ),
             const SizedBox(height: 10),
             const Text(
-              "Merci d'avoir utilisé Allô Dakar. Nous espérons que votre trajet a été agréable.",
+              "Merci d'avoir utilisé TranSen. Nous espérons que votre trajet a été agréable.",
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -674,7 +675,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
+                backgroundColor: TranSenColors.primaryGreen,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),

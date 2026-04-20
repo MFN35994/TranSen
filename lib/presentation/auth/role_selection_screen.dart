@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
 import 'driver_signup_screen.dart';
@@ -17,7 +18,7 @@ class RoleSelectionScreen extends ConsumerWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Icon(Icons.account_circle, size: 80, color: Colors.deepOrange),
+              const Icon(Icons.account_circle, size: 80, color: TranSenColors.primaryGreen),
               const SizedBox(height: 20),
               const Text(
                 'Finalisez votre profil',
@@ -26,7 +27,7 @@ class RoleSelectionScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               const Text(
-                'Comment souhaitez-vous utiliser Allô Dakar ?',
+                'Comment souhaitez-vous utiliser TranSen ?',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16, color: Colors.black54),
               ),
@@ -37,7 +38,7 @@ class RoleSelectionScreen extends ConsumerWidget {
                 title: 'Je suis Client',
                 subtitle: 'Commander des courses et colis',
                 icon: Icons.person_pin,
-                color: Colors.orange,
+                color: TranSenColors.primaryGreen,
                 onTap: () async {
                   final notifier = ref.read(authProvider.notifier);
                   if (ref.read(authProvider) == null) {

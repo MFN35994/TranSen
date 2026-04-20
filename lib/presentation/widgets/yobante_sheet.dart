@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/transen_colors.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
@@ -115,7 +117,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
               _baggageController,
               'Description des bagages',
               Icons.inventory,
-              Colors.orange,
+              TranSenColors.primaryGreen,
+
               keyboardType: TextInputType.text,
             ),
             const SizedBox(height: 15),
@@ -127,7 +130,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             // Type de colis
             DropdownButtonFormField<String>(
               decoration: _inputDecoration(
-                  'Type de colis', Icons.inventory_2, Colors.orange),
+                  'Type de colis', Icons.inventory_2, TranSenColors.primaryGreen),
+
               initialValue: _selectedParcelType,
               items: ['Petit', 'Moyen', 'Grand']
                   .map((t) => DropdownMenuItem(value: t, child: Text(t)))
@@ -351,7 +355,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(children: [
-          Icon(icon, color: Colors.orange, size: 20),
+          Icon(icon, color: TranSenColors.primaryGreen, size: 20),
+
           const SizedBox(width: 8),
           Text(text)
         ]),
@@ -361,7 +366,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
 
   ButtonStyle _buttonStyle() {
     return ElevatedButton.styleFrom(
-      backgroundColor: Colors.deepOrange,
+      backgroundColor: TranSenColors.primaryGreen,
+
       padding: const EdgeInsets.symmetric(vertical: 18),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       elevation: 8,
@@ -397,7 +403,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             TextField(
                 controller: _userPhoneController,
                 decoration: _inputDecoration('Votre numéro (ex: 77...)',
-                    Icons.phone_android, Colors.orange)),
+                    Icons.phone_android, TranSenColors.primaryGreen)),
+
           ],
         );
       },
@@ -444,18 +451,21 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.deepOrange.withValues(alpha: isDark ? 0.15 : 0.05),
-        border: Border.all(color: Colors.deepOrange, width: 2),
+        color: TranSenColors.primaryGreen.withValues(alpha: isDark ? 0.15 : 0.05),
+        border: Border.all(color: TranSenColors.primaryGreen, width: 2),
+
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
         children: [
-          Icon(icon, size: 32, color: Colors.orange),
+          Icon(icon, size: 32, color: TranSenColors.primaryGreen),
+
           const SizedBox(height: 8),
           Text(
             title,
             style: const TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.orange),
+                fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
+
           ),
         ],
       ),

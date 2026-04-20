@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/theme/transen_colors.dart';
+
 import 'receipt_screen.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/providers/auth_provider.dart';
@@ -202,9 +204,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                         margin: const EdgeInsets.only(bottom: 20),
                         padding: const EdgeInsets.all(15),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.05),
+                          color: TranSenColors.primaryGreen.withValues(alpha: 0.05),
                           borderRadius: BorderRadius.circular(15),
-                          border: Border.all(color: Colors.orange.withValues(alpha: 0.2)),
+                          border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.2)),
+
                         ),
                         child: Column(
                           children: [
@@ -271,7 +274,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.calendar_month, color: Colors.orange, size: 20),
+                          const Icon(Icons.calendar_month, color: TranSenColors.primaryGreen, size: 20),
+
                           const SizedBox(width: 8),
                           Text('${_selectedDate.day}/${_selectedDate.month}', style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
                         ],
@@ -297,7 +301,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.access_time, color: Colors.orange, size: 20),
+                          const Icon(Icons.access_time, color: TranSenColors.primaryGreen, size: 20),
+
                           const SizedBox(width: 8),
                           Text(_selectedTime.format(context), style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
                         ],
@@ -389,7 +394,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                       Switch(
                         value: _useBonusPoints,
                         onChanged: (val) => setState(() => _useBonusPoints = val),
-                        activeColor: Colors.green,
+                        activeThumbColor: Colors.green,
                       ),
                     ],
                   ),
@@ -540,7 +545,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                     }
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.deepOrange,
+                backgroundColor: TranSenColors.primaryGreen,
                 foregroundColor: Colors.white,
                 disabledBackgroundColor: Colors.grey.shade300,
                 padding: const EdgeInsets.symmetric(vertical: 18),
@@ -548,7 +553,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                   borderRadius: BorderRadius.circular(30),
                 ),
                 elevation: 8,
-                shadowColor: Colors.deepOrange.withValues(alpha: 0.5),
+                shadowColor: TranSenColors.primaryGreen.withValues(alpha: 0.5),
+
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -610,7 +616,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 hintText: 'Votre numéro (ex: 771234567)',
-                prefixIcon: const Icon(Icons.phone, color: Colors.orange),
+                prefixIcon: const Icon(Icons.phone, color: TranSenColors.primaryGreen),
+
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                 filled: true,
                 fillColor: Colors.red.withValues(alpha: 0.05),
@@ -665,16 +672,16 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
         decoration: BoxDecoration(
           color: isSelected 
-              ? Colors.deepOrange.withValues(alpha: isSelected ? (Theme.of(context).brightness == Brightness.light ? 0.05 : 0.15) : 1) 
+              ? TranSenColors.primaryGreen.withValues(alpha: isSelected ? (Theme.of(context).brightness == Brightness.light ? 0.05 : 0.15) : 1) 
               : Theme.of(context).colorScheme.surface,
           border: Border.all(
-            color: isSelected ? Colors.deepOrange : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade200 : Colors.grey.shade800),
+            color: isSelected ? TranSenColors.accentGold : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade200 : Colors.grey.shade800),
             width: isSelected ? 2 : 1,
           ),
           borderRadius: BorderRadius.circular(20),
           boxShadow: isSelected ? [
             BoxShadow(
-              color: Colors.deepOrange.withValues(alpha: 0.1),
+              color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 4),
             )
@@ -685,7 +692,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             Icon(
               icon,
               size: 32,
-              color: isSelected ? Colors.orange : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade600 : Colors.grey.shade400),
+              color: isSelected ? TranSenColors.primaryGreen : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade600 : Colors.grey.shade400),
             ),
             const SizedBox(height: 8),
             Text(
@@ -693,7 +700,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,
-                color: isSelected ? Colors.orange : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade800 : Colors.grey.shade400),
+                color: isSelected ? TranSenColors.primaryGreen : (Theme.of(context).brightness == Brightness.light ? Colors.grey.shade800 : Colors.grey.shade400),
+
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
               ),
             ),

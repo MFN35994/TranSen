@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/referral_provider.dart';
@@ -93,10 +94,10 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.local_taxi, size: 80, color: Colors.orange),
+            const Icon(Icons.local_taxi, size: 80, color: TranSenColors.primaryGreen),
             const SizedBox(height: 20),
             const Text(
-              "Rejoignez Allô Dakar",
+              "Rejoignez TranSen",
               textAlign: TextAlign.center,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
@@ -138,7 +139,7 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
             ),
             const SizedBox(height: 40),
             if (_isLoading)
-              const Center(child: CircularProgressIndicator(color: Colors.orange))
+              const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen))
             else
               ElevatedButton(
                 onPressed: _handleSignup,

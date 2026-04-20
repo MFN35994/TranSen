@@ -14,6 +14,8 @@ import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import '../widgets/profile_drawer.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 final pendingTripsProvider = StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
   final parts = filterStr.split('|');
@@ -103,7 +105,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         // Récupérer les infos du profil une seule fois
         final userDoc = await FirebaseFirestore.instance.collection('users').doc(driverId).get();
         final userData = userDoc.data();
-        final name = userData?['name'] ?? 'Chauffeur Allô Dakar';
+        final name = userData?['name'] ?? 'Chauffeur TranSen';
+
         final phone = userData?['phone'] ?? '';
 
         setState(() => _isOnline = true);
@@ -171,7 +174,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             }),
           ],
         ),
-        backgroundColor: Colors.black87,
+        backgroundColor: TranSenColors.darkGreen,
+
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -293,15 +297,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     padding: const EdgeInsets.all(15),
                     margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.orange.withValues(alpha: 0.1),
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+                      border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
                     ),
                     child: Column(
                       children: [
                         const Row(
                           children: [
-                            Icon(Icons.auto_awesome, color: Colors.orange, size: 20),
+                            Icon(Icons.auto_awesome, color: TranSenColors.accentGold, size: 20),
+
                             SizedBox(width: 10),
                             Text("Mon trajet d'aujourd'hui", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           ],
@@ -359,8 +364,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                         const Text("Zones de forte demande", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                         TextButton.icon(
                           onPressed: () => setState(() => _isAutoFull = !_isAutoFull),
-                          icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? Colors.orange : Colors.grey),
-                          label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? Colors.orange : Colors.grey)),
+                          icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey),
+                          label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey)),
+
                         ),
                       ],
                     ),
@@ -558,7 +564,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                     ),
                                     Text(
                                       "${deliveries.length} correspondances",
-                                      style: const TextStyle(color: Colors.deepOrange, fontSize: 12, fontWeight: FontWeight.bold),
+                                      style: const TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold),
+
                                     ),
                                   ],
                                 ),
@@ -652,7 +659,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                           style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                                         ),
                                         if (_isAutoFull)
-                                          const Icon(Icons.flash_on, color: Colors.orange, size: 16),
+                                          const Icon(Icons.flash_on, color: TranSenColors.accentGold, size: 16),
+
                                       ],
                                     );
                                   }
@@ -664,7 +672,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 },
                               );
                             },
-                            loading: () => const Center(child: CircularProgressIndicator(color: Colors.deepOrange)),
+                            loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
                             error: (err, stack) => Center(child: Text('Erreur: $err')),
                           );
                         },
@@ -726,10 +734,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withValues(alpha: 0.1),
+                    color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(Icons.groups, color: Colors.orange, size: 24),
+                  child: const Icon(Icons.groups, color: TranSenColors.primaryGreen, size: 24),
+
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -750,7 +759,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 if (isFull)
                    const Icon(Icons.check_circle, color: Colors.green, size: 24)
                 else ...[
-                   if (canAcceptAt3) const Icon(Icons.info_outline, color: Colors.orange, size: 20),
+                   if (canAcceptAt3) const Icon(Icons.info_outline, color: TranSenColors.primaryGreen, size: 20),
                    IconButton(
                      icon: const Icon(Icons.close, color: Colors.grey, size: 20),
                      onPressed: () => setState(() => _ignoredPoolIds.add(pool.id)),
@@ -766,7 +775,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               child: LinearProgressIndicator(
                 value: pool.currentFilling / 4,
                 backgroundColor: Colors.grey.shade100,
-                color: isFull ? Colors.green : Colors.orange,
+                color: isFull ? Colors.green : TranSenColors.primaryGreen,
                 minHeight: 8,
               ),
             ),
@@ -776,7 +785,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               children: [
                 Text("${pool.currentFilling}/4 passagers", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 if (canAcceptAt3 && !isFull)
-                  const Text("Acceptable (3/4)", style: TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.bold)),
+                  const Text("Acceptable (3/4)", style: TextStyle(fontSize: 11, color: TranSenColors.accentGold, fontWeight: FontWeight.bold)),
+
               ],
             ),
 
@@ -839,7 +849,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       }
                     },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: isFull ? Colors.green : (canAcceptAt3 ? Colors.orange : Colors.black87),
+                  backgroundColor: isFull ? Colors.green : (canAcceptAt3 ? TranSenColors.accentGold : TranSenColors.darkGreen),
+
                   foregroundColor: Colors.white,
                   padding: const EdgeInsets.symmetric(vertical: 16),
                   shape: RoundedRectangleBorder(
@@ -1007,7 +1018,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           children: [
             Row(
               children: [
-                const Icon(Icons.inventory_2, color: Colors.deepOrange, size: 20),
+                const Icon(Icons.inventory_2, color: TranSenColors.primaryGreen, size: 20),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(

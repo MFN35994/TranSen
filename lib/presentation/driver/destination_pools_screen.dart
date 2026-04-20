@@ -5,6 +5,8 @@ import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/pool_providers.dart';
 import '../../data/repositories/trip_repository.dart';
 import 'pool_detail_screen.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 class DestinationPoolsScreen extends ConsumerStatefulWidget {
   final String destination;
@@ -44,7 +46,8 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
             },
           );
         },
-        loading: () => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+        loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+
         error: (err, _) => Center(child: Text("Erreur: $err")),
       ),
     );
@@ -62,7 +65,7 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
           children: [
             Row(
               children: [
-                const Icon(Icons.groups, color: Colors.orange),
+                const Icon(Icons.groups, color: TranSenColors.primaryGreen),
                 const SizedBox(width: 15),
                 Expanded(
                   child: Column(
@@ -83,7 +86,8 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
             LinearProgressIndicator(
               value: pool.currentFilling / 4,
               backgroundColor: Colors.grey.shade200,
-              color: pool.currentFilling >= 4 ? Colors.green : Colors.orange,
+              color: pool.currentFilling >= 4 ? Colors.green : TranSenColors.accentGold,
+
             ),
             const SizedBox(height: 10),
             Row(

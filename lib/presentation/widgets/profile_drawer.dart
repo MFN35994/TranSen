@@ -8,6 +8,8 @@ import '../wallet/history_screen.dart';
 import '../profile/referral_screen.dart';
 import '../home/trip_tracking_screen.dart';
 import '../../domain/providers/trip_providers.dart';
+import '../../core/theme/transen_colors.dart';
+
 
 class ProfileDrawer extends ConsumerWidget {
   const ProfileDrawer({super.key});
@@ -152,7 +154,8 @@ class ProfileDrawer extends ConsumerWidget {
           name = "${userData!['firstName']} ${userData['lastName'] ?? ''}";
         }
         if (name.isEmpty) {
-          name = role == 'driver' ? 'Chauffeur Allô Dakar' : 'Client Allô Dakar';
+          name = role == 'driver' ? 'Chauffeur TranSen' : 'Client TranSen';
+
         }
         final String email = userData?['email'] ?? 'Utilisateur';
 
@@ -160,7 +163,7 @@ class ProfileDrawer extends ConsumerWidget {
           width: double.infinity,
           padding: const EdgeInsets.only(top: 60, bottom: 30, left: 25, right: 25),
           decoration: BoxDecoration(
-            color: role == 'driver' ? Colors.black87 : Colors.orange,
+            color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
             borderRadius: const BorderRadius.only(
               bottomLeft: Radius.circular(40),
             ),
@@ -248,12 +251,14 @@ class ProfileDrawer extends ConsumerWidget {
       },
       loading: () => Container(
         height: 200,
-        decoration: BoxDecoration(color: role == 'driver' ? Colors.black87 : Colors.orange),
+        decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
+
         child: const Center(child: CircularProgressIndicator(color: Colors.white)),
       ),
       error: (_, __) => Container(
         height: 200,
-        decoration: BoxDecoration(color: role == 'driver' ? Colors.black87 : Colors.orange),
+        decoration: BoxDecoration(color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary),
+
       ),
     );
   }
@@ -286,7 +291,7 @@ class ProfileDrawer extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Assistance Allô Dakar'),
+        title: const Text('Assistance TranSen'),
         content: const Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -295,9 +300,10 @@ class ProfileDrawer extends ConsumerWidget {
             SizedBox(height: 20),
             Row(
               children: [
-                Icon(Icons.email_outlined, color: Colors.orange, size: 20),
+                Icon(Icons.email_outlined, color: Colors.blue, size: 20),
                 SizedBox(width: 10),
-                Text('allodakar19.sn@gmail.com', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('contact@transen.sn',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
             SizedBox(height: 10),
@@ -305,7 +311,8 @@ class ProfileDrawer extends ConsumerWidget {
               children: [
                 Icon(Icons.phone_outlined, color: Colors.green, size: 20),
                 SizedBox(width: 10),
-                Text('+221 77 000 00 00', style: TextStyle(fontWeight: FontWeight.bold)),
+                Text('+221 77 000 00 00',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
               ],
             ),
           ],

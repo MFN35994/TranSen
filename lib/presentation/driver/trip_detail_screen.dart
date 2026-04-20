@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/trip_repository.dart';
 import '../../domain/models/trip_model.dart';
@@ -28,20 +29,20 @@ class TripDetailScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.orange.shade50,
+                color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.orange.shade200),
+                border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
                   const CircleAvatar(
                     radius: 30,
-                    backgroundColor: Colors.orange,
+                    backgroundColor: TranSenColors.primaryGreen,
                     child: Icon(Icons.person, color: Colors.white, size: 35),
                   ),
                   const SizedBox(height: 15),
                   Text(
-                    trip.clientName ?? 'Client Allô Dakar',
+                    trip.clientName ?? 'Client TranSen',
                     style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 5),
@@ -105,7 +106,7 @@ class TripDetailScreen extends ConsumerWidget {
                         icon: const Icon(Icons.check_circle),
                         label: const Text("ACCEPTER"),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepOrange,
+                          backgroundColor: TranSenColors.primaryGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 15),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),

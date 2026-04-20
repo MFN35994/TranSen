@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/trip_providers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -49,7 +50,7 @@ class DriverReviewsSheet extends ConsumerWidget {
             padding: const EdgeInsets.all(20),
             child: Row(
               children: [
-                const Icon(Icons.stars, color: Colors.orange, size: 28),
+                const Icon(Icons.stars, color: TranSenColors.primaryGreen, size: 28),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -131,7 +132,7 @@ class DriverReviewsSheet extends ConsumerWidget {
                   },
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+              loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
               error: (e, _) => Center(child: Text("Erreur: $e")),
             ),
           ),

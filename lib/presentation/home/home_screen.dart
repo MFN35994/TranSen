@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/transen_colors.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -23,7 +24,7 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
     const size = 40.0;
-    final paint = Paint()..color = Colors.orange;
+    final paint = Paint()..color = TranSenColors.primaryGreen;
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(6, 14, 28, 16), const Radius.circular(5)), paint);
     canvas.drawRRect(RRect.fromRectAndRadius(const Rect.fromLTWH(11, 6, 18, 11), const Radius.circular(4)), paint);
     canvas.drawCircle(const Offset(11, 30), 4, Paint()..color = Colors.black87);
@@ -58,7 +59,7 @@ final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
         markerId: MarkerId(driverId),
         position: LatLng(data['lat'], data['lng']),
         infoWindow: InfoWindow(
-          title: data['driverName'] ?? 'Chauffeur Allô Dakar',
+          title: data['driverName'] ?? 'Chauffeur TranSen',
           snippet: snippet,
         ),
         icon: carIcon,
@@ -90,8 +91,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Allô Dakar'),
-        backgroundColor: Colors.orange,
+        title: const Text('TranSen'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
       drawer: const ProfileDrawer(),
@@ -182,7 +183,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         context,
                         title: 'Course',
                         icon: Icons.directions_car,
-                        color: Colors.orange,
+                        color: TranSenColors.primaryGreen,
                         onTap: () {
                           OrderSheet.show(context);
                         },
@@ -264,9 +265,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 decoration: BoxDecoration(
                                   color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: Colors.orange.withValues(alpha: 0.3), width: 1.5),
+                                  border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3), width: 1.5),
                                   boxShadow: [
-                                    BoxShadow(color: Colors.orange.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
+                                    BoxShadow(color: TranSenColors.primaryGreen.withValues(alpha: 0.1), blurRadius: 10, offset: const Offset(0, 4)),
                                   ],
                                 ),
                                 child: Row(
@@ -274,10 +275,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     Container(
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
-                                        color: Colors.orange.withValues(alpha: 0.1),
+                                        color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: const Icon(Icons.auto_awesome, color: Colors.orange, size: 24),
+                                      child: const Icon(Icons.auto_awesome, color: TranSenColors.primaryGreen, size: 24),
                                     ),
                                     const SizedBox(width: 12),
                                     Expanded(
@@ -293,7 +294,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                           const SizedBox(height: 4),
                                           Text(
                                             snippet.replaceFirst("Trajet : ", ""),
-                                            style: const TextStyle(fontSize: 11, color: Colors.deepOrange, fontWeight: FontWeight.w700),
+                                            style: const TextStyle(fontSize: 11, color: TranSenColors.primaryGreen, fontWeight: FontWeight.w700),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                           const SizedBox(height: 4),
@@ -345,7 +346,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           },
                         );
                       },
-                      loading: () => const Center(child: CircularProgressIndicator(color: Colors.orange)),
+                      loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
                       error: (_, __) => const SizedBox.shrink(),
                     ),
                   ),
@@ -362,7 +363,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             CameraUpdate.newCameraPosition(_initialPosition),
           );
         },
-        backgroundColor: Colors.orange,
+        backgroundColor: TranSenColors.primaryGreen,
         child: const Icon(Icons.my_location, color: Colors.white),
       ),
     );
@@ -372,22 +373,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
-        color: Colors.orange.withValues(alpha: 0.1),
+        color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange, width: 1.5),
+        border: Border.all(color: TranSenColors.primaryGreen, width: 1.5),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         leading: const CircleAvatar(
-          backgroundColor: Colors.orange,
+          backgroundColor: TranSenColors.primaryGreen,
           child: Icon(Icons.directions_car, color: Colors.white),
         ),
         title: const Text(
           "Course en cours...",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+          style: TextStyle(fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
         ),
         subtitle: Text("${trip.departure} ➔ ${trip.destination}"),
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.orange),
+        trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: TranSenColors.primaryGreen),
         onTap: () {
           Navigator.push(
             context,
