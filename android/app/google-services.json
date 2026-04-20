@@ -1,20 +1,20 @@
 {
   "project_info": {
-    "project_number": "743590908369",
-    "project_id": "allo-dakar-b6a20",
-    "storage_bucket": "allo-dakar-b6a20.firebasestorage.app"
+    "project_number": "552529206563",
+    "project_id": "transen-pro",
+    "storage_bucket": "transen-pro.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:743590908369:android:cd3fd414ced552195cd0f0",
+        "mobilesdk_app_id": "1:552529206563:android:9ce8bac8520d403803c096",
         "android_client_info": {
           "package_name": "com.transen.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "743590908369-1shrse5ro1ue26akrbb412rk3he0es3u.apps.googleusercontent.com",
+          "client_id": "552529206563-2q4tnjdtc7n6ignur8vl6r8dr0gvuspu.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.transen.app",
@@ -22,27 +22,27 @@
           }
         },
         {
-          "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+          "client_id": "552529206563-nprrea3trlemvrg1mqi0bqmiqnj0rtrb.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU"
+          "current_key": "AIzaSyBcnlOH-QVz5AQnBrPu0R23Fqh9GgH_G3o"
         }
       ],
       "services": {
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "743590908369-ppboltpjja7dces4mv0bpdon3puqe5vs.apps.googleusercontent.com",
+              "client_id": "552529206563-nprrea3trlemvrg1mqi0bqmiqnj0rtrb.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc.apps.googleusercontent.com",
+              "client_id": "552529206563-ffsuo62udnf9nmr6r0usha2lr4aitqgj.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.alloDakar"
+                "bundle_id": "com.transen.app"
               }
             }
           ]

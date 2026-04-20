@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/repositories/trip_repository.dart';
 import './auth_provider.dart';
@@ -15,7 +16,7 @@ final driverRatingProvider = StreamProvider.family<double, String>((ref, driverI
 });
 
 final driverRatingCountProvider = StreamProvider.family<int, String>((ref, driverId) {
-  return FirebaseFirestore.instance.collection('trips')
+  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
       .where('driverId', isEqualTo: driverId)
       .where('rating', isNull: false)
       .snapshots()
@@ -39,7 +40,7 @@ final activeTripProvider = StreamProvider<TripModel?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null) return Stream.value(null);
   
-  final firestore = FirebaseFirestore.instance;
+  final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
   
   // Les pools (Covoiturage) - Sans whereIn pour éviter l'index composite
   final poolsStream = firestore.collection('pools')
@@ -96,7 +97,7 @@ final driverActivePoolProvider = StreamProvider<PoolModel?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null || auth.userId.isEmpty) return Stream.value(null);
   
-  final firestore = FirebaseFirestore.instance;
+  final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
   
   return firestore.collection('pools')
       .where('driverId', isEqualTo: auth.userId)
@@ -115,7 +116,7 @@ final driverActiveTripProvider = StreamProvider<TripModel?>((ref) {
   final auth = ref.watch(authProvider);
   if (auth == null || auth.userId.isEmpty) return Stream.value(null);
   
-  return FirebaseFirestore.instance.collection('trips')
+  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
       .where('driverId', isEqualTo: auth.userId)
       .where('status', isEqualTo: 'accepted')
       .snapshots()

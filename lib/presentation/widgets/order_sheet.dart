@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
@@ -357,7 +358,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
 
             // --- NOUVEAU: POINTS BONUS ---
             FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instance.collection('users').doc(ref.read(authProvider)?.userId).get(),
+              future: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(ref.read(authProvider)?.userId).get(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const SizedBox.shrink();
                 final data = snapshot.data!.data() as Map<String, dynamic>?;
@@ -431,7 +432,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                       try {
                         setState(() => _isProcessing = true);
 
-                        final userData = await FirebaseFirestore.instance.collection('users').doc(userId).get();
+                        final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).get();
                         final existingPhone = userData.data()?['phone'] as String?;
                         
                         if (!context.mounted) return;
@@ -500,7 +501,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
 
                         // Déduire les points si utilisés
                         if (_useBonusPoints && _userBonusPoints > 0) {
-                          await FirebaseFirestore.instance.collection('users').doc(userId).update({
+                          await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).update({
                             'bonusPoints': 0, // On consomme tout
                           });
                         }
@@ -595,7 +596,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     if (auth == null) return const SizedBox.shrink();
 
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('users').doc(auth.userId).get(),
+      future: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final data = snapshot.data!.data() as Map<String, dynamic>?;

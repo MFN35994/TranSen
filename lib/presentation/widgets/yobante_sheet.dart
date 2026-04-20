@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/transen_colors.dart';
@@ -188,7 +189,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
 
                       final auth = ref.read(authProvider);
                       final userId = auth?.userId ?? '';
-                      final userData = await FirebaseFirestore.instance
+                      final userData = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
                           .collection('users')
                           .doc(userId)
                           .get();
@@ -385,7 +386,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
 
     return FutureBuilder<DocumentSnapshot>(
       future:
-          FirebaseFirestore.instance.collection('users').doc(auth.userId).get(),
+          FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         final data = snapshot.data!.data() as Map<String, dynamic>?;

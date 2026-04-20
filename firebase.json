@@ -1,4 +1,9 @@
 {
+  "firestore": {
+    "database": "transen",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
   "hosting": {
     "public": "build/web",
     "ignore": [
@@ -12,5 +17,26 @@
         "destination": "/index.html"
       }
     ]
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "transen-pro",
+          "appId": "1:552529206563:android:9ce8bac8520d403803c096",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "transen-pro",
+          "configurations": {
+            "android": "1:552529206563:android:9ce8bac8520d403803c096",
+            "ios": "1:552529206563:ios:f3c97c28f910c7db03c096",
+            "web": "1:552529206563:web:db7af28ae9b752e203c096"
+          }
+        }
+      }
+    }
   }
 }

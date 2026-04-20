@@ -3,23 +3,23 @@
 <plist version="1.0">
 <dict>
 	<key>CLIENT_ID</key>
-	<string>743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc.apps.googleusercontent.com</string>
+	<string>552529206563-ffsuo62udnf9nmr6r0usha2lr4aitqgj.apps.googleusercontent.com</string>
 	<key>REVERSED_CLIENT_ID</key>
-	<string>com.googleusercontent.apps.743590908369-h7il5fll7lqogsp1kemjibt6iaf962nc</string>
+	<string>com.googleusercontent.apps.552529206563-ffsuo62udnf9nmr6r0usha2lr4aitqgj</string>
 	<key>ANDROID_CLIENT_ID</key>
-	<string>743590908369-1shrse5ro1ue26akrbb412rk3he0es3u.apps.googleusercontent.com</string>
+	<string>552529206563-2q4tnjdtc7n6ignur8vl6r8dr0gvuspu.apps.googleusercontent.com</string>
 	<key>API_KEY</key>
-	<string>AIzaSyDDzVsYHhMYHEtLOpxRphtZu1hF25BmkEo</string>
+	<string>AIzaSyCaP8YhraHDLs55jo1CyMVNcQQonXapkK4</string>
 	<key>GCM_SENDER_ID</key>
-	<string>743590908369</string>
+	<string>552529206563</string>
 	<key>PLIST_VERSION</key>
 	<string>1</string>
 	<key>BUNDLE_ID</key>
 	<string>com.transen.app</string>
 	<key>PROJECT_ID</key>
-	<string>allo-dakar-b6a20</string>
+	<string>transen-pro</string>
 	<key>STORAGE_BUCKET</key>
-	<string>allo-dakar-b6a20.firebasestorage.app</string>
+	<string>transen-pro.firebasestorage.app</string>
 	<key>IS_ADS_ENABLED</key>
 	<false></false>
 	<key>IS_ANALYTICS_ENABLED</key>
@@ -31,6 +31,6 @@
 	<key>IS_SIGNIN_ENABLED</key>
 	<true></true>
 	<key>GOOGLE_APP_ID</key>
-	<string>1:743590908369:ios:2a1e5bef86b5bf805cd0f0</string>
+	<string>1:552529206563:ios:f3c97c28f910c7db03c096</string>
 </dict>
 </plist>

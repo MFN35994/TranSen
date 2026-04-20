@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,7 +21,7 @@ class StatisticsScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
+        stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
             .collection('trips')
             .where('driverId', isEqualTo: driverId)
             .where('status', isEqualTo: 'accepted') // On considère 'accepted' car on n'a pas encore de bouton "Terminer"

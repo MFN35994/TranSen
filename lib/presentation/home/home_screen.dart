@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
@@ -14,7 +15,7 @@ import './trip_tracking_screen.dart';
 import '../widgets/driver_reviews_sheet.dart';
 
 final activeDriversStreamProvider = StreamProvider<Set<Marker>>((ref) {
-  return FirebaseFirestore.instance
+  return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
       .collection('active_drivers')
       .snapshots()
       .asyncMap((snapshot) async {

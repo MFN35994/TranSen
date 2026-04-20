@@ -1,4 +1,3 @@
-import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -106,18 +105,21 @@ class ProfileScreen extends ConsumerWidget {
                             ),
                             const SizedBox(height: 10),
                             const Text(
-                              "Pour obtenir le badge 'Vérifié' et attirer plus de passagers, envoyez une photo de votre CNI et de votre Permis sur WhatsApp.",
+                              "Le module de vérification des documents (CNI, Permis) est en cours de construction. Vous pourrez bientôt télécharger vos documents directement dans l'application.",
                               style: TextStyle(fontSize: 13, color: Colors.black87),
                             ),
                             const SizedBox(height: 15),
                             ElevatedButton.icon(
                               onPressed: () {
-                                // Redirection WhatsApp pour la vérification manuelle pour le lancement
-                                final whatsappUri = Uri.parse("https://wa.me/221773418501?text=Bonjour, je souhaite vérifier mon compte chauffeur TranSen.");
-                                launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text("Fonctionnalité en cours de développement..."),
+                                    backgroundColor: TranSenColors.primaryGreen,
+                                  ),
+                                );
                               },
-                              icon: const Icon(Icons.send),
-                              label: const Text("VÉRIFIER MES DOCUMENTS"),
+                              icon: const Icon(Icons.construction),
+                              label: const Text("VÉRIFICATION BIENTÔT DISPONIBLE"),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: TranSenColors.primaryGreen,
                                 foregroundColor: Colors.white,

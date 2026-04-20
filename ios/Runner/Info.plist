@@ -62,8 +62,8 @@
 			<string>Editor</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<!-- Remplacez com.allodakar.alloDakar par votre REVERSED_CLIENT_ID (depuis GoogleService-Info.plist) -->
-				<string>com.googleusercontent.apps.VOTRE_CLIENT_ID_IOS</string>
+				<!-- REVERSED_CLIENT_ID pour Google Sign-In -->
+				<string>com.googleusercontent.apps.552529206563-ffsuo62udnf9nmr6r0usha2lr4aitqgj</string>
 			</array>
 		</dict>
 	</array>

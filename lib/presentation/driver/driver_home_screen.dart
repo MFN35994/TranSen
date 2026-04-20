@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -64,7 +65,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     _locationTimer?.cancel();
     // Marquer comme hors ligne à la fermeture
     if (_isOnline && _currentDriverId != null) {
-      FirebaseFirestore.instance
+      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
           .collection('active_drivers')
           .doc(_currentDriverId)
           .delete();
@@ -103,7 +104,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
 
       if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
         // Récupérer les infos du profil une seule fois
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(driverId).get();
+        final userDoc = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(driverId).get();
         final userData = userDoc.data();
         final name = userData?['name'] ?? 'Chauffeur TranSen';
 
@@ -119,7 +120,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       });
       _locationTimer?.cancel();
       // Supprimer le marqueur actif
-      await FirebaseFirestore.instance
+      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
           .collection('active_drivers')
           .doc(driverId)
           .delete();
@@ -130,7 +131,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     _locationTimer = Timer.periodic(const Duration(seconds: 5), (timer) async {
       try {
         Position position = await Geolocator.getCurrentPosition();
-        await FirebaseFirestore.instance
+        await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
             .collection('active_drivers')
             .doc(driverId)
             .set({
@@ -163,7 +164,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               final auth = ref.watch(authProvider);
               if (auth == null) return const SizedBox.shrink();
               return StreamBuilder<DocumentSnapshot>(
-                stream: FirebaseFirestore.instance.collection('users').doc(auth.userId).snapshots(),
+                stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).snapshots(),
                 builder: (context, snapshot) {
                   if (snapshot.hasData && (snapshot.data!.data() as Map<String, dynamic>?)?['isVerified'] == true) {
                     return const Icon(Icons.verified, color: Colors.blue, size: 18);

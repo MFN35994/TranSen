@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -328,7 +329,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
   Widget _buildMapView(TripModel trip) {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('active_drivers').doc(trip.driverId).snapshots(),
+      stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('active_drivers').doc(trip.driverId).snapshots(),
       builder: (context, driverSnapshot) {
         if (driverSnapshot.hasData && driverSnapshot.data!.exists) {
           final data = driverSnapshot.data!.data() as Map<String, dynamic>;
@@ -406,10 +407,10 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     if (trip.driverId == null) return const SizedBox.shrink();
 
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirebaseFirestore.instance.collection('users').doc(trip.driverId).snapshots(),
+      stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(trip.driverId).snapshots(),
       builder: (context, userSnapshot) {
         return StreamBuilder<DocumentSnapshot>(
-          stream: FirebaseFirestore.instance.collection('active_drivers').doc(trip.driverId).snapshots(),
+          stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('active_drivers').doc(trip.driverId).snapshots(),
           builder: (context, activeSnapshot) {
             // --- Caching Logic ---
             String driverName = trip.driverName ?? "Chauffeur TranSen";
@@ -544,7 +545,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                   
                   // --- NOUVEAU : SECTION CO-VOYAGEURS ---
                   StreamBuilder<DocumentSnapshot>(
-                    stream: FirebaseFirestore.instance.collection('pools').doc(widget.tripId).snapshots(),
+                    stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('pools').doc(widget.tripId).snapshots(),
                     builder: (context, poolSnap) {
                       if (!poolSnap.hasData || !poolSnap.data!.exists) return const SizedBox.shrink();
                       

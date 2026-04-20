@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
@@ -74,7 +75,7 @@ class NotificationService {
 
   Future<void> _saveTokenToDatabase(String userId, String token) async {
     try {
-      await FirebaseFirestore.instance.collection('users').doc(userId).set({
+      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).set({
         'fcmToken': token,
         'lastTokenUpdate': FieldValue.serverTimestamp(),
         'platform': defaultTargetPlatform.toString().split('.').last,

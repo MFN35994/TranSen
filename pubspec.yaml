@@ -48,4 +48,6 @@ flutter:
   assets:
     - assets/images/logo.png
     - assets/images/car_top.png
+    - assets/legal/cgu.md
+    - assets/legal/politique_confidentialite.md
 

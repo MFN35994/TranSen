@@ -21,7 +21,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    FirebaseFirestore.instance.settings =
+    FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').settings =
         const Settings(persistenceEnabled: true);
 
     // Configurer le gestionnaire de messages en arrière-plan

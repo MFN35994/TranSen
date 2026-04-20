@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +22,7 @@ class ReferralScreen extends ConsumerWidget {
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<DocumentSnapshot>(
-        stream: FirebaseFirestore.instance.collection('users').doc(auth.userId).snapshots(),
+        stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
@@ -31,7 +32,7 @@ class ReferralScreen extends ConsumerWidget {
           // Générer un code si inexistant
           if (referralCode == null || referralCode.isEmpty) {
             referralCode = auth.userId.substring(0, 6).toUpperCase();
-            FirebaseFirestore.instance.collection('users').doc(auth.userId).update({
+            FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).update({
               'referralCode': referralCode,
             });
           }

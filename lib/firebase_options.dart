@@ -41,30 +41,30 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyB_rQGC9og_n-mNYKQ8pd8M0_j6GWfM-JM',
-    appId: '1:743590908369:web:cf0175ea723116d55cd0f0',
-    messagingSenderId: '743590908369',
-    projectId: 'allo-dakar-b6a20',
-    authDomain: 'allo-dakar-b6a20.firebaseapp.com',
-    storageBucket: 'allo-dakar-b6a20.firebasestorage.app',
-    measurementId: 'G-WDR484QG4R',
+    apiKey: 'AIzaSyBI9aic0z55HA8AT31In3fbHUJy-AQ4qq4',
+    appId: '1:552529206563:web:db7af28ae9b752e203c096',
+    messagingSenderId: '552529206563',
+    projectId: 'transen-pro',
+    authDomain: 'transen-pro.firebaseapp.com',
+    storageBucket: 'transen-pro.firebasestorage.app',
+    measurementId: 'G-3RZNWXB756',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDgKZdHj-qCf9o8KBeEMzZwMFtOqwbeYaU',
-    appId: '1:743590908369:android:cd3fd414ced552195cd0f0',
-    messagingSenderId: '743590908369',
-    projectId: 'allo-dakar-b6a20',
-    storageBucket: 'allo-dakar-b6a20.firebasestorage.app',
+    apiKey: 'AIzaSyBcnlOH-QVz5AQnBrPu0R23Fqh9GgH_G3o',
+    appId: '1:552529206563:android:9ce8bac8520d403803c096',
+    messagingSenderId: '552529206563',
+    projectId: 'transen-pro',
+    storageBucket: 'transen-pro.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDDzVsYHhMYHEtLOpxRphtZu1hF25BmkEo',
-    appId: '1:743590908369:ios:2a1e5bef86b5bf805cd0f0',
-    messagingSenderId: '743590908369',
-    projectId: 'allo-dakar-b6a20',
-    storageBucket: 'allo-dakar-b6a20.firebasestorage.app',
-    iosBundleId: 'com.example.alloDakar',
+    apiKey: 'AIzaSyCaP8YhraHDLs55jo1CyMVNcQQonXapkK4',
+    appId: '1:552529206563:ios:f3c97c28f910c7db03c096',
+    messagingSenderId: '552529206563',
+    projectId: 'transen-pro',
+    storageBucket: 'transen-pro.firebasestorage.app',
+    iosBundleId: 'com.transen.app',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
