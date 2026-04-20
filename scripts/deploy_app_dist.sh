@@ -1,10 +1,10 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_ID="allo-dakar-b6a20"
-APP_ID="1:743590908369:android:cd3fd414ced552195cd0f0"
+PROJECT_ID="transen-pro"
+APP_ID="1:552529206563:android:9ce8bac8520d403803c096"
 APK_PATH="build/app/outputs/flutter-apk/app-release.apk"
-RELEASE_NOTES="Allô Dakar v1.0.0 - Préparation au lancement. Support parrainage et badges vérifiés."
+RELEASE_NOTES="TranSen v1.0.0 - Déploiement production via script local."
 
 echo "🚀 Début de la distribution sur Firebase App Distribution..."
 
@@ -19,7 +19,7 @@ fi
 firebase appdistribution:distribute "$APK_PATH" \
     --app "$APP_ID" \
     --release-notes "$RELEASE_NOTES" \
-    --groups "testers-allô-dakar" \
+    --groups "testeurs_transen" \
     --project "$PROJECT_ID"
 
 if [ $? -eq 0 ]; then
