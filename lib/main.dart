@@ -97,8 +97,8 @@ class AuthGate extends ConsumerWidget {
     // On écoute le provider d'authentification
     final authState = ref.watch(authProvider);
 
-    // Cas 1 : L'état est nul (Utilisateur non connecté)
-    if (authState == null) {
+    // Cas 1 : L'état est nul ou vide (Utilisateur non connecté ou en cours de saisie OTP)
+    if (authState == null || authState.userId.isEmpty) {
       return const LoginScreen();
     }
 
