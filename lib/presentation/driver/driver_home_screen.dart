@@ -178,7 +178,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           ],
         ),
         backgroundColor: TranSenColors.darkGreen,
-
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
@@ -198,6 +197,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                 inactiveTrackColor: Colors.white24,
                 onChanged: (val) => _toggleOnline(val, currentUserId),
               ),
+              IconButton(
+                onPressed: () => DriverReviewsSheet.show(context, currentUserId, auth?.name ?? 'Moi'),
+                icon: const Icon(Icons.stars, color: Colors.amber),
+                tooltip: "Mes Avis",
+              ),
             ],
           ),
         ],
@@ -206,7 +210,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       body: Column(
         children: [
           Expanded(
-            flex: 4,
+            flex: 3,
             child: Stack(
               children: [
                 GoogleMap(
@@ -225,7 +229,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   compassEnabled: false,
                   zoomControlsEnabled: false,
                 ),
-                // Floating Action Button pour la position géographique au-dessus du panel
                 Positioned(
                   bottom: 20,
                   right: 20,
@@ -248,23 +251,17 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             ),
           ),
           
-          // Moitié Basse : Dashboard Chauffeur
           Expanded(
-            flex: 6,
+            flex: 7,
             child: Container(
               decoration: const BoxDecoration(
-                color: Color(0xFFF8F9FA), // Off-white très premium
+                color: Color(0xFFF8F9FA),
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(40),
                   topRight: Radius.circular(40),
                 ),
                 boxShadow: [
-                  BoxShadow(
-                    color: Color(0x14000000), // Hex equivalent factor for 0.08 opacity
-                    blurRadius: 30,
-                    spreadRadius: 5,
-                    offset: Offset(0, -10),
-                  ),
+                  BoxShadow(color: Color(0x14000000), blurRadius: 30, spreadRadius: 5, offset: Offset(0, -10)),
                 ],
               ),
               child: SingleChildScrollView(
@@ -273,443 +270,204 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // === NOUVEAU: RESUME AVIS ===
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                        child: InkWell(
-                          onTap: () {
-                            DriverReviewsSheet.show(context, currentUserId, auth?.name ?? 'Moi');
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(20),
-                              boxShadow: [
-                                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
-                              ],
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Consumer(builder: (context, ref, child) {
+                                final rating = ref.watch(driverRatingProvider(currentUserId)).value ?? 0.0;
+                                final count = ref.watch(driverRatingCountProvider(currentUserId)).value ?? 0;
+                                return _buildStatChip(Icons.star, "${rating.toStringAsFixed(1)} ($count)", Colors.amber);
+                              }),
                             ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), shape: BoxShape.circle),
-                                  child: const Icon(Icons.star, color: Colors.amber),
-                                ),
-                                const SizedBox(width: 15),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      const Text("Mes Avis Clients", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                                      Consumer(builder: (context, ref, child) {
-                                        final ratingAsync = ref.watch(driverRatingProvider(currentUserId));
-                                        final countAsync = ref.watch(driverRatingCountProvider(currentUserId));
-                                        return Text(
-                                          "${ratingAsync.value?.toStringAsFixed(1) ?? '0.0'} (${countAsync.value ?? 0} avis)",
-                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
-                                        );
-                                      }),
-                                    ],
-                                  ),
-                                ),
-                                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
-                              ],
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Consumer(builder: (context, ref, child) {
+                                final occupancy = ref.watch(driverOccupancyProvider(currentUserId)).value ?? 0;
+                                return _buildStatChip(Icons.groups, "$occupancy / 4", Colors.green);
+                              }),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                // === NOUVEAU: COURSE EN COURS ===
-                if (_isOnline) ...[
-                  Consumer(builder: (context, ref, child) {
-                    final activePoolAsync = ref.watch(driverActivePoolProvider);
-                    return activePoolAsync.when(
-                      data: (pool) {
-                        if (pool == null) return const SizedBox.shrink();
-                        return _buildActiveDriverTripCard(context, pool);
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    );
-                  }),
-                  Consumer(builder: (context, ref, child) {
-                    final activeTripAsync = ref.watch(driverActiveTripProvider);
-                    return activeTripAsync.when(
-                      data: (trip) {
-                        if (trip == null) return const SizedBox.shrink();
-                        return _buildActiveVtcTripCard(context, trip);
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    );
-                  }),
-                ],
-
-                // Bloc Route du Jour (Matching Intelligent)
-                if (_isOnline) ...[
-                  Container(
-                    padding: const EdgeInsets.all(15),
-                    margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.auto_awesome, color: TranSenColors.accentGold, size: 20),
-
-                            SizedBox(width: 10),
-                            Text("Mon trajet d'aujourd'hui", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  hint: const Text("Départ"),
-                                  value: _pubDeparture,
-                                  isExpanded: true,
-                                  items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                                  onChanged: (val) {
-                                    setState(() => _pubDeparture = val);
-                                    // Toujours publier la route, même si destination est nulle (pour filtrage origine)
-                                    ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, val!, _pubDestination);
-                                  },
-                                ),
-                              ),
-                            ),
-                            const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
-                            const SizedBox(width: 5),
-                            Expanded(
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  hint: const Text("Arrivée"),
-                                  value: _pubDestination,
-                                  isExpanded: true,
-                                  items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                                  onChanged: (val) {
-                                    setState(() => _pubDestination = val);
-                                    if (_pubDeparture != null) {
-                                      ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, _pubDeparture!, val);
-                                    }
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-
-                // --- NOUVEAU : CARTES DE CHALEUR ET OPTIONS POOLING ---
-                if (_isOnline) ...[
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text("Zones de forte demande", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        TextButton.icon(
-                          onPressed: () => setState(() => _isAutoFull = !_isAutoFull),
-                          icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey),
-                          label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey)),
-
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(
-                    height: 50,
-                    child: Consumer(builder: (context, ref, child) {
-                      final heatmapAsync = ref.watch(demandHeatmapProvider);
-                      return heatmapAsync.when(
-                        data: (heatmap) {
-                          if (heatmap.isEmpty) return const Center(child: Text("Aucune demande en attente.", style: TextStyle(fontSize: 12, color: Colors.grey)));
-                          final sortedEntries = heatmap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
-                          return ListView.builder(
-                            scrollDirection: Axis.horizontal,
-                            padding: const EdgeInsets.symmetric(horizontal: 20),
-                            itemCount: sortedEntries.length,
-                            itemBuilder: (context, index) {
-                              final entry = sortedEntries[index];
-                              return InkWell(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => DestinationPoolsScreen(destination: entry.key),
-                                    ),
-                                  );
-                                },
-                                child: Container(
-                                  margin: const EdgeInsets.only(right: 10),
-                                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.withValues(alpha: entry.value > 5 ? 0.2 : 0.05),
-                                    borderRadius: BorderRadius.circular(15),
-                                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      "${entry.key} (${entry.value} pers.)",
-                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red),
-                                    ),
-                                  ),
-                                ),
-                              );
-                            },
+                      
+                      if (_isOnline) ...[
+                        Consumer(builder: (context, ref, child) {
+                          final activePoolAsync = ref.watch(driverActivePoolProvider);
+                          return activePoolAsync.when(
+                            data: (pool) => pool == null ? const SizedBox.shrink() : _buildActiveDriverTripCard(context, pool),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
                           );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
-                      );
-                    }),
-                  ),
-                  const SizedBox(height: 10),
-                ],
-
-                // Bloc Gain Journalier
-                Container(
-                  padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 25),
-                  child: Column(
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          // COMMENTÉ POUR LANCEMENT GRATUIT
-                          // Expanded(
-                          //   child: Column(
-                          //     crossAxisAlignment: CrossAxisAlignment.start,
-                          //     children: [
-                          //       Text(
-                          //         "Mon Portefeuille",
-                          //         style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.bold),
-                          //       ),
-                          //       const SizedBox(height: 5),
-                          //       Consumer(builder: (context, ref, child) {
-                          //         final wallet = ref.watch(walletProvider);
-                          //         return Text(
-                          //           "${wallet.balance.toInt()} FCFA",
-                          //           style: TextStyle(
-                          //             fontSize: 24,
-                          //             fontWeight: FontWeight.w900,
-                          //             color: _isOnline ? Colors.green.shade700 : Colors.grey.shade400,
-                          //           ),
-                          //         );
-                          //       }),
-                          //     ],
-                          //   ),
-                          // ),
-                          const Expanded(child: SizedBox()), // Remplacé provisoirement
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black87,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Consumer(builder: (context, ref, child) {
-                              final ratingAsync = ref.watch(driverRatingProvider(currentUserId));
-                              return ratingAsync.when(
-                                data: (rating) => Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.star, color: Colors.amber, size: 16),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      rating.toStringAsFixed(1),
-                                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                                    ),
-                                  ],
-                                ),
-                                loading: () => const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.amber)),
-                                error: (_, __) => const Icon(Icons.star, color: Colors.grey, size: 16),
-                              );
-                            }),
+                        }),
+                        Consumer(builder: (context, ref, child) {
+                          final activeTripAsync = ref.watch(driverActiveTripProvider);
+                          return activeTripAsync.when(
+                            data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveVtcTripCard(context, trip),
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          );
+                        }),
+                        
+                        Container(
+                          padding: const EdgeInsets.all(15),
+                          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
                           ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 15),
-                      
-                      // Indicateur Covoiturage (4 places) - Placé en dessous pour éviter overflow
-                      Consumer(builder: (context, ref, child) {
-                        final occupancy = ref.watch(driverOccupancyProvider(currentUserId));
-                        return occupancy.when(
-                          data: (pCount) => Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: (pCount >= 4 ? Colors.red : Colors.green).withValues(alpha: 0.05),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(Icons.groups, color: pCount >= 4 ? Colors.red : Colors.green, size: 18),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    "$pCount / 4 places occupées ${pCount >= 4 ? '(Complet !)' : ''}",
-                                    style: TextStyle(
-                                      fontSize: 13, 
-                                      fontWeight: FontWeight.bold,
-                                      color: pCount >= 4 ? Colors.red : Colors.green,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          loading: () => const SizedBox.shrink(),
-                          error: (_, __) => const SizedBox.shrink(),
-                        );
-                      }),
-                    ],
-                  ),
-                ),
-                
-                // --- NOUVEAU : LIVRAISONS YOBANTÉ ---
-                if (_isOnline)
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final deliveriesAsync = ref.watch(pendingTripsProvider(
-                        "${_pubDeparture ?? 'ANY'}|ANY"
-                      ));
-
-                      return deliveriesAsync.when(
-                        data: (trips) {
-                          // 1. Filtrer pour ne garder que les colis/yobante
-                          final allDeliveries = trips.where((t) {
-                            final type = t.type.toLowerCase();
-                            return type.contains('livraison') || 
-                                   type.contains('colis') || 
-                                   type.contains('yobante');
-                          }).toList();
-
-                          // 2. Filtrage par région de départ
-                          final deliveries = allDeliveries.where((t) {
-                            if (_pubDeparture != null && _pubDeparture != 'TOUTES LES RÉGIONS') {
-                              return t.departure == _pubDeparture;
-                            }
-                            return true; 
-                          }).toList();
-
-                          debugPrint("[YOBANTE] Trips totaux: ${trips.length}, Colis totaux: ${allDeliveries.length}, Filtrés: ${deliveries.length}");
-
-                          if (allDeliveries.isEmpty) return const SizedBox.shrink();
-
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          child: Column(
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      "Livraisons Yobanté",
-                                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                                    ),
-                                    Text(
-                                      "${deliveries.length} correspondances",
-                                      style: const TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold),
-
-                                    ),
-                                  ],
-                                ),
+                              const Row(
+                                children: [
+                                  Icon(Icons.auto_awesome, color: TranSenColors.accentGold, size: 20),
+                                  SizedBox(width: 10),
+                                  Text("Mon trajet d'aujourd'hui", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                ],
                               ),
-                              
-                              if (deliveries.isEmpty && allDeliveries.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                                  child: Text(
-                                    "Il y a ${allDeliveries.length} livraisons disponibles dans d'autres régions.",
-                                    style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontStyle: FontStyle.italic),
+                              const SizedBox(height: 10),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        hint: const Text("Départ"),
+                                        value: _pubDeparture,
+                                        isExpanded: true,
+                                        items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                                        onChanged: (val) {
+                                          setState(() => _pubDeparture = val);
+                                          ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, val!, _pubDestination);
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-
-                              if (deliveries.isNotEmpty)
-                                SizedBox(
-                                  height: 160,
-                                  child: ListView.builder(
-                                    scrollDirection: Axis.horizontal,
-                                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                                    itemCount: deliveries.length,
-                                    itemBuilder: (context, index) {
-                                      final delivery = deliveries[index];
-                                      return _buildDeliverySmallCard(context, delivery);
-                                    },
+                                  const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                                  const SizedBox(width: 5),
+                                  Expanded(
+                                    child: DropdownButtonHideUnderline(
+                                      child: DropdownButton<String>(
+                                        hint: const Text("Arrivée"),
+                                        value: _pubDestination,
+                                        isExpanded: true,
+                                        items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                                        onChanged: (val) {
+                                          setState(() => _pubDestination = val);
+                                          if (_pubDeparture != null) {
+                                            ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, _pubDeparture!, val);
+                                          }
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              
-                              // PETIT BLOC DE DEBUG (Visible uniquement si _isOnline)
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(20, 10, 20, 0),
-                                child: Text(
-                                  "DEBUG: ${_pubDeparture ?? 'Pas de région'} | Total: ${trips.length} | Colis: ${allDeliveries.length}",
-                                  style: const TextStyle(fontSize: 9, color: Colors.grey),
-                                ),
+                                ],
                               ),
                             ],
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (e, s) {
-                          debugPrint("Erreur Yobanté détaillée: $e");
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text("Erreur d'accès aux données (Yobanté)", 
-                                  style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
-                                TextButton.icon(
-                                  onPressed: () => ref.refresh(pendingTripsProvider("${_pubDeparture ?? 'ANY'}|ANY")),
-                                  icon: const Icon(Icons.refresh, size: 16),
-                                  label: const Text("Réessayer", style: TextStyle(fontSize: 12)),
-                                ),
-                              ],
-                            ),
-                          );
-                        },
-                      );
-                    },
-                  ),
+                          ),
+                        ),
 
-                // Liste des commandes dynamiques Firebase
-                _isOnline 
-                ? Consumer(
-                        builder: (context, ref, child) {
-                          final poolsAsyncValue = ref.watch(pendingPoolsProvider(
-                            "${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}"
-                          ));
-                          
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text("Zones de forte demande", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              TextButton.icon(
+                                onPressed: () => setState(() => _isAutoFull = !_isAutoFull),
+                                icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey),
+                                label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey)),
+                              ),
+                            ],
+                          ),
+                        ),
+                        SizedBox(
+                          height: 50,
+                          child: Consumer(builder: (context, ref, child) {
+                            final heatmapAsync = ref.watch(demandHeatmapProvider);
+                            return heatmapAsync.when(
+                              data: (heatmap) {
+                                if (heatmap.isEmpty) return const Center(child: Text("Aucune demande en attente.", style: TextStyle(fontSize: 12, color: Colors.grey)));
+                                final sortedEntries = heatmap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+                                return ListView.builder(
+                                  scrollDirection: Axis.horizontal,
+                                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                                  itemCount: sortedEntries.length,
+                                  itemBuilder: (context, index) {
+                                    final entry = sortedEntries[index];
+                                    return InkWell(
+                                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DestinationPoolsScreen(destination: entry.key))),
+                                      child: Container(
+                                        margin: const EdgeInsets.only(right: 10),
+                                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                                        decoration: BoxDecoration(
+                                          color: Colors.red.withValues(alpha: entry.value > 5 ? 0.2 : 0.05),
+                                          borderRadius: BorderRadius.circular(15),
+                                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                                        ),
+                                        child: Center(child: Text("${entry.key} (${entry.value} pers.)", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red))),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (_, __) => const SizedBox.shrink(),
+                            );
+                          }),
+                        ),
+                        
+                        Consumer(builder: (context, ref, child) {
+                          final deliveriesAsync = ref.watch(pendingTripsProvider("${_pubDeparture ?? 'ANY'}|ANY"));
+                          return deliveriesAsync.when(
+                            data: (trips) {
+                              final deliveries = trips.where((t) {
+                                final type = t.type.toLowerCase();
+                                return (type.contains('livraison') || type.contains('colis') || type.contains('yobante')) &&
+                                       (_pubDeparture == null || _pubDeparture == 'TOUTES LES RÉGIONS' || t.departure == _pubDeparture);
+                              }).toList();
+
+                              if (deliveries.isEmpty) return const SizedBox.shrink();
+                              return Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                                    child: Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text("Livraisons Yobanté", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                                        Text("${deliveries.length} correspondances", style: const TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                  ),
+                                  SizedBox(
+                                    height: 160,
+                                    child: ListView.builder(
+                                      scrollDirection: Axis.horizontal,
+                                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                                      itemCount: deliveries.length,
+                                      itemBuilder: (context, index) => _buildDeliverySmallCard(context, deliveries[index]),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          );
+                        }),
+
+                        Consumer(builder: (context, ref, child) {
+                          final poolsAsyncValue = ref.watch(pendingPoolsProvider("${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}"));
                           return poolsAsyncValue.when(
                             data: (pools) {
                               if (pools.isEmpty) {
-                                return Center(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(40.0),
-                                    child: Text(
-                                      _pubDeparture == null ? 'Sélectionnez un trajet pour voir les covoiturages.' : 'Aucun groupe de voyageur pour le moment.', 
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(color: Colors.grey.shade600),
-                                    ),
-                                  ),
-                                );
+                                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text(_pubDeparture == null ? 'Sélectionnez un trajet pour voir les covoiturages.' : 'Aucun groupe de voyageur pour le moment.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600))));
                               }
-                              
-                              // Tri Auto-Full : Les 4/4 en premier si l'option est activée
                               final sortedPools = pools.where((p) => !_ignoredPoolIds.contains(p.id)).toList();
-                              if (_isAutoFull) {
-                                sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
-                              }
+                              if (_isAutoFull) sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
 
                               return ListView.separated(
                                 shrinkWrap: true,
@@ -719,80 +477,38 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 separatorBuilder: (context, index) => const SizedBox(height: 15),
                                 itemBuilder: (context, index) {
                                   if (index == 0) {
-                                    return Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        const Text(
-                                          'Groupes à destination',
-                                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                                        ),
-                                        if (_isAutoFull)
-                                          const Icon(Icons.flash_on, color: TranSenColors.accentGold, size: 16),
-
-                                      ],
-                                    );
+                                    return const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Groupes à destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))]);
                                   }
-                                  final pool = sortedPools[index - 1];
-                                  return _buildPoolCard(
-                                    pool: pool,
-                                    driverId: currentUserId,
-                                  );
+                                  return _buildPoolCard(pool: sortedPools[index - 1], driverId: currentUserId);
                                 },
                               );
                             },
-                            loading: () => Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                              child: Column(
-                                children: List.generate(3, (index) => const Padding(
-                                  padding: EdgeInsets.only(bottom: 15),
-                                  child: SkeletonLoader(width: double.infinity, height: 180, borderRadius: 24),
-                                )),
-                              ),
-                            ),
-                            error: (err, stack) {
-                              debugPrint("Erreur Groupes détaillée: $err");
-                              return Center(
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Text("Erreur d'accès aux groupes", style: TextStyle(color: Colors.red, fontSize: 12)),
-                                    TextButton(
-                                      onPressed: () => ref.refresh(pendingPoolsProvider("${_pubDeparture ?? 'ANY'}|${_pubDestination ?? 'ANY'}")),
-                                      child: const Text("Actualiser"),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            },
+                            loading: () => Padding(padding: const EdgeInsets.all(20), child: Column(children: List.generate(2, (index) => const Padding(padding: EdgeInsets.only(bottom: 15), child: SkeletonLoader(width: double.infinity, height: 120, borderRadius: 24))))),
+                            error: (_, __) => const Center(child: Text("Erreur d'accès aux groupes")),
                           );
-                        },
-                      )
-                  : Container(
-                      padding: const EdgeInsets.all(40),
-                      alignment: Alignment.center,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.power_settings_new, size: 60, color: Colors.grey.shade300),
-                          const SizedBox(height: 15),
-                          Text(
-                            'Vous êtes hors ligne',
-                            style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold),
+                        }),
+                      ] else ...[
+                        Container(
+                          padding: const EdgeInsets.all(40),
+                          alignment: Alignment.center,
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.power_settings_new, size: 60, color: Colors.grey.shade300),
+                              const SizedBox(height: 15),
+                              Text('Vous êtes hors ligne', style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 5),
+                              Text('Passez en ligne pour recevoir des courses.', style: TextStyle(color: Colors.grey.shade500)),
+                            ],
                           ),
-                          const SizedBox(height: 5),
-                          Text(
-                            'Passez en ligne pour recevoir des courses.',
-                            style: TextStyle(color: Colors.grey.shade500),
-                          ),
-                        ],
-                      ),
-                    ),
-              ],
-             ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
             ),
-           ),
           ),
-         ),
         ],
       ),
     );
@@ -1152,6 +868,27 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatChip(IconData icon, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+        ],
       ),
     );
   }

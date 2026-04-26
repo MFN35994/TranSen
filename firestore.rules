@@ -9,10 +9,19 @@ service cloud.firestore {
 
     // --- COLLECTION USERS ---
     match /users/{userId} {
-      // Tout utilisateur connecté peut lire les profils
       allow read: if isSignedIn();
-      // Seul l'utilisateur peut créer/modifier son propre document
       allow create, update: if isSignedIn() && request.auth.uid == userId;
+      
+      // Sous-collection des avis laissés par l'utilisateur
+      match /my_reviews/{reviewId} {
+        allow read, write: if isSignedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // --- COLLECTION REVIEWS (GLOBAL) ---
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn();
     }
 
     // --- COLLECTIONS DE COURSES (VTC & Covoiturage) ---

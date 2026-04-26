@@ -164,25 +164,36 @@ class TripRepository {
       }
 
       final referredBy = userDoc.data()?['referredBy'] as String?;
-      if (referredBy != null) {
-        debugPrint("[PARRAINAGE] Parrain trouvé: $referredBy. Attribution de 1 point.");
+      final alreadyClaimed = userDoc.data()?['referralRewardClaimed'] ?? false;
+
+      if (referredBy != null && !alreadyClaimed) {
+        debugPrint("[PARRAINAGE] Parrain trouvé: $referredBy. Premier trajet détecté. Attribution de 10 points.");
         final userName = userDoc.data()?['name'] ?? 'Un client';
         final referrerRef = _firestore.collection('users').doc(referredBy);
         
         await _firestore.runTransaction((transaction) async {
+          // 1. Marquer la récompense comme réclamée pour le filleul
+          transaction.update(_firestore.collection('users').doc(userId), {
+            'referralRewardClaimed': true,
+          });
+
+          // 2. Créditer le parrain
           transaction.set(referrerRef, {
-            'bonusPoints': FieldValue.increment(1),
+            'bonusPoints': FieldValue.increment(10), // Gain de 10 points (1000 FCFA)
           }, SetOptions(merge: true));
 
+          // 3. Ajouter la transaction
           final transRef = referrerRef.collection('transactions').doc();
           transaction.set(transRef, {
-            'description': "Gains Parrainage: $tripType ($userName)",
+            'description': "Gains Parrainage: $tripType (Client: $userName)",
             'amount': 0.0,
-            'points': 1,
+            'points': 10,
             'date': FieldValue.serverTimestamp(),
           });
         });
-        debugPrint("[PARRAINAGE] Point attribué avec succès à $referredBy !");
+        debugPrint("[PARRAINAGE] 10 points attribués avec succès à $referredBy !");
+      } else if (alreadyClaimed) {
+        debugPrint("[PARRAINAGE] Le client $userId a déjà généré une récompense parrainage. Pas de points cette fois.");
       } else {
         debugPrint("[PARRAINAGE] Le client $userId n'a pas de parrain (champ 'referredBy' absent).");
       }

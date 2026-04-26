@@ -62,8 +62,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _paymentMethod = 'Espèces';
   bool _isProcessing = false;
-  bool _useBonusPoints = false;
-  int _userBonusPoints = 0;
 
   @override
   void initState() {
@@ -400,52 +398,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             ),
             const SizedBox(height: 20),
 
-            // --- NOUVEAU: POINTS BONUS ---
-            FutureBuilder<DocumentSnapshot>(
-              future: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(ref.read(authProvider)?.userId).get(),
-              builder: (context, snapshot) {
-                if (!snapshot.hasData) return const SizedBox.shrink();
-                final data = snapshot.data!.data() as Map<String, dynamic>?;
-                _userBonusPoints = data?['bonusPoints'] ?? 0;
-
-                if (_userBonusPoints <= 0) return const SizedBox.shrink();
-
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.green.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.green.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.stars, color: Colors.green, size: 20),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Points Bonus: $_userBonusPoints",
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.green),
-                            ),
-                            const Text(
-                              "Utilisez vos points pour une réduction",
-                              style: TextStyle(fontSize: 10, color: Colors.grey),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Switch(
-                        value: _useBonusPoints,
-                        onChanged: (val) => setState(() => _useBonusPoints = val),
-                        activeThumbColor: Colors.green,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
             const SizedBox(height: 10),
 
 
@@ -485,9 +437,9 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                         child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                       )
                     else if (!hasActivePool)
-                      Text(
-                        '${_useBonusPoints ? (10000 - _userBonusPoints).clamp(0, 10000) : 10000} FCFA',
-                        style: const TextStyle(
+                      const Text(
+                        '10000 FCFA',
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
@@ -546,9 +498,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
       
       int finalPrice = 10000;
-      if (_useBonusPoints) {
-        finalPrice = (10000 - _userBonusPoints).clamp(0, 10000);
-      }
 
       double lat = 14.7167; 
       double lng = -17.4677;
@@ -578,12 +527,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
           'phone': userPhone,
         },
       );
-
-      if (_useBonusPoints && _userBonusPoints > 0) {
-        await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(userId).update({
-          'bonusPoints': 0,
-        });
-      }
 
       if (!mounted) return;
       setState(() => _isProcessing = false);
