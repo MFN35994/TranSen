@@ -209,44 +209,47 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       body: Column(
         children: [
           Expanded(
-            flex: 4, // Remis à 40% comme demandé
-            child: Stack(
-              children: [
-                GoogleMap(
-                  initialCameraPosition: _initialPosition,
-                  onMapCreated: (GoogleMapController controller) async {
-                    _mapController = controller;
-                    try {
-                      Position position = await Geolocator.getCurrentPosition();
-                      _mapController?.animateCamera(
-                        CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
-                      );
-                    } catch (_) {}
-                  },
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  compassEnabled: false,
-                  zoomControlsEnabled: false,
-                ),
-                Positioned(
-                  bottom: 20,
-                  right: 20,
-                  child: FloatingActionButton(
-                    onPressed: () async {
+            flex: 4,
+            child: Container(
+              color: Colors.white,
+              child: Stack(
+                children: [
+                  GoogleMap(
+                    initialCameraPosition: _initialPosition,
+                    onMapCreated: (GoogleMapController controller) async {
+                      _mapController = controller;
                       try {
                         Position position = await Geolocator.getCurrentPosition();
                         _mapController?.animateCamera(
                           CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
                         );
-                      } catch (e) {
-                        debugPrint("Erreur recentrage: $e");
-                      }
+                      } catch (_) {}
                     },
-                    backgroundColor: Colors.white,
-                    child: const Icon(Icons.my_location, color: Colors.black87),
+                    myLocationEnabled: true,
+                    myLocationButtonEnabled: false,
+                    compassEnabled: false,
+                    zoomControlsEnabled: false,
                   ),
-                ),
-              ],
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: FloatingActionButton(
+                      onPressed: () async {
+                        try {
+                          Position position = await Geolocator.getCurrentPosition();
+                          _mapController?.animateCamera(
+                            CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+                          );
+                        } catch (e) {
+                          debugPrint("Erreur recentrage: $e");
+                        }
+                      },
+                      backgroundColor: Colors.white,
+                      child: const Icon(Icons.my_location, color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
           
@@ -254,12 +257,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             flex: 6,
             child: Container(
               color: Colors.white,
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 10, bottom: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      /*
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         child: Row(
@@ -281,6 +287,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           ],
                         ),
                       ),
+                      */
                       
                       if (_isOnline) ...[
                         Consumer(builder: (context, ref, child) {
@@ -459,18 +466,23 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                               final sortedPools = pools.where((p) => !_ignoredPoolIds.contains(p.id)).toList();
                               if (_isAutoFull) sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
 
-                              return ListView.separated(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
+                              return Padding(
                                 padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
-                                itemCount: sortedPools.length + 1,
-                                separatorBuilder: (context, index) => const SizedBox(height: 15),
-                                itemBuilder: (context, index) {
-                                  if (index == 0) {
-                                    return const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Groupes à destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold))]);
-                                  }
-                                  return _buildPoolCard(pool: sortedPools[index - 1], driverId: currentUserId);
-                                },
+                                child: Column(
+                                  children: [
+                                    const Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text('Groupes à destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 15),
+                                    ...sortedPools.map((pool) => Padding(
+                                      padding: const EdgeInsets.only(bottom: 15),
+                                      child: _buildPoolCard(pool: pool, driverId: currentUserId),
+                                    )),
+                                  ],
+                                ),
                               );
                             },
                             loading: () => const SizedBox.shrink(),
