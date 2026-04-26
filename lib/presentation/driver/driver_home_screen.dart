@@ -16,6 +16,7 @@ import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import '../widgets/profile_drawer.dart';
 import '../widgets/skeleton_loader.dart';
+import '../widgets/driver_reviews_sheet.dart';
 import '../../core/theme/transen_colors.dart';
 
 
@@ -272,6 +273,52 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // === NOUVEAU: RESUME AVIS ===
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        child: InkWell(
+                          onTap: () {
+                            DriverReviewsSheet.show(context, currentUserId, auth?.name ?? 'Moi');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(15),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4)),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(color: Colors.amber.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                  child: const Icon(Icons.star, color: Colors.amber),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text("Mes Avis Clients", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                                      Consumer(builder: (context, ref, child) {
+                                        final ratingAsync = ref.watch(driverRatingProvider(currentUserId));
+                                        final countAsync = ref.watch(driverRatingCountProvider(currentUserId));
+                                        return Text(
+                                          "${ratingAsync.value?.toStringAsFixed(1) ?? '0.0'} (${countAsync.value ?? 0} avis)",
+                                          style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                        );
+                                      }),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
                 // === NOUVEAU: COURSE EN COURS ===
                 if (_isOnline) ...[
                   Consumer(builder: (context, ref, child) {
@@ -620,8 +667,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text("Erreur d'accès aux données (Yobanté)", 
-                                  style: const TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
+                                const Text("Erreur d'accès aux données (Yobanté)", 
+                                  style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold)),
                                 TextButton.icon(
                                   onPressed: () => ref.refresh(pendingTripsProvider("${_pubDeparture ?? 'ANY'}|ANY")),
                                   icon: const Icon(Icons.refresh, size: 16),

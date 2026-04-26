@@ -13,23 +13,29 @@ class WalletTransaction {
 
 class WalletState {
   final double balance;
+  final int points;
   final List<WalletTransaction> transactions;
 
-  WalletState(this.balance, this.transactions);
+  WalletState(this.balance, this.points, this.transactions);
 }
 
 class WalletNotifier extends StateNotifier<WalletState> {
   final UserRepository _userRepo = UserRepository();
   final String _userId;
 
-  WalletNotifier(this._userId) : super(WalletState(0.0, [])) {
+  WalletNotifier(this._userId) : super(WalletState(0.0, 0, [])) {
     _init();
   }
 
   void _init() {
     // Écouter le solde
     _userRepo.watchWalletBalance(_userId).listen((balance) {
-      state = WalletState(balance, state.transactions);
+      state = WalletState(balance, state.points, state.transactions);
+    });
+
+    // Écouter les points
+    _userRepo.watchPoints(_userId).listen((points) {
+      state = WalletState(state.balance, points, state.transactions);
     });
 
     // Écouter les transactions
@@ -41,7 +47,7 @@ class WalletNotifier extends StateNotifier<WalletState> {
           (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
       }).toList();
-      state = WalletState(state.balance, transactions);
+      state = WalletState(state.balance, state.points, transactions);
     });
   }
 

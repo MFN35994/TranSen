@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/theme/transen_colors.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/providers/wallet_provider.dart';
+import '../../data/repositories/user_repository.dart';
+import '../../domain/providers/auth_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class WalletScreen extends ConsumerWidget {
   const WalletScreen({super.key});
@@ -101,7 +104,130 @@ class WalletScreen extends ConsumerWidget {
             ),
           ),
           
-          const SizedBox(height: 20),
+          const SizedBox(height: 10),
+
+          // --- SECTION PARRAINAGE & POINTS ---
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.amber.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.stars, color: Colors.amber, size: 28),
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Mes Points',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              '1 pt = 100 FCFA',
+                              style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '${walletState.points} pts',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900, 
+                            fontSize: 22, 
+                            color: Colors.amber
+                          ),
+                        ),
+                        Text(
+                          '${walletState.points * 100} FCFA',
+                          style: const TextStyle(
+                            fontSize: 12, 
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 12),
+                  child: Divider(height: 1),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Mon Code Parrainage',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey),
+                          ),
+                          Consumer(builder: (context, ref, child) {
+                            final auth = ref.watch(authProvider);
+                            return FutureBuilder<String>(
+                              future: UserRepository().ensureReferralCode(auth?.userId ?? ''),
+                              builder: (context, snapshot) {
+                                return Text(
+                                  snapshot.data ?? '...',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold, 
+                                    letterSpacing: 2,
+                                    color: TranSenColors.primaryGreen
+                                  ),
+                                );
+                              }
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+                    if (walletState.points * 100 >= 5000)
+                      ElevatedButton(
+                        onPressed: () {
+                          _showRedeemDialog(context, walletState.points);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.amber,
+                          foregroundColor: Colors.black,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('RÉCLAMER', style: TextStyle(fontWeight: FontWeight.bold)),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text(
+                          'Dès 5000 FCFA',
+                          style: TextStyle(fontSize: 10, color: Colors.grey, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 10),
 
           // Boutons de rechargement
           Padding(
@@ -181,6 +307,34 @@ class WalletScreen extends ConsumerWidget {
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showRedeemDialog(BuildContext context, int points) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Réclamer mes points'),
+        content: Text('Vous avez $points points (Valeur: ${points * 100} FCFA).\n\nSouhaitez-vous contacter le support pour échanger vos points contre de l\'espèce ou une course gratuite ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('ANNULER'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final message = "Bonjour TranSen, je souhaite réclamer mes gains de parrainage ($points points, soit ${points * 100} FCFA).";
+              final url = "https://wa.me/221774213939?text=${Uri.encodeComponent(message)}";
+              if (await canLaunchUrl(Uri.parse(url))) {
+                await launchUrl(Uri.parse(url));
+              }
+              if (context.mounted) Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: TranSenColors.primaryGreen, foregroundColor: Colors.white),
+            child: const Text('CONTACTER LE SUPPORT'),
           ),
         ],
       ),

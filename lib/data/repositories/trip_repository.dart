@@ -150,6 +150,34 @@ class TripRepository {
         });
   }
 
+  Future<void> _checkAndAwardReferralPoints(String? userId, String tripType) async {
+    if (userId == null) return;
+    try {
+      final userDoc = await _firestore.collection('users').doc(userId).get();
+      final referredBy = userDoc.data()?['referredBy'] as String?;
+      if (referredBy != null) {
+        final userName = userDoc.data()?['name'] ?? 'Un client';
+        final referrerRef = _firestore.collection('users').doc(referredBy);
+        
+        await _firestore.runTransaction((transaction) async {
+          transaction.set(referrerRef, {
+            'bonusPoints': FieldValue.increment(1),
+          }, SetOptions(merge: true));
+
+          final transRef = referrerRef.collection('transactions').doc();
+          transaction.set(transRef, {
+            'description': "Gains Parrainage: $tripType ($userName)",
+            'amount': 0.0,
+            'points': 1,
+            'date': FieldValue.serverTimestamp(),
+          });
+        });
+      }
+    } catch (e) {
+      debugPrint("Erreur referral points: $e");
+    }
+  }
+
   // --- LOGIQUE TRIPS (VTC CLASSIQUE - GARDÉ POUR RÉTROCOMPATIBILITÉ) ---
 
   Future<String> createTrip(TripModel trip) async {
@@ -297,15 +325,33 @@ class TripRepository {
     // Vérifier si c'est un pool
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
     if (poolDoc.exists) {
+      final data = poolDoc.data() as Map<String, dynamic>;
+      final passengerIds = List<String>.from(data['passengerIds'] ?? []);
+      
+      // Récompense pour CHAQUE passager parrainé
+      for (var uid in passengerIds) {
+        await _checkAndAwardReferralPoints(uid, "Covoiturage");
+      }
+
       await _firestore.collection('pools').doc(tripId).update({
         'status': 'completed',
         'completedAt': FieldValue.serverTimestamp(),
       });
     } else {
-      await _firestore.collection('trips').doc(tripId).update({
-        'status': 'completed',
-        'completedAt': FieldValue.serverTimestamp(),
-      });
+      final tripDoc = await _firestore.collection('trips').doc(tripId).get();
+      if (tripDoc.exists) {
+        final data = tripDoc.data() as Map<String, dynamic>;
+        final clientId = data['clientId'] as String?;
+        final type = data['type'] as String? ?? 'Course';
+        
+        // Récompense pour le client parrainé
+        await _checkAndAwardReferralPoints(clientId, type);
+
+        await _firestore.collection('trips').doc(tripId).update({
+          'status': 'completed',
+          'completedAt': FieldValue.serverTimestamp(),
+        });
+      }
     }
   }
 

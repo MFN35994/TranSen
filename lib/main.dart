@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/foundation.dart' show kReleaseMode;
+import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'presentation/splash/splash_screen.dart';
@@ -30,7 +30,7 @@ void main() async {
       providerApple: kReleaseMode ? const AppleAppAttestProvider() : const AppleDebugProvider(),
     );
     FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-        .settings = Settings(persistenceEnabled: !kIsWeb);
+        .settings = const Settings(persistenceEnabled: !kIsWeb);
 
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     NotificationService.listenToMessages();

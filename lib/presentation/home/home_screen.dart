@@ -319,22 +319,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                 },
                                                 child: Consumer(builder: (context, ref, child) {
                                                   final ratingAsync = ref.watch(providers.driverRatingProvider(m.markerId.value));
-                                                  final countAsync = ref.watch(providers.driverRatingCountProvider(m.markerId.value));
                                                   
-                                                  return Row(
-                                                    children: [
-                                                      const Icon(Icons.star, color: Colors.amber, size: 14),
-                                                      const SizedBox(width: 2),
-                                                      Text(
-                                                        ratingAsync.value?.toStringAsFixed(1) ?? '0.0',
-                                                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        "(${countAsync.value ?? 0})",
-                                                        style: const TextStyle(fontSize: 10, color: Colors.grey),
-                                                      ),
-                                                    ],
+                                                  return Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.amber.withValues(alpha: 0.1),
+                                                      borderRadius: BorderRadius.circular(8),
+                                                    ),
+                                                    child: Row(
+                                                      children: [
+                                                        const Icon(Icons.star, color: Colors.amber, size: 14),
+                                                        const SizedBox(width: 2),
+                                                        Text(
+                                                          ratingAsync.value?.toStringAsFixed(1) ?? '0.0',
+                                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        const Text(
+                                                          "Voir avis",
+                                                          style: TextStyle(fontSize: 9, color: Colors.amber, fontWeight: FontWeight.bold),
+                                                        ),
+                                                      ],
+                                                    ),
                                                   );
                                                 }),
                                               ),
