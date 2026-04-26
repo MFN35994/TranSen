@@ -14,6 +14,7 @@ class RatingDialog extends StatefulWidget {
 class _RatingDialogState extends State<RatingDialog> {
   int _rating = 0;
   final _commentController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
@@ -74,13 +75,24 @@ class _RatingDialogState extends State<RatingDialog> {
               return SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _rating == 0 ? null : () async {
-                    await ref.read(tripRepositoryProvider).submitRating(
-                      widget.tripId, 
-                      _rating, 
-                      _commentController.text
-                    );
-                    if (context.mounted) Navigator.pop(context);
+                  onPressed: (_rating == 0 || _isLoading) ? null : () async {
+                    setState(() => _isLoading = true);
+                    try {
+                      await ref.read(tripRepositoryProvider).submitRating(
+                        widget.tripId, 
+                        _rating, 
+                        _commentController.text
+                      );
+                      if (context.mounted) Navigator.pop(context);
+                    } catch (e) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text("Erreur: ${e.toString()}"), backgroundColor: Colors.red),
+                        );
+                      }
+                    } finally {
+                      if (mounted) setState(() => _isLoading = false);
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF1A8B44),
@@ -90,7 +102,9 @@ class _RatingDialogState extends State<RatingDialog> {
                       borderRadius: BorderRadius.circular(30),
                     ),
                   ),
-                  child: const Text('ENVOYER MON AVIS', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: _isLoading 
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Text('ENVOYER MON AVIS', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               );
             }),

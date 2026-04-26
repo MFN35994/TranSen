@@ -9,6 +9,8 @@ import '../../data/repositories/trip_repository.dart';
 import '../../domain/models/trip_model.dart';
 import '../../domain/providers/auth_provider.dart';
 import '../../domain/providers/trip_providers.dart' as providers;
+import 'package:geolocator/geolocator.dart';
+import '../../core/utils/location_helper.dart';
 
 class YobanteSheet extends ConsumerStatefulWidget {
   const YobanteSheet({super.key});
@@ -64,12 +66,35 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
   @override
   void initState() {
     super.initState();
+    _autoDetectLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final auth = ref.read(authProvider);
       if (auth?.phone != null) {
-        _receiverPhoneController.text = auth!.phone!;
+        _senderPhoneController.text = auth!.phone!;
       }
     });
+  }
+
+  Future<void> _autoDetectLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 5),
+        );
+        final region = LocationHelper.detectRegion(pos);
+        if (mounted) {
+          setState(() => _selectedDeparture = region);
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur auto-detection: $e");
+    }
   }
 
   @override

@@ -11,6 +11,7 @@ import '../../domain/providers/pool_providers.dart';
 import 'pool_progress_indicator.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../core/utils/location_helper.dart';
 
 class OrderSheet extends ConsumerStatefulWidget {
   final String? initialDeparture;
@@ -69,6 +70,32 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     super.initState();
     _selectedDeparture = widget.initialDeparture;
     _selectedDestination = widget.initialDestination;
+    
+    if (_selectedDeparture == null) {
+      _autoDetectLocation();
+    }
+  }
+
+  Future<void> _autoDetectLocation() async {
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.low,
+          timeLimit: const Duration(seconds: 5),
+        );
+        final region = LocationHelper.detectRegion(pos);
+        if (mounted) {
+          setState(() => _selectedDeparture = region);
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur auto-detection: $e");
+    }
   }
 
 

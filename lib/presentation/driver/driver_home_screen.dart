@@ -229,10 +229,15 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   bottom: 20,
                   right: 20,
                   child: FloatingActionButton(
-                    onPressed: () {
-                      _mapController?.animateCamera(
-                        CameraUpdate.newCameraPosition(_initialPosition),
-                      );
+                    onPressed: () async {
+                      try {
+                        Position position = await Geolocator.getCurrentPosition();
+                        _mapController?.animateCamera(
+                          CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+                        );
+                      } catch (e) {
+                        debugPrint("Erreur recentrage: $e");
+                      }
                     },
                     backgroundColor: Colors.white,
                     child: const Icon(Icons.my_location, color: Colors.black87),
@@ -608,10 +613,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           );
                         },
                         loading: () => const SizedBox.shrink(),
-                        error: (e, s) => Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Text("Erreur Yobanté: $e", style: const TextStyle(color: Colors.red, fontSize: 10)),
-                        ),
+                        error: (e, s) {
+                          debugPrint("Erreur Yobanté détaillée: $e");
+                          return Padding(
+                            padding: const EdgeInsets.all(20),
+                            child: Text("Erreur Yobanté: $e", style: const TextStyle(color: Colors.red, fontSize: 10)),
+                          );
+                        },
                       );
                     },
                   ),
@@ -683,7 +691,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                                 )),
                               ),
                             ),
-                            error: (err, stack) => Center(child: Text('Erreur: $err')),
+                            error: (err, stack) {
+                              debugPrint("Erreur Groupes détaillée: $err");
+                              return Center(child: Text('Erreur: $err', style: const TextStyle(color: Colors.red, fontSize: 10)));
+                            },
                           );
                         },
                       )

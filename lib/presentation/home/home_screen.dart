@@ -112,14 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   );
                 } catch (_) {}
               },
-              markers: {
-                const Marker(
-                  markerId: MarkerId('current_pos'),
-                  position: LatLng(14.7167, -17.4677),
-                  infoWindow: InfoWindow(title: 'Votre position'),
-                ),
-                ...driverMarkers,
-              },
+              markers: driverMarkers,
               myLocationEnabled: true,
               myLocationButtonEnabled: true,
               compassEnabled: true,
@@ -383,10 +376,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _mapController?.animateCamera(
-            CameraUpdate.newCameraPosition(_initialPosition),
-          );
+        onPressed: () async {
+          try {
+            Position position = await Geolocator.getCurrentPosition();
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+            );
+          } catch (e) {
+            debugPrint("Erreur recentrage: $e");
+          }
         },
         backgroundColor: TranSenColors.primaryGreen,
         child: const Icon(Icons.my_location, color: Colors.white),

@@ -90,9 +90,9 @@ class AuthNotifier extends StateNotifier<AuthState?> {
     try {
       await _firestore.collection('users').doc(state!.userId).set({
         'role': role,
-        'createdAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
-      state = state?.copyWith(role: role);
+      state = state?.copyWith(role: role, isLoading: false);
       NotificationService().init(state!.userId);
     } catch (e) {
       debugPrint("Erreur saving role: $e");
@@ -118,6 +118,13 @@ class AuthNotifier extends StateNotifier<AuthState?> {
         if (email != null) 'email': email,
         'lastActive': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+      
+      // Mise à jour immédiate du state pour que AuthGate redirige
+      state = state?.copyWith(
+        name: name ?? state!.name,
+        phone: phone ?? state!.phone,
+        isLoading: false,
+      );
     } catch (e) {
       debugPrint("Erreur saving user data: $e");
     }

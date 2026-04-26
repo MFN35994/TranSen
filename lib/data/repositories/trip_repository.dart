@@ -263,11 +263,34 @@ class TripRepository {
   }
 
   Future<void> submitRating(String tripId, int rating, String comment) async {
-    await _firestore.collection('trips').doc(tripId).update({
-      'rating': rating,
-      'comment': comment,
-      'status': 'rated',
-    });
+    try {
+      // 1. Essayer dans 'trips'
+      final tripDoc = await _firestore.collection('trips').doc(tripId).get();
+      if (tripDoc.exists) {
+        await _firestore.collection('trips').doc(tripId).update({
+          'rating': rating,
+          'comment': comment,
+          'status': 'rated',
+        });
+        return;
+      }
+
+      // 2. Essayer dans 'pools'
+      final poolDoc = await _firestore.collection('pools').doc(tripId).get();
+      if (poolDoc.exists) {
+        await _firestore.collection('pools').doc(tripId).update({
+          'rating': rating,
+          'comment': comment,
+          'status': 'rated',
+        });
+        return;
+      }
+      
+      throw Exception("Trajet introuvable pour la notation");
+    } catch (e) {
+      debugPrint("Erreur submitRating: $e");
+      rethrow;
+    }
   }
 
   Future<void> completeTrip(String tripId) async {
