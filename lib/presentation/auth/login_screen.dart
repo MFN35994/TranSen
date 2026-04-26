@@ -6,6 +6,10 @@ import '../../core/theme/transen_colors.dart';
 import '../legal/legal_screen.dart';
 import 'package:flutter/services.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+
+enum AuthStep { phone, identity, otp }
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -22,8 +26,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _referralController = TextEditingController();
   final _phoneMaskFormatter = MaskTextInputFormatter(mask: '## ### ## ##', filter: { "#": RegExp(r'[0-9]') });
 
-  bool _otpSent = false;
-  bool _isLogin = true;
+  AuthStep _step = AuthStep.phone;
+  bool _isNewUser = false;
+  bool _localLoading = false;
 
   @override
   void dispose() {
@@ -35,16 +40,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     super.dispose();
   }
 
-  // LOGIQUE SMS (Connectée au Provider)
-  Future<void> _verifyPhone() async {
-    if (!_isLogin) {
-      if (_firstNameController.text.isEmpty || _lastNameController.text.isEmpty) {
-        HapticFeedback.heavyImpact();
-        _showError("Veuillez entrer votre prénom et votre nom");
-        return;
-      }
-    }
-
+  // LOGIQUE UNIFIÉE
+  Future<void> _checkPhoneAndProceed() async {
     String phone = _phoneController.text.trim().replaceAll(' ', '');
     if (phone.isEmpty) {
       HapticFeedback.heavyImpact();
@@ -52,17 +49,52 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    // Ajout automatique de l'indicatif +221 si l'utilisateur l'omet
     if (!phone.startsWith('+')) {
       phone = '+221$phone';
     }
 
+    setState(() => _localLoading = true);
+
+    try {
+      final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+      final query = await firestore
+          .collection('users')
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
+
+      if (query.docs.isNotEmpty) {
+        // Utilisateur existant -> Direct OTP
+        _isNewUser = false;
+        await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
+        setState(() => _step = AuthStep.otp);
+      } else {
+        // Nouvel utilisateur -> Étape Identité
+        _isNewUser = true;
+        setState(() => _step = AuthStep.identity);
+      }
+    } catch (e) {
+      _showError("Erreur : ${e.toString()}");
+    } finally {
+      setState(() => _localLoading = false);
+    }
+  }
+
+  Future<void> _sendOtpForNewUser() async {
+    if (_firstNameController.text.trim().isEmpty || _lastNameController.text.trim().isEmpty) {
+      HapticFeedback.heavyImpact();
+      _showError("Veuillez entrer votre prénom et votre nom");
+      return;
+    }
+
+    String phone = _phoneController.text.trim().replaceAll(' ', '');
+    if (!phone.startsWith('+')) phone = '+221$phone';
+
     try {
       HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).sendPhoneVerificationCode(phone);
-      setState(() => _otpSent = true);
+      setState(() => _step = AuthStep.otp);
     } catch (e) {
-      HapticFeedback.heavyImpact();
       _showError("Erreur d'envoi : ${e.toString()}");
     }
   }
@@ -79,7 +111,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       HapticFeedback.lightImpact();
       await ref.read(authProvider.notifier).verifySmsCode(code);
       
-      if (!_isLogin) {
+      if (_isNewUser) {
         String phone = _phoneController.text.trim().replaceAll(' ', '');
         if (!phone.startsWith('+')) phone = '+221$phone';
 
@@ -119,7 +151,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final authState = ref.watch(authProvider);
-    final isLoading = authState?.isLoading ?? false;
+    final isLoading = (authState?.isLoading ?? false) || _localLoading;
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
@@ -131,25 +163,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 300),
               // Ajuste la hauteur de manière fluide en fonction des champs affichés
-              height: _otpSent ? 200 : (_isLogin ? 200 : 450),
+              height: _step == AuthStep.otp ? 200 : (_step == AuthStep.identity ? 450 : 200),
               child: _buildPhoneForm(isDarkMode, isLoading),
-            ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _isLogin = !_isLogin;
-                  _otpSent = false;
-                });
-              },
-              child: Text(
-                _isLogin
-                    ? "Pas de compte ? Inscrivez-vous"
-                    : "Déjà inscrit ? Connectez-vous",
-                style: const TextStyle(
-                    color: TranSenColors.primaryGreen,
-                    fontWeight: FontWeight.bold),
-              ),
             ),
             const SizedBox(height: 30),
           ],
@@ -219,9 +234,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             );
           },
           child: Column(
-            key: ValueKey<String>('$_otpSent-$_isLogin'),
+            key: ValueKey<String>('$_step'),
             children: [
-              if (!_isLogin && !_otpSent) ...[
+              if (_step == AuthStep.identity) ...[
                 _buildTextField(
                     controller: _firstNameController,
                     label: "Prénom",
@@ -235,10 +250,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     isDarkMode: isDarkMode),
                 const SizedBox(height: 10),
               ],
-              if (!_otpSent)
+              if (_step != AuthStep.otp)
                 _buildTextField(
                     controller: _phoneController,
-                    label: "Numéro (ex: 77 123 45 67)",
+                    label: "Numéro de téléphone (ex: 77 123 45 67)",
                     icon: Icons.phone_android,
                     keyboardType: TextInputType.phone,
                     inputFormatters: [_phoneMaskFormatter],
@@ -250,7 +265,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     icon: Icons.vibration,
                     keyboardType: TextInputType.number,
                     isDarkMode: isDarkMode),
-              if (!_isLogin && !_otpSent) ...[
+              if (_step == AuthStep.identity)
+                Padding(
+                  padding: const EdgeInsets.only(top: 6, left: 4),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.info_outline, size: 13, color: Colors.orange),
+                      const SizedBox(width: 5),
+                      Expanded(
+                        child: Text(
+                          "Utilisez votre vrai numéro. Les chauffeurs et clients vous contacteront à ce numéro.",
+                          style: TextStyle(fontSize: 11, color: Colors.grey.shade600, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              if (_step == AuthStep.identity) ...[
                 const SizedBox(height: 10),
                 _buildTextField(
                     controller: _referralController,
@@ -313,9 +344,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                                 ),
               ],
-              if (_otpSent)
+              if (_step == AuthStep.otp)
                 TextButton(
-                    onPressed: () => setState(() => _otpSent = false),
+                    onPressed: () => setState(() => _step = AuthStep.phone),
                     child: const Text("Changer de numéro",
                         style: TextStyle(color: Colors.grey, fontSize: 12))),
               const SizedBox(height: 15),
@@ -325,7 +356,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _otpSent ? _signInWithOtp : _verifyPhone,
+                    onPressed: _step == AuthStep.phone 
+                        ? _checkPhoneAndProceed 
+                        : (_step == AuthStep.identity ? _sendOtpForNewUser : _signInWithOtp),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: isDarkMode ? Colors.white : Colors.black87,
                       foregroundColor: isDarkMode ? Colors.black : Colors.white,
@@ -333,12 +366,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15)),
                     ),
-                    child: Text(_otpSent ? "VÉRIFIER LE CODE" : "RECEVOIR LE CODE",
+                    child: Text(
+                        _step == AuthStep.otp 
+                            ? "VÉRIFIER LE CODE" 
+                            : (_step == AuthStep.identity ? "RECEVOIR LE CODE" : "CONTINUER"),
                         style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
-              // Mention légale pour la CONNEXION
-              if (_isLogin && !_otpSent) ...
+              // Mention légale pour la CONNEXION (Step Téléphone)
+              if (_step == AuthStep.phone) ...
                 [
                   const SizedBox(height: 12),
                   Wrap(

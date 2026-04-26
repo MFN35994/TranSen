@@ -70,7 +70,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     _selectedDestination = widget.initialDestination;
   }
 
-  final _phoneController = TextEditingController();
 
   // Liste des 14 régions du Sénégal
   final List<String> _regions = [
@@ -404,9 +403,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             ),
             const SizedBox(height: 10),
 
-            // Vérification du téléphone si manquant dans le profil
-            _buildPhoneFieldIfNeeded(),
-            const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: (_selectedDeparture != null && _selectedDestination != null)
@@ -436,9 +432,9 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                         final existingPhone = userData.data()?['phone'] as String?;
                         
                         if (!context.mounted) return;
-                        if ((existingPhone == null || existingPhone.isEmpty) && _phoneController.text.isEmpty) {
+                        if (existingPhone == null || existingPhone.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text("Le numéro de téléphone est obligatoire pour commander.")),
+                            const SnackBar(content: Text("Veuillez compléter votre profil avec un numéro de téléphone valide.")),
                           );
                           setState(() => _isProcessing = false);
                           return;
@@ -449,15 +445,12 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                           await Future.delayed(const Duration(seconds: 1));
                         }
 
-                        // Mettre à jour le téléphone si nécessaire
-                        if (_phoneController.text.isNotEmpty) {
-                          await ref.read(authProvider.notifier).updateUserData(phone: _phoneController.text.trim());
-                        }
+                        // Numéro toujours récupéré du profil, jamais saisi dans ce formulaire
 
                         final userFirstName = userData.data()?['firstName'];
                         final userLastName = userData.data()?['lastName'];
                         final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
-                        final userPhone = _phoneController.text.isNotEmpty ? _phoneController.text.trim() : (existingPhone ?? "");
+                        final userPhone = existingPhone;
 
                         // LOGIQUE POOLING
                         final tripRepo = ref.read(tripRepositoryProvider);
@@ -591,44 +584,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     );
   }
 
-  Widget _buildPhoneFieldIfNeeded() {
-    final auth = ref.watch(authProvider);
-    if (auth == null) return const SizedBox.shrink();
-
-    return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).get(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) return const SizedBox.shrink();
-        final data = snapshot.data!.data() as Map<String, dynamic>?;
-        final phone = data?['phone'] as String?;
-
-        if (phone != null && phone.isNotEmpty) return const SizedBox.shrink();
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Numéro de téléphone obligatoire',
-              style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _phoneController,
-              keyboardType: TextInputType.phone,
-              decoration: InputDecoration(
-                hintText: 'Votre numéro (ex: 771234567)',
-                prefixIcon: const Icon(Icons.phone, color: TranSenColors.primaryGreen),
-
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                filled: true,
-                fillColor: Colors.red.withValues(alpha: 0.05),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
 
   Widget _buildPaymentTile(String name, IconData icon, Color color) {
     final isSelected = _paymentMethod == name;
