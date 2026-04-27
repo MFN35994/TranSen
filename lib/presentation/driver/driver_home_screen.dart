@@ -34,6 +34,14 @@ final driverRouteStreamProvider = StreamProvider.family<DocumentSnapshot, String
   return ref.watch(tripRepositoryProvider).getDriverRoute(driverId);
 });
 
+class NoScrollbarBehavior extends ScrollBehavior {
+  const NoScrollbarBehavior();
+  @override
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) {
+    return child;
+  }
+}
+
 class DriverHomeScreen extends ConsumerStatefulWidget {
   const DriverHomeScreen({super.key});
 
@@ -257,15 +265,23 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             flex: 6,
             child: Container(
               color: Colors.white,
-              child: ScrollConfiguration(
-                behavior: ScrollConfiguration.of(context).copyWith(scrollbars: false),
+              child: const ScrollConfiguration(
+                behavior: NoScrollbarBehavior(),
                 child: SingleChildScrollView(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 10, bottom: 20),
+                    padding: EdgeInsets.only(top: 10, bottom: 20),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignm                      const Center(child: Text("DASHBOARD TEST - SI LE BLOC EST LA, C'EST LA MAP")),
-
-                    ],
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Padding(
+                          padding: EdgeInsets.all(20),
+                          child: Center(child: Text("DASHBOARD TEST - SI LE BLOC EST LA, C'EST LA MAP")),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
                   ),
                 ),
               ),
