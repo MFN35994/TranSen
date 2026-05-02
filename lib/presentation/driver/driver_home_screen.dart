@@ -18,7 +18,6 @@ import '../widgets/profile_drawer.dart';
 import '../widgets/driver_reviews_sheet.dart';
 import '../../core/theme/transen_colors.dart';
 
-
 final pendingTripsProvider = StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
   final parts = filterStr.split('|');
   final dep = parts[0] == 'ANY' ? null : parts[0];
@@ -72,7 +71,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   @override
   void dispose() {
     _locationTimer?.cancel();
-    // Marquer comme hors ligne à la fermeture
     if (_isOnline && _currentDriverId != null) {
       FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
           .collection('active_drivers')
@@ -85,7 +83,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
   void _toggleOnline(bool val, String driverId) async {
     _currentDriverId = driverId;
     if (val) {
-      // 1. Vérifier si le service de localisation est activé
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
         if (mounted) {
@@ -96,7 +93,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
         return;
       }
 
-      // 2. Vérifier les permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -112,11 +108,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       }
 
       if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
-        // Récupérer les infos du profil une seule fois
         final userDoc = await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(driverId).get();
         final userData = userDoc.data();
         final name = userData?['name'] ?? 'Chauffeur TranSen';
-
         final phone = userData?['phone'] ?? '';
 
         setState(() => _isOnline = true);
@@ -125,10 +119,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
     } else {
       setState(() {
         _isOnline = false;
-        _isAutoFull = false; // Reset auto-full
+        _isAutoFull = false;
       });
       _locationTimer?.cancel();
-      // Supprimer le marqueur actif
       await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
           .collection('active_drivers')
           .doc(driverId)
@@ -154,10 +147,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
           'destination': _pubDestination,
         });
       } catch (e) {
-        debugPrint("Erreur update position: $e");
+        debugPrint("Erreur update position: \$e");
       }
     });
   }
+
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
@@ -239,22 +233,22 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     zoomControlsEnabled: false,
                   ),
                   Positioned(
-                    bottom: 20,
-                    right: 20,
-                    child: FloatingActionButton(
-                      onPressed: () async {
-                        try {
-                          Position position = await Geolocator.getCurrentPosition();
-                          _mapController?.animateCamera(
-                            CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
-                          );
-                        } catch (e) {
-                          debugPrint("Erreur recentrage: $e");
-                        }
-                      },
-                      backgroundColor: Colors.white,
-                      child: const Icon(Icons.my_location, color: Colors.black87),
-                    ),
+                     bottom: 20,
+                     right: 20,
+                     child: FloatingActionButton(
+                       onPressed: () async {
+                         try {
+                           Position position = await Geolocator.getCurrentPosition();
+                           _mapController?.animateCamera(
+                             CameraUpdate.newLatLng(LatLng(position.latitude, position.longitude)),
+                           );
+                         } catch (e) {
+                           debugPrint("Erreur recentrage: \$e");
+                         }
+                       },
+                       backgroundColor: Colors.white,
+                       child: const Icon(Icons.my_location, color: Colors.black87),
+                     ),
                   ),
                 ],
               ),
@@ -273,10 +267,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        Padding(
-                          padding: EdgeInsets.all(20),
-                          child: Center(child: Text("DASHBOARD TEST - SI LE BLOC EST LA, C'EST LA MAP")),
-                        ),
+                        _DashboardContent(),
                       ],
                     ),
                   ),
@@ -288,8 +279,262 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
       ),
     );
   }
+}
 
-  Widget _buildPoolCard({required PoolModel pool, required String driverId}) {
+class _DashboardContent extends ConsumerStatefulWidget {
+  const _DashboardContent({Key? key}) : super(key: key);
+
+  @override
+  ConsumerState<_DashboardContent> createState() => _DashboardContentState();
+}
+
+class _DashboardContentState extends ConsumerState<_DashboardContent> {
+  final Set<String> _ignoredPoolIds = {}; 
+
+  @override
+  Widget build(BuildContext context) {
+    final parentState = context.findAncestorStateOfType<_DriverHomeScreenState>();
+    if (parentState == null) return const SizedBox();
+    
+    final _isOnline = parentState._isOnline;
+    final _pubDeparture = parentState._pubDeparture;
+    final _pubDestination = parentState._pubDestination;
+    final _isAutoFull = parentState._isAutoFull;
+    final currentUserId = parentState._currentDriverId ?? ref.watch(authProvider)?.userId ?? 'unknown';
+
+    if (!_isOnline) {
+      return Container(
+        padding: const EdgeInsets.all(40),
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.power_settings_new, size: 60, color: Colors.grey.shade300),
+            const SizedBox(height: 15),
+            Text('Vous êtes hors ligne', style: TextStyle(fontSize: 18, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 5),
+            Text('Passez en ligne pour recevoir des courses.', style: TextStyle(color: Colors.grey.shade500)),
+          ],
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Consumer(builder: (context, ref, child) {
+          final activePoolAsync = ref.watch(driverActivePoolProvider);
+          return activePoolAsync.when(
+            data: (pool) => pool == null ? const SizedBox.shrink() : _buildActiveDriverTripCard(context, pool),
+            loading: () => const SizedBox.shrink(),
+            error: (e, __) => _buildErrorCard("Erreur pool actif: \$e"),
+          );
+        }),
+        Consumer(builder: (context, ref, child) {
+          final activeTripAsync = ref.watch(driverActiveTripProvider);
+          return activeTripAsync.when(
+            data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveVtcTripCard(context, trip),
+            loading: () => const SizedBox.shrink(),
+            error: (e, __) => _buildErrorCard("Erreur course active: \$e"),
+          );
+        }),
+        
+        Container(
+          padding: const EdgeInsets.all(10),
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+          decoration: BoxDecoration(
+            color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.auto_awesome, color: TranSenColors.accentGold, size: 20),
+                  SizedBox(width: 10),
+                  Text("Mon trajet d'aujourd'hui", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        hint: const Text("Départ"),
+                        value: _pubDeparture,
+                        isExpanded: true,
+                        items: parentState._regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                        onChanged: (val) {
+                          parentState.setState(() => parentState._pubDeparture = val);
+                          ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, val!, parentState._pubDestination);
+                        },
+                      ),
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward, size: 16, color: Colors.grey),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        hint: const Text("Arrivée"),
+                        value: _pubDestination,
+                        isExpanded: true,
+                        items: parentState._regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                        onChanged: (val) {
+                          parentState.setState(() => parentState._pubDestination = val);
+                          if (parentState._pubDeparture != null) {
+                            ref.read(tripRepositoryProvider).publishDriverRoute(currentUserId, parentState._pubDeparture!, val);
+                          }
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text("Zones de forte demande", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              TextButton.icon(
+                onPressed: () => parentState.setState(() => parentState._isAutoFull = !parentState._isAutoFull),
+                icon: Icon(_isAutoFull ? Icons.flash_on : Icons.flash_off, size: 16, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey),
+                label: Text(_isAutoFull ? "AUTO-FULL ACTIVÉ" : "AUTO-FULL DÉSACTIVÉ", style: TextStyle(fontSize: 10, color: _isAutoFull ? TranSenColors.accentGold : Colors.grey)),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: 50,
+          child: Consumer(builder: (context, ref, child) {
+            final heatmapAsync = ref.watch(demandHeatmapProvider);
+            return heatmapAsync.when(
+              data: (heatmap) {
+                if (heatmap.isEmpty) return const Center(child: Text("Aucune demande en attente.", style: TextStyle(fontSize: 12, color: Colors.grey)));
+                final sortedEntries = heatmap.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+                return ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: sortedEntries.length,
+                  itemBuilder: (context, index) {
+                    final entry = sortedEntries[index];
+                    return InkWell(
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => DestinationPoolsScreen(destination: entry.key))),
+                      child: Container(
+                        margin: const EdgeInsets.only(right: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: entry.value > 5 ? 0.2 : 0.05),
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                        ),
+                        child: Center(child: Text("\${entry.key} (\${entry.value} pers.)", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.red))),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, __) => Center(child: Text("Erreur heatmap: \$e")),
+            );
+          }),
+        ),
+        
+        Consumer(builder: (context, ref, child) {
+          final deliveriesAsync = ref.watch(pendingTripsProvider("\${_pubDeparture ?? 'ANY'}|ANY"));
+          return deliveriesAsync.when(
+            data: (trips) {
+              final deliveries = trips.where((t) {
+                final type = t.type.toLowerCase();
+                return (type.contains('livraison') || type.contains('colis') || type.contains('yobante')) &&
+                       (_pubDeparture == null || _pubDeparture == 'TOUTES LES RÉGIONS' || t.departure == _pubDeparture);
+              }).toList();
+
+              if (deliveries.isEmpty) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Livraisons Yobanté", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text("\${deliveries.length} correspondances", style: const TextStyle(color: TranSenColors.accentGold, fontSize: 12, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                  ),
+                  SizedBox(
+                    height: 160,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      itemCount: deliveries.length,
+                      itemBuilder: (context, index) => _buildDeliverySmallCard(context, deliveries[index]),
+                    ),
+                  ),
+                ],
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, __) => _buildErrorCard("Erreur livraisons: \$e"),
+          );
+        }),
+
+        Consumer(builder: (context, ref, child) {
+          final poolsAsyncValue = ref.watch(pendingPoolsProvider("\${_pubDeparture ?? 'ANY'}|\${_pubDestination ?? 'ANY'}"));
+          return poolsAsyncValue.when(
+            data: (pools) {
+              if (pools.isEmpty) {
+                return Center(child: Padding(padding: const EdgeInsets.all(40.0), child: Text(_pubDeparture == null ? 'Sélectionnez un trajet pour voir les covoiturages.' : 'Aucun groupe de voyageur pour le moment.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey.shade600))));
+              }
+              final sortedPools = pools.where((p) => !_ignoredPoolIds.contains(p.id)).toList();
+              if (_isAutoFull) sortedPools.sort((a, b) => b.currentFilling.compareTo(a.currentFilling));
+
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+                child: Column(
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Groupes à destination', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
+                    ...sortedPools.map((pool) => Padding(
+                      padding: const EdgeInsets.only(bottom: 15),
+                      child: _buildPoolCard(context: context, pool: pool, driverId: currentUserId),
+                    )),
+                  ],
+                ),
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (e, __) => _buildErrorCard("Erreur d'accès aux groupes: \$e"),
+          );
+        }),
+      ],
+    );
+  }
+
+  Widget _buildErrorCard(String errorMsg) {
+    return Container(
+      margin: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(color: Colors.red.shade100, borderRadius: BorderRadius.circular(10)),
+      child: Text(errorMsg, style: const TextStyle(color: Colors.red)),
+    );
+  }
+
+  Widget _buildPoolCard({required BuildContext context, required PoolModel pool, required String driverId}) {
     final canAcceptAt3 = pool.currentFilling >= 3;
     final isFull = pool.currentFilling >= 4;
 
@@ -327,11 +572,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Trajet ${pool.departure} ➔ ${pool.destination}",
+                        "Trajet \${pool.departure} ➔ \${pool.destination}",
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                       ),
                       Text(
-                        "Prévu pour le: ${pool.scheduledDate}",
+                        "Prévu pour le: \${pool.scheduledDate}",
                          style: const TextStyle(fontSize: 12, color: Colors.black45),
                       ),
                     ],
@@ -349,8 +594,6 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               ],
             ),
             const SizedBox(height: 15),
-            
-            // Barre de progression simplifiée
             ClipRRect(
               borderRadius: BorderRadius.circular(10),
               child: LinearProgressIndicator(
@@ -364,7 +607,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text("${pool.currentFilling}/4 passagers", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Text("\${pool.currentFilling}/4 passagers", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 if (canAcceptAt3 && !isFull)
                   const Text("Acceptable (3/4)", style: TextStyle(fontSize: 11, color: TranSenColors.accentGold, fontWeight: FontWeight.bold)),
 
@@ -380,7 +623,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text("Total (estimé)", style: TextStyle(fontWeight: FontWeight.bold)),
-                Text("${pool.currentFilling * 10000} FCFA", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.green)),
+                Text("\${pool.currentFilling * 10000} FCFA", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, color: Colors.green)),
               ],
             ),
 
@@ -390,13 +633,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
               child: ElevatedButton(
                 onPressed: () async {
                       try {
-                        // 0. Confirmation si peu de passagers
                         if (pool.currentFilling < 3) {
                           final confirm = await showDialog<bool>(
                             context: context,
                             builder: (ctx) => AlertDialog(
                               title: const Text("Départ anticipé ?"),
-                              content: Text("Il n'y a que ${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
+                              content: Text("Il n'y a que \${pool.currentFilling} passager(s). Voulez-vous quand même accepter ce trajet ?"),
                               actions: [
                                 TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
                                 TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("OUI, ACCEPTER")),
@@ -406,17 +648,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                           if (confirm != true) return;
                         }
 
-                        // 1. Commission 5% (COMMENTÉ POUR LE LANCEMENT GRATUIT)
-                        // final totalCommission = pool.currentFilling * 500;
-                        // final wallet = ref.read(walletProvider);
-                        // if (wallet.balance < totalCommission) {
-                        //   throw Exception("Solde insuffisant pour la commission ($totalCommission FCFA)");
-                        // }
-
-                        // ... le reste est identique
                         await ref.read(tripRepositoryProvider).acceptPool(pool.id, driverId);
-                        // ref.read(walletProvider.notifier).credit((pool.currentFilling * 10000).toDouble(), 'Gains Covoiturage ${pool.destination}');
-                        // ref.read(walletProvider.notifier).debit(totalCommission.toDouble(), 'Commission Plateforme (5%)');
                         
                         if (mounted) {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
@@ -439,7 +671,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   ),
                 ),
                 child: Text(
-                  isFull ? 'DÉPART IMMÉDIAT (COMPLET)' : (canAcceptAt3 ? 'ACCEPTER (3/4)' : 'ACCEPTER (${pool.currentFilling}/4)'), 
+                  isFull ? 'DÉPART IMMÉDIAT (COMPLET)' : (canAcceptAt3 ? 'ACCEPTER (3/4)' : 'ACCEPTER (\${pool.currentFilling}/4)'), 
                   style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)
                 ),
               ),
@@ -494,12 +726,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${trip.departure} ➔ ${trip.destination}",
+                        "\${trip.departure} ➔ \${trip.destination}",
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "Client: ${trip.clientName ?? 'Anonyme'}",
+                        "Client: \${trip.clientName ?? 'Anonyme'}",
                         style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 12),
                       ),
                     ],
@@ -558,7 +790,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        "${pool.departure} ➔ ${pool.destination}",
+                        "\${pool.departure} ➔ \${pool.destination}",
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16),
                       ),
                       const SizedBox(height: 4),
@@ -636,32 +868,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> {
                   style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
                 ),
                 Text(
-                  "${delivery.price.toInt()} F",
+                  "\${delivery.price.toInt()} F",
                   style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.green, fontSize: 14),
                 ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatChip(IconData icon, String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.black12),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-        ],
       ),
     );
   }
