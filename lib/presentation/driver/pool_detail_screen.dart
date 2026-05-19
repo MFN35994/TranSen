@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_payment/transen_payment.dart';
-// import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
+import 'package:dio/dio.dart';
+import 'dart:math' as math;
+import 'dart:async';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;
@@ -30,16 +30,28 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   bool _isRoutePlotted = false;
   LatLng? _myPosition;
 
+  StreamSubscription<Position>? _positionStream;
+  List<dynamic> _navSteps = [];
+  int _currentStepIndex = 0;
+  double _remainingDistance = 0.0;
+  bool _isNavigating = false;
+
   @override
   void initState() {
     super.initState();
-    // Optimization simple : Part du centre de Dakar (ou position réelle du chauffeur)
+    _isNavigating = widget.pool.status == 'departed';
     _optimizedPickups = ItineraryOptimizer.optimizePickupOrder(
       const LatLng(14.7167, -17.4677),
       widget.pool.passengerDetails,
     );
     _buildMarkers();
     _fetchMyPositionAndRoute();
+  }
+
+  @override
+  void dispose() {
+    _positionStream?.cancel();
+    super.dispose();
   }
 
   void _fetchMyPositionAndRoute() async {
@@ -59,86 +71,152 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
       _getPolyline(driverPos);
     } catch (_) {}
+
+    // Listen to real-time location updates
+    _positionStream = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 3,
+      ),
+    ).listen((pos) {
+      if (mounted) {
+        final driverPos = LatLng(pos.latitude, pos.longitude);
+        setState(() {
+          _myPosition = driverPos;
+          _buildMarkers();
+
+          // Camera follow and tilt in 3D during navigation
+          if (_isNavigating && _mapController != null) {
+            _mapController?.animateCamera(
+              CameraUpdate.newCameraPosition(
+                CameraPosition(
+                  target: driverPos,
+                  zoom: 17.5,
+                  bearing: pos.heading,
+                  tilt: 45.0,
+                ),
+              ),
+            );
+          }
+
+          // Navigation steps tracking
+          if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) {
+            final currentStep = _navSteps[_currentStepIndex];
+            final maneuver = currentStep['maneuver'] ?? {};
+            final loc = maneuver['location'] as List?;
+            if (loc != null && loc.length >= 2) {
+              final stepLng = (loc[0] as num).toDouble();
+              final stepLat = (loc[1] as num).toDouble();
+              final dist = _calculateDistance(pos.latitude, pos.longitude, stepLat, stepLng) * 1000; // in meters
+              
+              _remainingDistance = dist;
+              if (dist < 20 && _currentStepIndex < _navSteps.length - 1) {
+                _currentStepIndex++;
+              }
+            }
+          }
+        });
+
+        // Write driver position in real-time to active_drivers document
+        if (_isNavigating) {
+          final auth = ref.read(authProvider);
+          if (auth != null && auth.userId.isNotEmpty) {
+            FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                .collection('active_drivers')
+                .doc(auth.userId)
+                .set({
+                  'lat': pos.latitude,
+                  'lng': pos.longitude,
+                  'heading': pos.heading,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true)).catchError((e) {
+                  debugPrint("Error updating active driver position: $e");
+                });
+          }
+        }
+      }
+    });
   }
 
   void _getPolyline(LatLng driverPos) async {
     if (_isRoutePlotted || _optimizedPickups.isEmpty) return;
     _isRoutePlotted = true;
 
-    List<PolylineWayPoint> waypoints = [];
+    final List<String> coords = [];
+    coords.add("${driverPos.longitude},${driverPos.latitude}");
     for (var entry in _optimizedPickups) {
       final wp = entry.value;
       if (wp['lat'] != null && wp['lng'] != null) {
-        waypoints.add(PolylineWayPoint(
-            location: "${wp['lat']},${wp['lng']}", stopOver: true));
+        coords.add("${wp['lng']},${wp['lat']}");
       }
     }
+    final destCoords = ItineraryOptimizer.getRegionCoordinates(widget.pool.destination) ?? const LatLng(14.7167, -17.4677);
+    coords.add("${destCoords.longitude},${destCoords.latitude}");
 
-    // Point d'arrivée final (Région de destination)
-    final destCoords =
-        ItineraryOptimizer.getRegionCoordinates(widget.pool.destination);
-    PointLatLng dest = destCoords != null
-        ? PointLatLng(destCoords.latitude, destCoords.longitude)
-        : const PointLatLng(14.7167, -17.4677);
+    try {
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final url = "https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coords.join(';')}?source=first&destination=last&overview=full&geometries=geojson&steps=true&access_token=$mapboxToken";
 
-    PolylinePoints polylinePoints = PolylinePoints(apiKey: "AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE");
-    // ignore: deprecated_member_use
-    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
-      // ignore: deprecated_member_use
-      request: PolylineRequest(
-        origin: PointLatLng(driverPos.latitude, driverPos.longitude),
-        destination: dest,
-        mode: TravelMode.driving,
-        wayPoints: waypoints,
-      ),
-    );
+      final response = await dio.get(url);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final trips = data['trips'] as List;
+        if (trips.isNotEmpty) {
+          final trip = trips[0];
+          final geometry = trip['geometry'];
+          final coordinates = geometry['coordinates'] as List;
+          final List<LatLng> polylineCoordinates = coordinates.map((c) => LatLng(c[1] as double, c[0] as double)).toList();
 
-    if (result.points.isNotEmpty) {
-      List<LatLng> polylineCoordinates = [];
-      for (var point in result.points) {
-        polylineCoordinates.add(LatLng(point.latitude, point.longitude));
-      }
+          final legs = trip['legs'] as List?;
+          final stepsList = [];
+          if (legs != null) {
+            for (var leg in legs) {
+              final steps = leg['steps'] as List?;
+              if (steps != null) {
+                stepsList.addAll(steps);
+              }
+            }
+          }
 
-      if (mounted) {
-        setState(() {
-          _polylines.add(Polyline(
-            polylineId: const PolylineId("route"),
-            color: TranSenColors.primaryGreen,
+          if (mounted) {
+            setState(() {
+              _polylines.add(Polyline(
+                polylineId: const PolylineId("route"),
+                color: TranSenColors.primaryGreen,
+                width: 5,
+                points: polylineCoordinates,
+              ));
+              _navSteps = stepsList;
+              _currentStepIndex = 0;
+            });
+          }
 
-            width: 5,
-            points: polylineCoordinates,
-          ));
-        });
-      }
-
-      if (_myPosition != null) {
-        // Calcul des bornes incluant TOUS les points (chauffeur, passagers, destination)
-        double minLat = driverPos.latitude;
-        double maxLat = driverPos.latitude;
-        double minLng = driverPos.longitude;
-        double maxLng = driverPos.longitude;
-
-        final allPoints = [
-          driverPos,
-          LatLng(dest.latitude, dest.longitude),
-          ..._optimizedPickups.map((e) => LatLng(e.value['lat'], e.value['lng']))
-        ];
-
-        for (var point in allPoints) {
-          if (point.latitude < minLat) minLat = point.latitude;
-          if (point.latitude > maxLat) maxLat = point.latitude;
-          if (point.longitude < minLng) minLng = point.longitude;
-          if (point.longitude > maxLng) maxLng = point.longitude;
+          if (_mapController != null) {
+            double minLat = driverPos.latitude;
+            double maxLat = driverPos.latitude;
+            double minLng = driverPos.longitude;
+            double maxLng = driverPos.longitude;
+            for (var p in polylineCoordinates) {
+              if (p.latitude < minLat) minLat = p.latitude;
+              if (p.latitude > maxLat) maxLat = p.latitude;
+              if (p.longitude < minLng) minLng = p.longitude;
+              if (p.longitude > maxLng) maxLng = p.longitude;
+            }
+            _mapController?.animateCamera(
+              CameraUpdate.newLatLngBounds(
+                LatLngBounds(
+                  southwest: LatLng(minLat, minLng),
+                  northeast: LatLng(maxLat, maxLng),
+                ),
+                50.0,
+              ),
+            );
+          }
         }
-
-        _mapController?.animateCamera(CameraUpdate.newLatLngBounds(
-          LatLngBounds(
-            southwest: LatLng(minLat, minLng),
-            northeast: LatLng(maxLat, maxLng),
-          ),
-          70.0, // Padding généreux
-        ));
       }
+    } catch (e) {
+      debugPrint("Pool Optimization Error: $e");
     }
   }
 
@@ -160,6 +238,110 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         ));
       }
     }
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371.0; 
+    final dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final dLon = (lon2 - lon1) * (math.pi / 180.0);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * (math.pi / 180.0)) * math.cos(lat2 * (math.pi / 180.0)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return R * c;
+  }
+
+  Widget _buildNavigationBanner() {
+    if (!_isNavigating || _navSteps.isEmpty || _currentStepIndex >= _navSteps.length) {
+      return const SizedBox.shrink();
+    }
+    
+    final currentStep = _navSteps[_currentStepIndex];
+    final maneuver = currentStep['maneuver'] ?? {};
+    final instruction = maneuver['instruction'] ?? "Continuez tout droit";
+    final modifier = maneuver['modifier'] as String? ?? "straight";
+    
+    IconData turnIcon;
+    switch (modifier) {
+      case 'left':
+      case 'sharp left':
+        turnIcon = Icons.arrow_back;
+        break;
+      case 'right':
+      case 'sharp right':
+        turnIcon = Icons.arrow_forward;
+        break;
+      case 'slight left':
+        turnIcon = Icons.turn_slight_left;
+        break;
+      case 'slight right':
+        turnIcon = Icons.turn_slight_right;
+        break;
+      case 'straight':
+      default:
+        turnIcon = Icons.arrow_upward;
+        break;
+    }
+
+    return Positioned(
+      top: 15,
+      left: 15,
+      right: 15,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: TranSenColors.primaryGreen,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(turnIcon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    instruction,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _remainingDistance > 1000
+                        ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
+                        : "Dans ${_remainingDistance.toInt()} m",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -249,22 +431,27 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                 ),
                 Expanded(
                   flex: 4,
-                  child: GoogleMap(
-                    initialCameraPosition: const CameraPosition(
-                        target: LatLng(14.7167, -17.4677), zoom: 14),
-                    onMapCreated: (GoogleMapController controller) async {
-                      _mapController = controller;
-                      if (_myPosition != null && !_isRoutePlotted) {
-                        _mapController?.animateCamera(
-                          CameraUpdate.newLatLng(_myPosition!),
-                        );
-                      }
-                    },
-                    markers: _markers,
-                    polylines: _polylines,
-                    myLocationEnabled: true,
-                    myLocationButtonEnabled: true,
-                    trafficEnabled: true,
+                  child: Stack(
+                    children: [
+                      GoogleMap(
+                        initialCameraPosition: const CameraPosition(
+                            target: LatLng(14.7167, -17.4677), zoom: 14),
+                        onMapCreated: (GoogleMapController controller) async {
+                          _mapController = controller;
+                          if (_myPosition != null && !_isRoutePlotted) {
+                            _mapController?.animateCamera(
+                              CameraUpdate.newLatLng(_myPosition!),
+                            );
+                          }
+                        },
+                        markers: _markers,
+                        polylines: _polylines,
+                        myLocationEnabled: true,
+                        myLocationButtonEnabled: true,
+                        trafficEnabled: true,
+                      ),
+                      _buildNavigationBanner(),
+                    ],
                   ),
                 ),
                 Expanded(
@@ -335,24 +522,16 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           if (pool.status == 'accepted') {
                             await repo.departPool(pool.id);
                             
-                            try {
-                              const channel = MethodChannel('com.transen.app/navigation');
-                              Position currentPos = await Geolocator.getCurrentPosition();
-                              
-                              final destCoords = ItineraryOptimizer.getRegionCoordinates(pool.destination);
-                              final destLat = destCoords?.latitude ?? 14.7167;
-                              final destLng = destCoords?.longitude ?? -17.4677;
-
-                              await channel.invokeMethod('startNavigation', {
-                                'originLat': currentPos.latitude,
-                                'originLng': currentPos.longitude,
-                                'destLat': destLat,
-                                'destLng': destLng,
+                            if (mounted) {
+                              setState(() {
+                                _isNavigating = true;
+                                _currentStepIndex = 0;
                               });
-                            } catch (navErr) {
-                              debugPrint("Erreur Navigation Mapbox: $navErr");
                               messenger.showSnackBar(
-                                SnackBar(content: Text("Impossible de lancer le GPS: $navErr")),
+                                const SnackBar(
+                                  content: Text("Navigation démarrée !"),
+                                  backgroundColor: TranSenColors.primaryGreen,
+                                ),
                               );
                             }
                           } else {

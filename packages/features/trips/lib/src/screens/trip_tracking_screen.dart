@@ -281,7 +281,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       final userId = ref.read(authProvider)?.userId ?? '';
       await ref.read(tripRepositoryProvider).cancelTrip(trip.id, userId);
       if (mounted) {
-        Navigator.pop(context);
+        Navigator.of(context).popUntil((route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Demande annulée avec succès."), backgroundColor: Colors.green),
         );

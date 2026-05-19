@@ -82,9 +82,11 @@ class ReferralSheet extends ConsumerWidget {
           const SizedBox(height: 30),
           ElevatedButton.icon(
             onPressed: () {
-              Share.share(
-                "Rejoins-moi sur TranSen et utilise mon code $referralCode pour tes trajets ! https://transen-pro.web.app",
-                subject: "Invitation TranSen",
+              SharePlus.instance.share(
+                ShareParams(
+                  text: "Rejoins-moi sur TranSen et utilise mon code $referralCode pour tes trajets ! https://transen-pro.web.app",
+                  subject: "Invitation TranSen",
+                ),
               );
             },
             icon: const Icon(Icons.share),

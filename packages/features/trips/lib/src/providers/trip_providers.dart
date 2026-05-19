@@ -23,6 +23,26 @@ final activePoolProvider = StreamProvider<TripModel?>((ref) {
         final validPoolStatus = ['open', 'full', 'accepted', 'departed'];
         final activePools = snapshot.docs.where((doc) {
           final status = doc.data()['status'] as String? ?? 'open';
+          if (status == 'open') {
+            final scheduledDate = doc.data()['scheduledDate'] as String?;
+            if (scheduledDate != null) {
+              try {
+                final parts = scheduledDate.split(' ');
+                final dateParts = parts[0].split('/');
+                final timeParts = parts.length > 1 ? parts[1].split(':') : ["08", "00"];
+                final pDate = DateTime(
+                  int.parse(dateParts[2]),
+                  int.parse(dateParts[1]),
+                  int.parse(dateParts[0]),
+                  int.parse(timeParts[0]),
+                  int.parse(timeParts[1]),
+                );
+                if (DateTime.now().difference(pDate).inHours > 24) {
+                  return false;
+                }
+              } catch (_) {}
+            }
+          }
           return validPoolStatus.contains(status);
         }).toList();
 
@@ -58,6 +78,26 @@ final activeTripProvider = StreamProvider<TripModel?>((ref) {
         final validTripStatus = ['pending', 'accepted', 'departed'];
         final activeTrips = snapshot.docs.where((doc) {
           final status = doc.data()['status'] as String? ?? 'pending';
+          if (status == 'pending') {
+            final scheduledDate = doc.data()['scheduledDate'] as String?;
+            if (scheduledDate != null) {
+              try {
+                final parts = scheduledDate.split(' ');
+                final dateParts = parts[0].split('/');
+                final timeParts = parts.length > 1 ? parts[1].split(':') : ["08", "00"];
+                final pDate = DateTime(
+                  int.parse(dateParts[2]),
+                  int.parse(dateParts[1]),
+                  int.parse(dateParts[0]),
+                  int.parse(timeParts[0]),
+                  int.parse(timeParts[1]),
+                );
+                if (DateTime.now().difference(pDate).inHours > 24) {
+                  return false;
+                }
+              } catch (_) {}
+            }
+          }
           return validTripStatus.contains(status);
         }).toList();
 

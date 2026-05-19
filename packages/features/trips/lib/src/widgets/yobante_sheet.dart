@@ -265,6 +265,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             ElevatedButton(
               onPressed: (_selectedDeparture != null && _selectedDestination != null && !_isProcessing)
                   ? () async {
+                      final navigator = Navigator.of(context);
                       try {
                         setState(() => _isProcessing = true);
                         final activeTrip = ref.read(providers.activeTripProvider).value;
@@ -339,7 +340,6 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                         }
 
                         final userPhone = finalUserPhone;
-                        final navigator = Navigator.of(context);
 
                         final tripId = await ref
                             .read(tripRepositoryProvider)
@@ -362,19 +362,19 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                               paymentMethod: _paymentMethod,
                             ));
 
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         setState(() => _isProcessing = false);
                         
                         navigator.pop();
 
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         SuccessDialog.show(
                           context,
                           title: 'Livraison programmée !',
                           message: 'Votre colis a été enregistré. Un chauffeur vous contactera bientôt.',
                           onDismiss: () {
-                            if (!mounted) return;
-                            Navigator.of(context).push(MaterialPageRoute(
+                            if (!context.mounted) return;
+                            navigator.push(MaterialPageRoute(
                                 builder: (_) => ReceiptScreen(
                                   orderId: 'YOB-${DateTime.now().millisecondsSinceEpoch.toString().substring(7)}',
                                   departure: _selectedDeparture!,

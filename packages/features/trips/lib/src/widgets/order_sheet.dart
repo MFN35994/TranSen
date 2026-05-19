@@ -353,7 +353,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                       final existingPool = pools.where((p) {
                         if (p.departure != _selectedDeparture || p.destination != _selectedDestination || p.status != 'open') return false;
                         final poolDate = _parseDate(p.scheduledDate);
-                        return poolDate.difference(reqDate).inMinutes.abs() <= 15;
+                        return poolDate.difference(reqDate).inMinutes.abs() <= 30 && p.currentFilling < 4;
                       }).firstOrNull;
 
                       final currentFilling = existingPool?.currentFilling ?? 0;

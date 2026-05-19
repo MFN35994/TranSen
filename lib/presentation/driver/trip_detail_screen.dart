@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_trips/transen_trips.dart';
@@ -8,9 +7,9 @@ import 'package:transen_payment/transen_payment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
-// import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
@@ -30,9 +29,15 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   StreamSubscription<geo.Position>? _positionStream;
   bool _isRoutePlotted = false;
 
+  List<dynamic> _navSteps = [];
+  int _currentStepIndex = 0;
+  double _remainingDistance = 0.0;
+  bool _isNavigating = false;
+
   @override
   void initState() {
     super.initState();
+    _isNavigating = widget.trip.status == 'ongoing';
     _checkPermissionAndGetLocation();
   }
 
@@ -61,12 +66,64 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       _getPolyline(LatLng(pos.latitude, pos.longitude));
     }
 
-    _positionStream = geo.Geolocator.getPositionStream().listen((pos) {
+    _positionStream = geo.Geolocator.getPositionStream(
+      locationSettings: const geo.LocationSettings(
+        accuracy: geo.LocationAccuracy.high,
+        distanceFilter: 3,
+      ),
+    ).listen((pos) {
       if (mounted) {
         setState(() {
           _myPosition = LatLng(pos.latitude, pos.longitude);
           _buildMarkers();
+
+          // Camera follow and tilt in 3D during navigation
+          if (_isNavigating && _mapController != null) {
+            _mapController?.setCamera(
+              CameraOptions(
+                center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                zoom: 16.5,
+                bearing: pos.heading,
+                pitch: 45.0,
+              ),
+            );
+          }
+
+          // Navigation steps tracking
+          if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) {
+            final currentStep = _navSteps[_currentStepIndex];
+            final maneuver = currentStep['maneuver'] ?? {};
+            final loc = maneuver['location'] as List?;
+            if (loc != null && loc.length >= 2) {
+              final stepLng = (loc[0] as num).toDouble();
+              final stepLat = (loc[1] as num).toDouble();
+              final dist = _calculateDistance(pos.latitude, pos.longitude, stepLat, stepLng) * 1000; // in meters
+              
+              _remainingDistance = dist;
+              if (dist < 20 && _currentStepIndex < _navSteps.length - 1) {
+                _currentStepIndex++;
+              }
+            }
+          }
         });
+
+        // Write driver position in real-time to active_drivers document
+        if (_isNavigating) {
+          final auth = ref.read(authProvider);
+          if (auth != null && auth.userId.isNotEmpty) {
+            FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                .collection('active_drivers')
+                .doc(auth.userId)
+                .set({
+                  'lat': pos.latitude,
+                  'lng': pos.longitude,
+                  'heading': pos.heading,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true)).catchError((e) {
+                  debugPrint("Error updating active driver position: $e");
+                });
+          }
+        }
       }
     });
   }
@@ -93,7 +150,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     }
     
     final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
-
+ 
     try {
       final dio = Dio();
       const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
@@ -103,7 +160,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       allCoords.addAll(clientCoords);
       allCoords.add("${destPos.longitude},${destPos.latitude}");
       
-      final url = "https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${allCoords.join(';')}?source=first&destination=last&overview=full&geometries=geojson&access_token=$mapboxToken";
+      final url = "https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${allCoords.join(';')}?source=first&destination=last&overview=full&geometries=geojson&steps=true&access_token=$mapboxToken";
       
       final response = await dio.get(url);
       
@@ -113,6 +170,17 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         if (trips.isNotEmpty) {
           final trip = trips[0];
           final geometry = trip['geometry'];
+          
+          final legs = trip['legs'] as List?;
+          final stepsList = [];
+          if (legs != null) {
+            for (var leg in legs) {
+              final steps = leg['steps'] as List?;
+              if (steps != null) {
+                stepsList.addAll(steps);
+              }
+            }
+          }
           
           if (_mapController != null) {
             final source = GeoJsonSource(id: "route-source", data: jsonEncode(geometry));
@@ -129,6 +197,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
             if (mounted) {
               setState(() {
                 _isRoutePlotted = true;
+                _navSteps = stepsList;
+                _currentStepIndex = 0;
               });
             }
             _fitMap(driverPos, firstClientPos!, destPos);
@@ -138,7 +208,6 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     } catch (e) {
       debugPrint("Erreur Optimization API: $e");
     }
-
   }
 
   void _fitMap(LatLng p1, LatLng p2, LatLng p3) {
@@ -192,6 +261,110 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         ));
       }
     }
+  }
+
+  double _calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    const R = 6371.0; 
+    final dLat = (lat2 - lat1) * (math.pi / 180.0);
+    final dLon = (lon2 - lon1) * (math.pi / 180.0);
+    final a = math.sin(dLat / 2) * math.sin(dLat / 2) +
+        math.cos(lat1 * (math.pi / 180.0)) * math.cos(lat2 * (math.pi / 180.0)) *
+        math.sin(dLon / 2) * math.sin(dLon / 2);
+    final c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a));
+    return R * c;
+  }
+
+  Widget _buildNavigationBanner() {
+    if (!_isNavigating || _navSteps.isEmpty || _currentStepIndex >= _navSteps.length) {
+      return const SizedBox.shrink();
+    }
+    
+    final currentStep = _navSteps[_currentStepIndex];
+    final maneuver = currentStep['maneuver'] ?? {};
+    final instruction = maneuver['instruction'] ?? "Continuez tout droit";
+    final modifier = maneuver['modifier'] as String? ?? "straight";
+    
+    IconData turnIcon;
+    switch (modifier) {
+      case 'left':
+      case 'sharp left':
+        turnIcon = Icons.arrow_back;
+        break;
+      case 'right':
+      case 'sharp right':
+        turnIcon = Icons.arrow_forward;
+        break;
+      case 'slight left':
+        turnIcon = Icons.turn_slight_left;
+        break;
+      case 'slight right':
+        turnIcon = Icons.turn_slight_right;
+        break;
+      case 'straight':
+      default:
+        turnIcon = Icons.arrow_upward;
+        break;
+    }
+
+    return Positioned(
+      top: 15,
+      left: 15,
+      right: 15,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.9),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 15,
+              offset: const Offset(0, 5),
+            )
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: const BoxDecoration(
+                color: TranSenColors.primaryGreen,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(turnIcon, color: Colors.white, size: 28),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    instruction,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _remainingDistance > 1000
+                        ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
+                        : "Dans ${_remainingDistance.toInt()} m",
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Future<bool> _hasAccess() async {
@@ -250,26 +423,35 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
                 ],
               ),
-                child: MapWidget(
-                  viewport: CameraViewportState(
-                    center: Point(coordinates: Position(-17.4677, 14.7167)),
-                    zoom: 13.0,
+              child: Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: MapWidget(
+                      viewport: CameraViewportState(
+                        center: Point(coordinates: Position(-17.4677, 14.7167)),
+                        zoom: 13.0,
+                      ),
+                      onMapCreated: (MapboxMap mapboxMap) async {
+                        _mapController = mapboxMap;
+                        _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                        if (_myPosition != null) {
+                          _mapController?.setCamera(
+                            CameraOptions(
+                              center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+                              zoom: _isNavigating ? 16.5 : 13.0,
+                              pitch: _isNavigating ? 45.0 : 0.0,
+                            ),
+                          );
+                        }
+                      },
+                    ),
                   ),
-                  onMapCreated: (MapboxMap mapboxMap) async {
-                    _mapController = mapboxMap;
-                    _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-                    if (_myPosition != null) {
-                      _mapController?.setCamera(
-                        CameraOptions(
-                          center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
-                          zoom: 13.0,
-                        ),
-                      );
-                    }
-                  },
-                ),
+                  _buildNavigationBanner(),
+                ],
               ),
             ),
+          ),
           
           // Détails Panel
           Expanded(
@@ -386,38 +568,42 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                             ),
                             child: ElevatedButton(
                               onPressed: () async {
+                                 final messenger = ScaffoldMessenger.of(context);
+                                 final navigator = Navigator.of(context);
                                  if (widget.trip.status == 'pending') {
                                    final auth = ref.read(authProvider);
                                    if (auth != null) {
                                      await ref.read(tripRepositoryProvider).acceptTrip(widget.trip.id, auth.userId);
-                                     if (context.mounted) Navigator.pop(context);
+                                     if (mounted) navigator.pop();
                                    }
                                  } else if (widget.trip.status == 'accepted') {
-                                    // Démarrer la course
-                                    try {
-                                      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                                          .collection('trips')
-                                          .doc(widget.trip.id)
-                                          .update({'status': 'ongoing'});
+                                   // Démarrer la course
+                                   try {
+                                     await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                                         .collection('trips')
+                                         .doc(widget.trip.id)
+                                         .update({'status': 'ongoing'});
 
-                                      final originPos = _myPosition ?? ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
-                                      final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
-
-                                      const channel = MethodChannel('com.transen.app/navigation');
-                                      await channel.invokeMethod('startNavigation', {
-                                        'originLat': originPos.latitude,
-                                        'originLng': originPos.longitude,
-                                        'destLat': destPos.latitude,
-                                        'destLng': destPos.longitude,
-                                      });
-                                    } catch (navErr) {
-                                      debugPrint("Erreur Navigation Mapbox: $navErr");
-                                      if (context.mounted) {
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text("Impossible de lancer le GPS: $navErr")),
-                                        );
-                                      }
-                                    }
+                                     if (mounted) {
+                                       setState(() {
+                                         _isNavigating = true;
+                                         _currentStepIndex = 0;
+                                       });
+                                       messenger.showSnackBar(
+                                         const SnackBar(
+                                           content: Text("Navigation démarrée !"),
+                                           backgroundColor: TranSenColors.primaryGreen,
+                                         ),
+                                       );
+                                     }
+                                   } catch (navErr) {
+                                     debugPrint("Erreur Navigation: $navErr");
+                                     if (mounted) {
+                                       messenger.showSnackBar(
+                                         SnackBar(content: Text("Erreur: $navErr")),
+                                       );
+                                     }
+                                   }
                                  } else {
                                   try {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));

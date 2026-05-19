@@ -62,13 +62,30 @@ class TripRepository {
     final query = await _firestore.collection('pools')
         .where('departure', isEqualTo: departure)
         .where('destination', isEqualTo: destination)
-        .where('scheduledDate', isEqualTo: scheduledDate)
         .where('status', isEqualTo: 'open')
         .get();
 
-    if (query.docs.isNotEmpty) {
-      final poolDoc = query.docs.first;
-      final data = poolDoc.data();
+    final reqDate = _parseDate(scheduledDate);
+    DocumentSnapshot? matchingPoolDoc;
+
+    for (var doc in query.docs) {
+      final pData = doc.data();
+      final pDateStr = pData['scheduledDate'] as String?;
+      if (pDateStr != null) {
+        final pDate = _parseDate(pDateStr);
+        if (pDate.difference(reqDate).inMinutes.abs() <= 30) {
+          final currentFilling = pData['currentFilling'] ?? 0;
+          final maxCapacity = pData['maxCapacity'] ?? 4;
+          if (currentFilling + seats <= maxCapacity) {
+            matchingPoolDoc = doc;
+            break;
+          }
+        }
+      }
+    }
+
+    if (matchingPoolDoc != null) {
+      final data = matchingPoolDoc.data() as Map<String, dynamic>;
       final passengerIds = List<String>.from(data['passengerIds'] ?? []);
       final currentFilling = data['currentFilling'] ?? 0;
       final maxCapacity = data['maxCapacity'] ?? 4;
@@ -83,13 +100,13 @@ class TripRepository {
           'lng': lng,
         };
 
-        await poolDoc.reference.update({
+        await matchingPoolDoc.reference.update({
           'passengerIds': passengerIds,
           'passengerDetails': passengerDetails,
           'currentFilling': currentFilling + seats,
           'status': (currentFilling + seats >= maxCapacity) ? 'full' : 'open',
         });
-        return poolDoc.id;
+        return matchingPoolDoc.id;
       }
     }
 
@@ -239,33 +256,50 @@ class TripRepository {
   }
 
   Future<void> cancelTrip(String tripId, String userId) async {
-    final tripDoc = await _firestore.collection('trips').doc(tripId).get();
-    if (tripDoc.exists) {
-      if (tripDoc.data()?['status'] == 'pending') {
-        await _firestore.collection('trips').doc(tripId).delete().catchError((_) {});
-      } else {
-        await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'}).catchError((_) {});
-      }
-    }
-    
-    final poolDoc = await _firestore.collection('pools').doc(tripId).get();
-    if (poolDoc.exists) {
-      final passengerIds = List<String>.from(poolDoc.data()?['passengerIds'] ?? []);
-      final passengerDetails = Map<String, dynamic>.from(poolDoc.data()?['passengerDetails'] ?? {});
-      if (passengerIds.contains(userId)) {
-        passengerIds.remove(userId);
-        passengerDetails.remove(userId);
-        if (passengerIds.isEmpty) {
-          await _firestore.collection('pools').doc(tripId).delete();
+    debugPrint(">>> cancelTrip: tripId=$tripId, userId=$userId");
+    try {
+      final tripDoc = await _firestore.collection('trips').doc(tripId).get();
+      if (tripDoc.exists) {
+        debugPrint(">>> cancelTrip: tripDoc exists in 'trips' collection");
+        if (tripDoc.data()?['status'] == 'pending') {
+          await _firestore.collection('trips').doc(tripId).delete();
+          debugPrint(">>> cancelTrip: successfully deleted trip from 'trips'");
         } else {
-          await _firestore.collection('pools').doc(tripId).update({
-            'passengerIds': passengerIds,
-            'passengerDetails': passengerDetails,
-            'currentFilling': passengerIds.length,
-            'status': 'open',
-          });
+          await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'});
+          debugPrint(">>> cancelTrip: successfully marked trip as cancelled in 'trips'");
         }
       }
+    } catch (e) {
+      debugPrint(">>> cancelTrip error in trips: $e");
+    }
+    
+    try {
+      final poolDoc = await _firestore.collection('pools').doc(tripId).get();
+      if (poolDoc.exists) {
+        debugPrint(">>> cancelTrip: poolDoc exists in 'pools' collection");
+        final passengerIds = List<String>.from(poolDoc.data()?['passengerIds'] ?? []);
+        final passengerDetails = Map<String, dynamic>.from(poolDoc.data()?['passengerDetails'] ?? {});
+        if (passengerIds.contains(userId)) {
+          passengerIds.remove(userId);
+          passengerDetails.remove(userId);
+          if (passengerIds.isEmpty) {
+            await _firestore.collection('pools').doc(tripId).delete();
+            debugPrint(">>> cancelTrip: successfully deleted pool from 'pools'");
+          } else {
+            await _firestore.collection('pools').doc(tripId).update({
+              'passengerIds': passengerIds,
+              'passengerDetails': passengerDetails,
+              'currentFilling': passengerIds.length,
+              'status': 'open',
+            });
+            debugPrint(">>> cancelTrip: successfully removed passenger from pool");
+          }
+        } else {
+          debugPrint(">>> cancelTrip: passenger list does not contain userId $userId");
+        }
+      }
+    } catch (e) {
+      debugPrint(">>> cancelTrip error in pools: $e");
     }
   }
 
@@ -274,13 +308,29 @@ class TripRepository {
     return _firestore.collection('pools')
         .where('status', isEqualTo: 'open')
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => PoolModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final pools = <PoolModel>[];
+          for (var doc in snapshot.docs) {
+            final pool = PoolModel.fromFirestore(doc);
+            if (_isExpired(pool.scheduledDate)) {
+              _firestore.collection('pools').doc(doc.id).delete().catchError((_) {});
+            } else {
+              pools.add(pool);
+            }
+          }
+          return pools;
+        });
   }
 
   Stream<PoolModel?> watchPool(String poolId) {
     return _firestore.collection('pools').doc(poolId).snapshots().map((doc) {
       if (!doc.exists) return null;
-      return PoolModel.fromFirestore(doc);
+      final pool = PoolModel.fromFirestore(doc);
+      if (pool.status == 'open' && _isExpired(pool.scheduledDate)) {
+        _firestore.collection('pools').doc(poolId).delete().catchError((_) {});
+        return null;
+      }
+      return pool;
     });
   }
 
@@ -289,20 +339,33 @@ class TripRepository {
     final tripStream = _firestore.collection('trips').doc(tripId).snapshots();
     final poolStream = _firestore.collection('pools').doc(tripId).snapshots();
     return Rx.combineLatest2(tripStream, poolStream, (tripSnap, poolSnap) {
-      if (tripSnap.exists) return TripModel.fromFirestore(tripSnap);
+      if (tripSnap.exists) {
+        final trip = TripModel.fromFirestore(tripSnap);
+        if (trip.status == 'pending' && _isExpired(trip.scheduledDate)) {
+          _firestore.collection('trips').doc(tripId).delete().catchError((_) {});
+          return null;
+        }
+        return trip;
+      }
       if (poolSnap.exists) {
         final data = poolSnap.data()!;
+        final scheduledDate = data['scheduledDate'] as String?;
+        final status = data['status'] as String? ?? 'open';
+        if (status == 'open' && _isExpired(scheduledDate)) {
+          _firestore.collection('pools').doc(tripId).delete().catchError((_) {});
+          return null;
+        }
         return TripModel(
           id: poolSnap.id,
           departure: data['departure'] ?? '',
           destination: data['destination'] ?? '',
           price: (data['price'] ?? 10000).toDouble(),
-          status: data['status'] ?? 'open',
+          status: status,
           type: 'Covoiturage Intelligent',
           driverId: data['driverId'],
           driverName: data['driverName'],
           driverPhone: data['driverPhone'],
-          scheduledDate: data['scheduledDate'],
+          scheduledDate: scheduledDate,
           passengerDetails: data['passengerDetails'],
           createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
         );
@@ -316,7 +379,18 @@ class TripRepository {
     if (departure != null) query = query.where('departure', isEqualTo: departure);
     if (destination != null) query = query.where('destination', isEqualTo: destination);
     
-    return query.snapshots().map((snap) => snap.docs.map((doc) => TripModel.fromFirestore(doc)).toList());
+    return query.snapshots().map((snapshot) {
+      final trips = <TripModel>[];
+      for (var doc in snapshot.docs) {
+        final trip = TripModel.fromFirestore(doc);
+        if (_isExpired(trip.scheduledDate)) {
+          _firestore.collection('trips').doc(doc.id).delete().catchError((_) {});
+        } else {
+          trips.add(trip);
+        }
+      }
+      return trips;
+    });
   }
 
   Stream<List<TripModel>> watchUserTrips(String userId) {
@@ -376,6 +450,34 @@ class TripRepository {
   }
 
   double _toRadians(double degree) => degree * (math.pi / 180.0);
+
+  DateTime _parseDate(String d) {
+    try {
+      final parts = d.split(' ');
+      final dateParts = parts[0].split('/');
+      final timeParts = parts.length > 1 ? parts[1].split(':') : ["08", "00"];
+      return DateTime(
+        int.parse(dateParts[2]),
+        int.parse(dateParts[1]),
+        int.parse(dateParts[0]),
+        int.parse(timeParts[0]),
+        int.parse(timeParts[1]),
+      );
+    } catch (_) {
+      return DateTime.now();
+    }
+  }
+
+  bool _isExpired(String? scheduledDate) {
+    if (scheduledDate == null || scheduledDate.isEmpty) return false;
+    try {
+      final date = _parseDate(scheduledDate);
+      final now = DateTime.now();
+      return now.difference(date).inHours > 24;
+    } catch (_) {
+      return false;
+    }
+  }
 }
 
 final tripRepositoryProvider = Provider<TripRepository>((ref) {
