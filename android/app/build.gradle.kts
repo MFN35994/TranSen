@@ -39,6 +39,12 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    packaging {
+        jniLibs {
+            pickFirsts.add("**/*.so")
+        }
+    }
 }
 
 flutter {
@@ -47,6 +53,17 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    implementation("com.mapbox.maps:android-ndk27:11.23.1")
+    implementation("com.mapbox.navigationcore:android:3.1.0") {
+        exclude(group = "com.mapbox.maps")
+        exclude(group = "com.mapbox.module", module = "maps-telemetry")
+        exclude(group = "com.mapbox.common")
+    }
+    implementation("com.mapbox.navigationcore:ui-components:3.1.0") {
+        exclude(group = "com.mapbox.maps")
+        exclude(group = "com.mapbox.module", module = "maps-telemetry")
+        exclude(group = "com.mapbox.common")
+    }
 }
 
 kotlin {

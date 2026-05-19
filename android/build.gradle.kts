@@ -4,12 +4,34 @@ allprojects {
         mavenCentral()
         maven {
             url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
-            authentication {
-                create<BasicAuthentication>("basic")
-            }
             credentials {
                 username = "mapbox"
-                password = "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+            }
+        }
+        maven {
+            url = uri("https://api.mapbox.com/downloads/v2/snapshots/maven")
+            credentials {
+                username = "mapbox"
+                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+            }
+        }
+    }
+
+    // Dynamically inject Mapbox credentials into ANY Mapbox maven repository added by any plugin!
+    repositories.all {
+        if (this is MavenArtifactRepository) {
+            val urlString = url.toString()
+            if (urlString.contains("api.mapbox.com")) {
+                authentication {
+                    if (findByName("basic") == null) {
+                        create<BasicAuthentication>("basic")
+                    }
+                }
+                credentials {
+                    username = "mapbox"
+                    password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+                }
             }
         }
     }
@@ -24,7 +46,7 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-    extra["MAPBOX_DOWNLOADS_TOKEN"] = "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+    extra["MAPBOX_DOWNLOADS_TOKEN"] = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
 }
 subprojects {
     project.evaluationDependsOn(":app")

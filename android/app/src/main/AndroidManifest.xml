@@ -38,6 +38,11 @@
                 <data android:scheme="transen" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".NavigationActivity"
+            android:theme="@style/NavigationTheme"
+            android:exported="false">
+        </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

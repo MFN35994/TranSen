@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart';
@@ -10,7 +11,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_payment/transen_payment.dart';
-import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
+// import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;
@@ -334,46 +335,24 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           if (pool.status == 'accepted') {
                             await repo.departPool(pool.id);
                             
-                            // Lancer la navigation Mapbox
                             try {
+                              const channel = MethodChannel('com.transen.app/navigation');
+                              Position currentPos = await Geolocator.getCurrentPosition();
+                              
                               final destCoords = ItineraryOptimizer.getRegionCoordinates(pool.destination);
-                              final destPoint = destCoords != null 
-                                ? LatLng(destCoords.latitude, destCoords.longitude) 
-                                : const LatLng(14.7167, -17.4677);
+                              final destLat = destCoords?.latitude ?? 14.7167;
+                              final destLng = destCoords?.longitude ?? -17.4677;
 
-                              var wayPoints = <WayPoint>[];
-                              wayPoints.add(WayPoint(name: "Ma Position", latitude: _myPosition?.latitude, longitude: _myPosition?.longitude));
-
-                              for (var entry in _optimizedPickups) {
-                                wayPoints.add(WayPoint(
-                                  name: entry.value['name'] ?? "Passager",
-                                  latitude: entry.value['lat'],
-                                  longitude: entry.value['lng'],
-                                ));
-                              }
-
-                              wayPoints.add(WayPoint(name: "Destination", latitude: destPoint.latitude, longitude: destPoint.longitude));
-
-                              final directions = MapBoxNavigation.instance;
-                              await directions.startNavigation(
-                                wayPoints: wayPoints,
-                                options: MapBoxOptions(
-                                  initialLatitude: _myPosition?.latitude,
-                                  initialLongitude: _myPosition?.longitude,
-                                  zoom: 15.0,
-                                  voiceInstructionsEnabled: true,
-                                  mode: MapBoxNavigationMode.drivingWithTraffic,
-                                ),
-                              );
+                              await channel.invokeMethod('startNavigation', {
+                                'originLat': currentPos.latitude,
+                                'originLng': currentPos.longitude,
+                                'destLat': destLat,
+                                'destLng': destLng,
+                              });
                             } catch (navErr) {
                               debugPrint("Erreur Navigation Mapbox: $navErr");
-                            }
-
-                            if (mounted) {
                               messenger.showSnackBar(
-                                const SnackBar(
-                                    content: Text("🚀 Trajet démarré !"),
-                                    backgroundColor: Colors.green),
+                                SnackBar(content: Text("Impossible de lancer le GPS: $navErr")),
                               );
                             }
                           } else {

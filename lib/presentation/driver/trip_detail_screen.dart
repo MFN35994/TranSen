@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_trips/transen_trips.dart';
@@ -9,7 +10,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
-import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
+// import 'package:flutter_mapbox_navigation_plus/flutter_mapbox_navigation_plus.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
@@ -392,48 +393,31 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                      if (context.mounted) Navigator.pop(context);
                                    }
                                  } else if (widget.trip.status == 'accepted') {
-                                   // Démarrer la course
-                                   try {
-                                     await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                                         .collection('trips')
-                                         .doc(widget.trip.id)
-                                         .update({'status': 'ongoing'});
+                                    // Démarrer la course
+                                    try {
+                                      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+                                          .collection('trips')
+                                          .doc(widget.trip.id)
+                                          .update({'status': 'ongoing'});
 
-                                     // Lancer la navigation Mapbox
-                                     geo.Position? position;
-                                     try {
-                                       position = await geo.Geolocator.getCurrentPosition(
-                                         locationSettings: const geo.LocationSettings(accuracy: geo.LocationAccuracy.high, timeLimit: Duration(seconds: 5)),
-                                       );
-                                     } catch (e) {
-                                       debugPrint("GPS Error: $e");
-                                     }
+                                      final originPos = _myPosition ?? ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
+                                      final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
 
-                                     var wayPoints = <WayPoint>[];
-                                     if (position != null) {
-                                       wayPoints.add(WayPoint(name: "Ma Position", latitude: position.latitude, longitude: position.longitude));
-                                     }
-                                     
-                                     final depPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677);
-                                     final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
-
-                                     wayPoints.add(WayPoint(name: "Point de départ", latitude: depPos.latitude, longitude: depPos.longitude));
-                                     wayPoints.add(WayPoint(name: "Destination", latitude: destPos.latitude, longitude: destPos.longitude));
-
-                                     final directions = MapBoxNavigation.instance;
-                                     await directions.startNavigation(
-                                       wayPoints: wayPoints,
-                                       options: MapBoxOptions(
-                                         initialLatitude: position?.latitude ?? depPos.latitude,
-                                         initialLongitude: position?.longitude ?? depPos.longitude,
-                                         zoom: 15.0,
-                                         voiceInstructionsEnabled: true,
-                                         mode: MapBoxNavigationMode.drivingWithTraffic,
-                                       ),
-                                     );
-                                   } catch (navErr) {
-                                     debugPrint("Erreur Navigation Mapbox: $navErr");
-                                   }
+                                      const channel = MethodChannel('com.transen.app/navigation');
+                                      await channel.invokeMethod('startNavigation', {
+                                        'originLat': originPos.latitude,
+                                        'originLng': originPos.longitude,
+                                        'destLat': destPos.latitude,
+                                        'destLng': destPos.longitude,
+                                      });
+                                    } catch (navErr) {
+                                      debugPrint("Erreur Navigation Mapbox: $navErr");
+                                      if (context.mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text("Impossible de lancer le GPS: $navErr")),
+                                        );
+                                      }
+                                    }
                                  } else {
                                   try {
                                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
