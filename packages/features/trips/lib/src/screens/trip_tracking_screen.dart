@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as gmaps;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
@@ -30,8 +29,51 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   MapboxMap? _mapController;
   PointAnnotationManager? _annotationManager;
   Uint8List? _carIconBytes;
-  gmaps.LatLng? _myPosition;
+  ({double lat, double lng})? _myPosition;
   bool _isRoutePlotted = false;
+
+  ({double lat, double lng})? _lastRawPosition;
+  ({double lat, double lng})? _snappedDriverPosition;
+  bool _isSnapping = false;
+
+  void _updateDriverSnapping(double lat, double lng) async {
+    if (_lastRawPosition?.lat == lat && _lastRawPosition?.lng == lng) return;
+    _lastRawPosition = (lat: lat, lng: lng);
+
+    if (_isSnapping) return;
+    _isSnapping = true;
+
+    try {
+      final dio = Dio();
+      const String mapboxToken = LocationHelper.mapboxToken;
+      final url = "https://api.mapbox.com/matching/v5/mapbox/driving/$lng,$lat?access_token=$mapboxToken&gps_precision=10";
+      
+      final response = await dio.get(url);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final matchings = data['matchings'] as List?;
+        if (matchings != null && matchings.isNotEmpty) {
+          final matchedCoords = matchings[0]['geometry']['coordinates'] as List?;
+          if (matchedCoords != null && matchedCoords.isNotEmpty) {
+            final firstCoord = matchedCoords.first as List;
+            final snapped = (
+              lat: (firstCoord[1] as num).toDouble(),
+              lng: (firstCoord[0] as num).toDouble(),
+            );
+            if (mounted) {
+              setState(() {
+                _snappedDriverPosition = snapped;
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Mapbox Map Matching error: $e");
+    } finally {
+      _isSnapping = false;
+    }
+  }
 
 
   @override
@@ -46,20 +88,20 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       geo.Position pos = await geo.Geolocator.getCurrentPosition();
       if (mounted) {
         setState(() {
-          _myPosition = gmaps.LatLng(pos.latitude, pos.longitude);
+          _myPosition = (lat: pos.latitude, lng: pos.longitude);
         });
       }
     } catch (_) {}
   }
 
-  void _getPolyline(gmaps.LatLng driverPos, gmaps.LatLng clientPos) async {
+  void _getPolyline(({double lat, double lng}) driverPos, ({double lat, double lng}) clientPos) async {
     if (_isRoutePlotted) return;
     _isRoutePlotted = true;
 
     try {
       final dio = Dio();
       const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
-      final url = "https://api.mapbox.com/directions/v5/mapbox/driving/${driverPos.longitude},${driverPos.latitude};${clientPos.longitude},${clientPos.latitude}?overview=full&geometries=geojson&access_token=$mapboxToken";
+      final url = "https://api.mapbox.com/directions/v5/mapbox/driving/${driverPos.lng},${driverPos.lat};${clientPos.lng},${clientPos.lat}?overview=full&geometries=geojson&access_token=$mapboxToken";
       
       final response = await dio.get(url);
       
@@ -295,13 +337,19 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       builder: (context, driverSnapshot) {
         if (driverSnapshot.hasData && driverSnapshot.data!.exists) {
           final data = driverSnapshot.data!.data() as Map<String, dynamic>;
-          final pos = gmaps.LatLng(data['lat'], data['lng']);
+          final pos = (lat: (data['lat'] as num).toDouble(), lng: (data['lng'] as num).toDouble());
           
+          // Trigger the background snapping/Map Matching!
+          _updateDriverSnapping(pos.lat, pos.lng);
+
+          // Use snapped position if available, otherwise raw position
+          final displayPos = _snappedDriverPosition ?? pos;
+
           if (_annotationManager != null) {
             _annotationManager!.deleteAll();
             if (_carIconBytes != null) {
               _annotationManager!.create(PointAnnotationOptions(
-                geometry: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                geometry: Point(coordinates: Position(displayPos.lng, displayPos.lat)),
                 image: _carIconBytes!,
                 iconSize: 1.0,
               ));
@@ -309,21 +357,20 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           }
 
           if (_myPosition != null && !_isRoutePlotted) {
-            _getPolyline(pos, _myPosition!);
+            _getPolyline(displayPos, _myPosition!);
           }
 
           if (!_isRoutePlotted) {
             _mapController?.setCamera(
               CameraOptions(
-                center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                center: Point(coordinates: Position(displayPos.lng, displayPos.lat)),
                 zoom: 15.0,
               ),
             );
           } else {
-             // For bounds, we just center on driver for simplicity in Mapbox
              _mapController?.setCamera(
                CameraOptions(
-                 center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                 center: Point(coordinates: Position(displayPos.lng, displayPos.lat)),
                  zoom: 13.0,
                ),
              );
@@ -341,7 +388,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             if (_myPosition != null) {
               _mapController?.setCamera(
                 CameraOptions(
-                  center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+                  center: Point(coordinates: Position(_myPosition!.lng, _myPosition!.lat)),
                   zoom: 14.0,
                 ),
               );

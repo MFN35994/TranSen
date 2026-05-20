@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:geolocator/geolocator.dart';
+import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
+import 'package:geolocator/geolocator.dart' as geo;
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -12,6 +12,8 @@ import 'package:transen_payment/transen_payment.dart';
 import 'package:dio/dio.dart';
 import 'dart:math' as math;
 import 'dart:async';
+import 'dart:convert';
+import 'package:transen_maps/transen_maps.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
   final PoolModel pool;
@@ -24,13 +26,12 @@ class PoolDetailScreen extends ConsumerStatefulWidget {
 
 class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   late List<MapEntry<String, dynamic>> _optimizedPickups;
-  GoogleMapController? _mapController;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
+  MapboxMap? _mapboxController;
+  PointAnnotationManager? _annotationManager;
   bool _isRoutePlotted = false;
-  LatLng? _myPosition;
+  ({double lat, double lng})? _myPosition;
 
-  StreamSubscription<Position>? _positionStream;
+  StreamSubscription<geo.Position>? _positionStream;
   List<dynamic> _navSteps = [];
   int _currentStepIndex = 0;
   double _remainingDistance = 0.0;
@@ -44,7 +45,6 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       const LatLng(14.7167, -17.4677),
       widget.pool.passengerDetails,
     );
-    _buildMarkers();
     _fetchMyPositionAndRoute();
   }
 
@@ -56,101 +56,95 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
   void _fetchMyPositionAndRoute() async {
     try {
-      Position pos = await Geolocator.getCurrentPosition();
-      LatLng driverPos = LatLng(pos.latitude, pos.longitude);
+      geo.Position pos = await geo.Geolocator.getCurrentPosition();
+      final driverPos = (lat: pos.latitude, lng: pos.longitude);
 
       if (mounted) {
         setState(() {
           _myPosition = driverPos;
           _optimizedPickups = ItineraryOptimizer.optimizePickupOrder(
-            driverPos,
+            LatLng(driverPos.lat, driverPos.lng),
             widget.pool.passengerDetails,
           );
         });
       }
 
-      _getPolyline(driverPos);
+      _getPolylineAndMarkers(driverPos);
     } catch (_) {}
 
-    // Listen to real-time location updates
-    _positionStream = Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 3,
+    // Écoute la position en temps réel
+    _positionStream = geo.Geolocator.getPositionStream(
+      locationSettings: const geo.LocationSettings(
+        accuracy: geo.LocationAccuracy.high,
+        distanceFilter: 5,
       ),
     ).listen((pos) {
-      if (mounted) {
-        final driverPos = LatLng(pos.latitude, pos.longitude);
-        setState(() {
-          _myPosition = driverPos;
-          _buildMarkers();
+      if (!mounted) return;
+      final driverPos = (lat: pos.latitude, lng: pos.longitude);
+      setState(() => _myPosition = driverPos);
 
-          // Camera follow and tilt in 3D during navigation
-          if (_isNavigating && _mapController != null) {
-            _mapController?.animateCamera(
-              CameraUpdate.newCameraPosition(
-                CameraPosition(
-                  target: driverPos,
-                  zoom: 17.5,
-                  bearing: pos.heading,
-                  tilt: 45.0,
-                ),
-              ),
-            );
-          }
+      // Suivi caméra Mapbox pendant navigation
+      if (_isNavigating && _mapboxController != null) {
+        _mapboxController!.setCamera(CameraOptions(
+          center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+          zoom: 17.0,
+          bearing: pos.heading,
+          pitch: 45.0,
+        ));
+      }
 
-          // Navigation steps tracking
-          if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) {
-            final currentStep = _navSteps[_currentStepIndex];
-            final maneuver = currentStep['maneuver'] ?? {};
-            final loc = maneuver['location'] as List?;
-            if (loc != null && loc.length >= 2) {
-              final stepLng = (loc[0] as num).toDouble();
-              final stepLat = (loc[1] as num).toDouble();
-              final dist = _calculateDistance(pos.latitude, pos.longitude, stepLat, stepLng) * 1000; // in meters
-              
-              _remainingDistance = dist;
-              if (dist < 20 && _currentStepIndex < _navSteps.length - 1) {
-                _currentStepIndex++;
-              }
+      // Suivi des étapes de navigation
+      if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) {
+        final currentStep = _navSteps[_currentStepIndex];
+        final maneuver = currentStep['maneuver'] ?? {};
+        final loc = maneuver['location'] as List?;
+        if (loc != null && loc.length >= 2) {
+          final stepLng = (loc[0] as num).toDouble();
+          final stepLat = (loc[1] as num).toDouble();
+          final dist = _calculateDistance(pos.latitude, pos.longitude, stepLat, stepLng) * 1000;
+          setState(() {
+            _remainingDistance = dist;
+            if (dist < 20 && _currentStepIndex < _navSteps.length - 1) {
+              _currentStepIndex++;
             }
-          }
-        });
+          });
+        }
+      }
 
-        // Write driver position in real-time to active_drivers document
-        if (_isNavigating) {
-          final auth = ref.read(authProvider);
-          if (auth != null && auth.userId.isNotEmpty) {
-            FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                .collection('active_drivers')
-                .doc(auth.userId)
-                .set({
-                  'lat': pos.latitude,
-                  'lng': pos.longitude,
-                  'heading': pos.heading,
-                  'updatedAt': FieldValue.serverTimestamp(),
-                }, SetOptions(merge: true)).catchError((e) {
-                  debugPrint("Error updating active driver position: $e");
-                });
-          }
+      // Mettre à jour position chauffeur dans Firestore
+      if (_isNavigating) {
+        final auth = ref.read(authProvider);
+        if (auth != null && auth.userId.isNotEmpty) {
+          FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+              .collection('active_drivers')
+              .doc(auth.userId)
+              .set({
+                'lat': pos.latitude,
+                'lng': pos.longitude,
+                'heading': pos.heading,
+                'updatedAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true)).catchError((e) {
+                debugPrint("Error updating active driver position: $e");
+              });
         }
       }
     });
   }
 
-  void _getPolyline(LatLng driverPos) async {
+  void _getPolylineAndMarkers(({double lat, double lng}) driverPos) async {
     if (_isRoutePlotted || _optimizedPickups.isEmpty) return;
     _isRoutePlotted = true;
 
-    final List<String> coords = [];
-    coords.add("${driverPos.longitude},${driverPos.latitude}");
+    // Construire la liste des coordonnées pour l'API optimized-trips
+    final List<String> coords = ["${driverPos.lng},${driverPos.lat}"];
     for (var entry in _optimizedPickups) {
       final wp = entry.value;
       if (wp['lat'] != null && wp['lng'] != null) {
         coords.add("${wp['lng']},${wp['lat']}");
       }
     }
-    final destCoords = ItineraryOptimizer.getRegionCoordinates(widget.pool.destination) ?? const LatLng(14.7167, -17.4677);
+    final destCoords = ItineraryOptimizer.getRegionCoordinates(widget.pool.destination)
+        ?? const LatLng(14.7167, -17.4677);
     coords.add("${destCoords.longitude},${destCoords.latitude}");
 
     try {
@@ -165,76 +159,65 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         if (trips.isNotEmpty) {
           final trip = trips[0];
           final geometry = trip['geometry'];
-          final coordinates = geometry['coordinates'] as List;
-          final List<LatLng> polylineCoordinates = coordinates.map((c) => LatLng(c[1] as double, c[0] as double)).toList();
 
+          // Extraire étapes de navigation
           final legs = trip['legs'] as List?;
           final stepsList = [];
           if (legs != null) {
             for (var leg in legs) {
               final steps = leg['steps'] as List?;
-              if (steps != null) {
-                stepsList.addAll(steps);
-              }
+              if (steps != null) stepsList.addAll(steps);
             }
           }
 
-          if (mounted) {
-            setState(() {
-              _polylines.add(Polyline(
-                polylineId: const PolylineId("route"),
-                color: TranSenColors.primaryGreen,
-                width: 5,
-                points: polylineCoordinates,
+          if (mounted) setState(() { _navSteps = stepsList; _currentStepIndex = 0; });
+
+          // Tracer la polyline sur la carte Mapbox
+          if (_mapboxController != null) {
+            try {
+              await _mapboxController!.style.addSource(
+                GeoJsonSource(id: "pool-route-source", data: jsonEncode(geometry)),
+              );
+              await _mapboxController!.style.addLayer(LineLayer(
+                id: "pool-route-layer",
+                sourceId: "pool-route-source",
+                lineColor: TranSenColors.primaryGreen.toARGB32(),
+                lineWidth: 5.0,
+                lineCap: LineCap.ROUND,
+                lineJoin: LineJoin.ROUND,
               ));
-              _navSteps = stepsList;
-              _currentStepIndex = 0;
-            });
+            } catch (_) {}
+
+            // Zoom pour montrer tout l'itinéraire
+            _mapboxController!.setCamera(CameraOptions(
+              center: Point(coordinates: Position(driverPos.lng, driverPos.lat)),
+              zoom: 11.0,
+            ));
           }
 
-          if (_mapController != null) {
-            double minLat = driverPos.latitude;
-            double maxLat = driverPos.latitude;
-            double minLng = driverPos.longitude;
-            double maxLng = driverPos.longitude;
-            for (var p in polylineCoordinates) {
-              if (p.latitude < minLat) minLat = p.latitude;
-              if (p.latitude > maxLat) maxLat = p.latitude;
-              if (p.longitude < minLng) minLng = p.longitude;
-              if (p.longitude > maxLng) maxLng = p.longitude;
-            }
-            _mapController?.animateCamera(
-              CameraUpdate.newLatLngBounds(
-                LatLngBounds(
-                  southwest: LatLng(minLat, minLng),
-                  northeast: LatLng(maxLat, maxLng),
-                ),
-                50.0,
-              ),
-            );
-          }
+          // Ajouter les marqueurs passagers via Mapbox
+          _addPassengerMarkers();
         }
       }
     } catch (e) {
       debugPrint("Pool Optimization Error: $e");
+      _isRoutePlotted = false;
     }
   }
 
-  void _buildMarkers() {
-    _markers.clear();
+  void _addPassengerMarkers() async {
+    if (_annotationManager == null) return;
+    await _annotationManager!.deleteAll();
+    final passengerBytes = await MapMarkerUtils.getPassengerIconBytes();
     for (var passenger in widget.pool.passengerDetails.values) {
       if (passenger['lat'] != null && passenger['lng'] != null) {
-        String pName = passenger['name'] ?? 'Passager';
-        if (passenger['firstName'] != null && passenger['lastName'] != null) {
-          pName = "${passenger['firstName']} ${passenger['lastName']}";
-        }
-        _markers.add(Marker(
-          markerId: MarkerId(passenger['phone'] ?? pName),
-          position: LatLng(passenger['lat'], passenger['lng']),
-          infoWindow: InfoWindow(title: pName, snippet: passenger['phone']),
-          icon:
-              BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen),
-
+        await _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(
+            (passenger['lng'] as num).toDouble(),
+            (passenger['lat'] as num).toDouble(),
+          )),
+          image: passengerBytes,
+          iconSize: 1.0,
         ));
       }
     }
@@ -433,22 +416,21 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   flex: 4,
                   child: Stack(
                     children: [
-                      GoogleMap(
-                        initialCameraPosition: const CameraPosition(
-                            target: LatLng(14.7167, -17.4677), zoom: 14),
-                        onMapCreated: (GoogleMapController controller) async {
-                          _mapController = controller;
-                          if (_myPosition != null && !_isRoutePlotted) {
-                            _mapController?.animateCamera(
-                              CameraUpdate.newLatLng(_myPosition!),
-                            );
+                      MapWidget(
+                        viewport: CameraViewportState(
+                          center: Point(coordinates: Position(-17.4677, 14.7167)),
+                          zoom: 13.0,
+                        ),
+                        onMapCreated: (MapboxMap mapboxMap) async {
+                          _mapboxController = mapboxMap;
+                          _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                          // Si on a déjà la position, lancer le tracé
+                          if (_myPosition != null) {
+                            _getPolylineAndMarkers(_myPosition!);
+                          } else {
+                            _addPassengerMarkers();
                           }
                         },
-                        markers: _markers,
-                        polylines: _polylines,
-                        myLocationEnabled: true,
-                        myLocationButtonEnabled: true,
-                        trafficEnabled: true,
                       ),
                       _buildNavigationBanner(),
                     ],

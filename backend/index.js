@@ -640,7 +640,7 @@ app.post('/api/pools/accept', verifyFirebaseToken, async (req, res) => {
             if (!poolDoc.exists) throw new Error("Trajet introuvable");
             
             const poolData = poolDoc.data();
-            if (poolData.status !== 'pending') throw new Error("Trajet déjà accepté ou expiré");
+            if (poolData.status !== 'open' && poolData.status !== 'full') throw new Error("Trajet déjà accepté ou expiré");
 
             const driverDoc = await t.get(userRef);
             if (!driverDoc.exists) throw new Error("Profil chauffeur introuvable");

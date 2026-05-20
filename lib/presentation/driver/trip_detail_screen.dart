@@ -6,13 +6,13 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
+import 'package:transen_maps/transen_maps.dart';
 
 class TripDetailScreen extends ConsumerStatefulWidget {
   final TripModel trip;
@@ -37,7 +37,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   @override
   void initState() {
     super.initState();
-    _isNavigating = widget.trip.status == 'ongoing';
+    _isNavigating = widget.trip.status == 'departed';
     _checkPermissionAndGetLocation();
   }
 
@@ -248,8 +248,11 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       clientPos ??= ItineraryOptimizer.getRegionCoordinates(widget.trip.departure);
       
       if (clientPos != null) {
+        final passengerBytes = await MapMarkerUtils.getPassengerIconBytes();
         _annotationManager!.create(PointAnnotationOptions(
           geometry: Point(coordinates: Position(clientPos.longitude, clientPos.latitude)),
+          image: passengerBytes,
+          iconSize: 1.0,
         ));
       }
 
@@ -582,7 +585,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
                                          .collection('trips')
                                          .doc(widget.trip.id)
-                                         .update({'status': 'ongoing'});
+                                         .update({'status': 'departed'});
 
                                      if (mounted) {
                                        setState(() {

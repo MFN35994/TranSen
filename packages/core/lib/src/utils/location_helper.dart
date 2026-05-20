@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:geolocator/geolocator.dart';
 
 class LocationHelper {
+  static const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
   static const Map<String, List<double>> _regionCenters = {
     'Dakar': [14.7167, -17.4677],
     'Thiès': [14.791, -16.936],

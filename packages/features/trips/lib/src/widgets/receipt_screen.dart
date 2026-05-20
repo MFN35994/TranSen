@@ -233,6 +233,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                           ),
                         ),
                         const SizedBox(height: 30),
+                        _buildStaticMap(isDark),
                         _buildReceiptRow('ID Commande', widget.orderId),
                         const SizedBox(height: 15),
                         _buildReceiptRow('Type', widget.type),
@@ -372,6 +373,157 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  String _buildStaticMapUrl({
+    required double startLat,
+    required double startLng,
+    required double endLat,
+    required double endLng,
+  }) {
+    const token = LocationHelper.mapboxToken;
+    return "https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/"
+        "pin-s-a+285A43($startLng,$startLat),"
+        "pin-s-b+D0003A($endLng,$endLat)"
+        "/auto/600x300?access_token=$token";
+  }
+
+  Widget _buildStaticMap(bool isDark) {
+    final isPool = widget.type.contains('Covoiturage') || widget.type.contains('Pool');
+    final collection = isPool ? 'pools' : 'trips';
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
+          .collection(collection)
+          .doc(widget.tripId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        double? startLat;
+        double? startLng;
+        double? endLat;
+        double? endLng;
+
+        if (snapshot.hasData && snapshot.data!.exists) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          if (data != null) {
+            final passengerDetails = data['passengerDetails'] as Map<String, dynamic>?;
+            if (passengerDetails != null && passengerDetails.isNotEmpty) {
+              final firstKey = passengerDetails.keys.first;
+              final details = passengerDetails[firstKey] as Map<String, dynamic>?;
+              if (details != null) {
+                startLat = details['lat'] as double?;
+                startLng = details['lng'] as double?;
+              }
+            }
+          }
+        }
+
+        // If coordinates couldn't be retrieved from Firestore, use region fallback
+        if (startLat == null || startLng == null) {
+          // Resolve start coordinates
+          final startCoords = ItineraryOptimizer.getRegionCoordinates(widget.departure);
+          if (startCoords != null) {
+            startLat = startCoords.latitude;
+            startLng = startCoords.longitude;
+          }
+        }
+
+        // Always resolve destination coordinates via region fallback
+        final endCoords = ItineraryOptimizer.getRegionCoordinates(widget.destination);
+        if (endCoords != null) {
+          endLat = endCoords.latitude;
+          endLng = endCoords.longitude;
+        }
+
+        // Fallbacks if all else fails
+        startLat ??= 14.7167;
+        startLng ??= -17.4677;
+        endLat ??= 14.791;
+        endLng ??= -16.935;
+
+        final mapUrl = _buildStaticMapUrl(
+          startLat: startLat,
+          startLng: startLng,
+          endLat: endLat,
+          endLng: endLng,
+        );
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 20),
+          width: double.infinity,
+          height: 160,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.08),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              )
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              children: [
+                Image.network(
+                  mapUrl,
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      color: isDark ? Colors.grey[850] : Colors.grey[100],
+                      alignment: Alignment.center,
+                      child: const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.map_outlined, color: Colors.grey, size: 40),
+                          SizedBox(height: 8),
+                          Text(
+                            "Carte indisponible",
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      color: isDark ? Colors.grey[850] : Colors.grey[100],
+                      alignment: Alignment.center,
+                      child: const CircularProgressIndicator(strokeWidth: 2),
+                    );
+                  },
+                ),
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.route_rounded, color: Colors.green[400], size: 14),
+                        const SizedBox(width: 4),
+                        const Text(
+                          "Itinéraire TranSen",
+                          style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

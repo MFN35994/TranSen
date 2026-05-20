@@ -1,4 +1,5 @@
 
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,7 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
 import 'package:flutter/services.dart';
+import 'package:dio/dio.dart';
 
 class OrderSheet extends ConsumerStatefulWidget {
   final String? initialDeparture;
@@ -64,6 +66,161 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _paymentMethod = 'Espèces'; // Par défaut
   bool _isProcessing = false;
+
+  final _customDepartureController = TextEditingController();
+  final _customDestinationController = TextEditingController();
+  double? _preciseDepartureLat;
+  double? _preciseDepartureLng;
+  bool _isLoadingLocation = false;
+
+  List<Map<String, dynamic>> _departureSuggestions = [];
+  List<Map<String, dynamic>> _destinationSuggestions = [];
+  bool _isSearchingDeparture = false;
+  bool _isSearchingDestination = false;
+  Timer? _debounceTimer;
+
+  @override
+  void dispose() {
+    _customDepartureController.dispose();
+    _customDestinationController.dispose();
+    _debounceTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _fetchSuggestions(String query, bool isDeparture) async {
+    if (query.trim().isEmpty) {
+      setState(() {
+        if (isDeparture) {
+          _departureSuggestions = [];
+        } else {
+          _destinationSuggestions = [];
+        }
+      });
+      return;
+    }
+
+    setState(() {
+      if (isDeparture) {
+        _isSearchingDeparture = true;
+      } else {
+        _isSearchingDestination = true;
+      }
+    });
+
+    try {
+      final dio = Dio();
+      final encodedQuery = Uri.encodeComponent(query);
+      const token = LocationHelper.mapboxToken;
+      final url = "https://api.mapbox.com/geocoding/v5/mapbox.places/$encodedQuery.json?access_token=$token&country=sn&types=address,poi,neighborhood,locality&language=fr&limit=5";
+      
+      final response = await dio.get(url);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final features = data['features'] as List?;
+        if (features != null) {
+          final List<Map<String, dynamic>> results = [];
+          for (var item in features) {
+            final placeName = item['place_name'] as String?;
+            final center = item['center'] as List?;
+            if (placeName != null && center != null && center.length >= 2) {
+              results.add({
+                'name': placeName,
+                'lng': center[0] as double,
+                'lat': center[1] as double,
+              });
+            }
+          }
+
+          if (mounted) {
+            setState(() {
+              if (isDeparture) {
+                _departureSuggestions = results;
+              } else {
+                _destinationSuggestions = results;
+              }
+            });
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Mapbox Geocoding Autocomplete error: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          if (isDeparture) {
+            _isSearchingDeparture = false;
+          } else {
+            _isSearchingDestination = false;
+          }
+        });
+      }
+    }
+  }
+
+  Future<String?> _reverseGeocode(double lat, double lng) async {
+    try {
+      final dio = Dio();
+      dio.options.headers['User-Agent'] = 'TranSenMobileApp/1.0';
+      final url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=fr";
+      final response = await dio.get(url);
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final address = data['address'] as Map<String, dynamic>?;
+        if (address != null) {
+          final locality = address['suburb'] ?? address['neighbourhood'] ?? address['town'] ?? address['village'] ?? address['city'] ?? address['county'];
+          if (locality != null) return locality.toString();
+        }
+      }
+    } catch (e) {
+      debugPrint("Reverse geocoding error: $e");
+    }
+    return null;
+  }
+
+  Future<void> _getCurrentLocationForDeparture() async {
+    setState(() => _isLoadingLocation = true);
+    try {
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        final pos = await Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(
+            accuracy: LocationAccuracy.high,
+            timeLimit: Duration(seconds: 5),
+          ),
+        );
+        _preciseDepartureLat = pos.latitude;
+        _preciseDepartureLng = pos.longitude;
+
+        final detectedRegion = LocationHelper.detectRegion(pos);
+
+        final preciseZone = await _reverseGeocode(pos.latitude, pos.longitude);
+        if (preciseZone != null && preciseZone.isNotEmpty) {
+          setState(() {
+            _selectedDeparture = 'Autre (Saisir manuellement)...';
+            _customDepartureController.text = "$preciseZone, $detectedRegion";
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Position détectée: $preciseZone ($detectedRegion)"), backgroundColor: TranSenColors.primaryGreen),
+            );
+          }
+        } else {
+          setState(() {
+            _selectedDeparture = detectedRegion;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint("Error detecting position: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
 
   TimeOfDay _roundToNearest15Mins(TimeOfDay time) {
     int minute = time.minute;
@@ -162,6 +319,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     'Tambacounda',
     'Thiès',
     'Ziguinchor',
+    'Autre (Saisir manuellement)...',
   ];
 
   @override
@@ -241,32 +399,135 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                 ),
               ),
             // Liste déroulante : Point de départ
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                hintText: 'Région de départ',
-                prefixIcon: const Icon(Icons.my_location, color: Colors.blue),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide.none,
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    decoration: InputDecoration(
+                      hintText: 'Région de départ',
+                      prefixIcon: const Icon(Icons.my_location, color: Colors.blue),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide.none,
+                      ),
+                      filled: true,
+                      fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
+                    ),
+                    initialValue: _selectedDeparture,
+                    icon: const Icon(Icons.arrow_drop_down),
+                    isExpanded: true,
+                    items: _regions.map((region) {
+                      return DropdownMenuItem(
+                        value: region,
+                        child: Text(region),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedDeparture = value;
+                      });
+                    },
+                  ),
                 ),
-                filled: true,
-                fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
-              ),
-              initialValue: _selectedDeparture,
-              icon: const Icon(Icons.arrow_drop_down),
-              isExpanded: true,
-              items: _regions.map((region) {
-                return DropdownMenuItem(
-                  value: region,
-                  child: Text(region),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedDeparture = value;
-                });
-              },
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: _isLoadingLocation ? null : _getCurrentLocationForDeparture,
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3)),
+                    ),
+                    child: _isLoadingLocation
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation(TranSenColors.primaryGreen),
+                            ),
+                          )
+                        : const Icon(Icons.my_location, color: TranSenColors.primaryGreen),
+                  ),
+                ),
+              ],
             ),
+            if (_selectedDeparture == 'Autre (Saisir manuellement)...') ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _customDepartureController,
+                decoration: InputDecoration(
+                  hintText: 'Saisissez votre zone de départ (ex: Mbour)',
+                  prefixIcon: const Icon(Icons.edit_location_alt_rounded, color: Colors.blueAccent),
+                  suffixIcon: _isSearchingDeparture
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
+                ),
+                onChanged: (value) {
+                  _debounceTimer?.cancel();
+                  _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                    _fetchSuggestions(value, true);
+                  });
+                },
+              ),
+              if (_departureSuggestions.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: _departureSuggestions.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final suggestion = _departureSuggestions[index];
+                      return ListTile(
+                        leading: const Icon(Icons.location_on_outlined, color: TranSenColors.primaryGreen),
+                        title: Text(
+                          suggestion['name'],
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _customDepartureController.text = suggestion['name'];
+                            _preciseDepartureLat = suggestion['lat'];
+                            _preciseDepartureLng = suggestion['lng'];
+                            _departureSuggestions = [];
+                          });
+                          FocusScope.of(context).unfocus();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: 15),
 
             // --- FAVORIS RAPIDES ---
@@ -339,6 +600,79 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
                 });
               },
             ),
+            if (_selectedDestination == 'Autre (Saisir manuellement)...') ...[
+              const SizedBox(height: 10),
+              TextField(
+                controller: _customDestinationController,
+                decoration: InputDecoration(
+                  hintText: 'Saisissez votre zone de destination (ex: Mboro)',
+                  prefixIcon: const Icon(Icons.edit_location_alt_rounded, color: Colors.redAccent),
+                  suffixIcon: _isSearchingDestination
+                      ? const Padding(
+                          padding: EdgeInsets.all(12.0),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: Theme.of(context).brightness == Brightness.light ? Colors.grey[100] : Colors.grey[850],
+                ),
+                onChanged: (value) {
+                  _debounceTimer?.cancel();
+                  _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+                    _fetchSuggestions(value, false);
+                  });
+                },
+              ),
+              if (_destinationSuggestions.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey[900],
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.1),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      )
+                    ],
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    physics: const ClampingScrollPhysics(),
+                    padding: EdgeInsets.zero,
+                    itemCount: _destinationSuggestions.length,
+                    separatorBuilder: (context, index) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final suggestion = _destinationSuggestions[index];
+                      return ListTile(
+                        leading: const Icon(Icons.location_on_outlined, color: Colors.redAccent),
+                        title: Text(
+                          suggestion['name'],
+                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        onTap: () {
+                          setState(() {
+                            _customDestinationController.text = suggestion['name'];
+                            _destinationSuggestions = [];
+                          });
+                          FocusScope.of(context).unfocus();
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ],
             const SizedBox(height: 15),
 
             // --- LOGIQUE DE POOLING VISUELLE ---
@@ -647,30 +981,52 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         await Future.delayed(const Duration(milliseconds: 500));
       }
 
+      final finalDeparture = _selectedDeparture == 'Autre (Saisir manuellement)...'
+          ? _customDepartureController.text.trim()
+          : _selectedDeparture!;
+      final finalDestination = _selectedDestination == 'Autre (Saisir manuellement)...'
+          ? _customDestinationController.text.trim()
+          : _selectedDestination!;
+
+      if (finalDeparture.isEmpty || finalDestination.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Veuillez saisir les zones de départ et de destination."),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        setState(() => _isProcessing = false);
+        return;
+      }
+
       final tripRepo = ref.read(tripRepositoryProvider);
       final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
       
       int finalPrice = 10000;
 
-      double lat = 14.7167; 
-      double lng = -17.4677;
-      try {
-        final pos = await Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high,
-            timeLimit: Duration(seconds: 3),
-          ),
-        );
-        lat = pos.latitude;
-        lng = pos.longitude;
-      } catch (e) {
-        debugPrint("Erreur localisation: $e");
+      double lat = _preciseDepartureLat ?? 14.7167; 
+      double lng = _preciseDepartureLng ?? -17.4677;
+      if (_preciseDepartureLat == null || _preciseDepartureLng == null) {
+        try {
+          final pos = await Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              timeLimit: Duration(seconds: 3),
+            ),
+          );
+          lat = pos.latitude;
+          lng = pos.longitude;
+        } catch (e) {
+          debugPrint("Erreur localisation: $e");
+        }
       }
 
       final poolId = await tripRepo.joinOrCreatePool(
         userId: userId,
-        departure: _selectedDeparture!,
-        destination: _selectedDestination!,
+        departure: finalDeparture,
+        destination: finalDestination,
         scheduledDate: scheduledDate,
         lat: lat,
         lng: lng,
@@ -699,8 +1055,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
           navigator.push(MaterialPageRoute(
             builder: (_) => ReceiptScreen(
               orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
-              departure: _selectedDeparture!,
-              destination: _selectedDestination!,
+              departure: finalDeparture,
+              destination: finalDestination,
               price: '$finalPrice FCFA',
               type: 'Covoiturage Intelligent',
               tripId: poolId,

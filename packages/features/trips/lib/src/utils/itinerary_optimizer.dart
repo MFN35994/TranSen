@@ -1,5 +1,11 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:math';
+
+/// Coordonnées géographiques simples (remplace google_maps_flutter LatLng)
+class LatLng {
+  final double latitude;
+  final double longitude;
+  const LatLng(this.latitude, this.longitude);
+}
 
 class ItineraryOptimizer {
   /// Calcule l'ordre optimal de ramassage pour minimiser la distance totale.
@@ -49,6 +55,7 @@ class ItineraryOptimizer {
   }
 
   static LatLng? getRegionCoordinates(String regionName) {
+    // Essayer une correspondance exacte d'abord
     final Map<String, LatLng> regions = {
       'Dakar': const LatLng(14.7167, -17.4677),
       'Thiès': const LatLng(14.791, -16.935),
@@ -65,6 +72,18 @@ class ItineraryOptimizer {
       'Kédougou': const LatLng(12.55, -12.18),
       'Sédhiou': const LatLng(12.70, -15.55),
     };
-    return regions[regionName];
+    
+    if (regions.containsKey(regionName)) return regions[regionName];
+    
+    // Correspondance partielle pour les zones personnalisées (ex: "Mbour, Thiès")
+    final lowerName = regionName.toLowerCase();
+    for (final entry in regions.entries) {
+      if (lowerName.contains(entry.key.toLowerCase())) {
+        return entry.value;
+      }
+    }
+    
+    // Fallback: Dakar
+    return const LatLng(14.7167, -17.4677);
   }
 }

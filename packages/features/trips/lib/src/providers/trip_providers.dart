@@ -132,7 +132,7 @@ final driverActiveTripProvider = StreamProvider<TripModel?>((ref) {
   
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
       .where('driverId', isEqualTo: auth.userId)
-      .where('status', isEqualTo: 'accepted')
+      .where('status', whereIn: const ['accepted', 'departed'])
       .snapshots()
       .map((snapshot) {
         final vtcTrips = snapshot.docs.where((doc) {
@@ -152,7 +152,7 @@ final driverActiveDeliveriesProvider = StreamProvider<List<TripModel>>((ref) {
   
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('trips')
       .where('driverId', isEqualTo: auth.userId)
-      .where('status', isEqualTo: 'accepted')
+      .where('status', whereIn: const ['accepted', 'departed'])
       .snapshots()
       .map((snapshot) {
         return snapshot.docs.where((doc) {

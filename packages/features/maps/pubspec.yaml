@@ -13,8 +13,6 @@ dependencies:
     sdk: flutter
   transen_core:
     path: ../../core
-  google_maps_flutter: ^2.5.3
-  flutter_polyline_points: ^3.1.0
   flutter_riverpod: ^3.3.1
 
 dev_dependencies:
