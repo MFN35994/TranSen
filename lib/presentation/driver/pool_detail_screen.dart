@@ -56,6 +56,15 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
 
   void _fetchMyPositionAndRoute() async {
     try {
+      bool serviceEnabled = await geo.Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
+      geo.LocationPermission permission = await geo.Geolocator.checkPermission();
+      if (permission == geo.LocationPermission.denied) {
+        permission = await geo.Geolocator.requestPermission();
+        if (permission == geo.LocationPermission.denied) return;
+      }
+
       geo.Position pos = await geo.Geolocator.getCurrentPosition();
       final driverPos = (lat: pos.latitude, lng: pos.longitude);
 
@@ -70,7 +79,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
       }
 
       _getPolylineAndMarkers(driverPos);
-    } catch (_) {}
+    } catch (e) {
+      debugPrint("Error fetching driver position: $e");
+    }
 
     // Écoute la position en temps réel
     _positionStream = geo.Geolocator.getPositionStream(
@@ -132,6 +143,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   }
 
   void _getPolylineAndMarkers(({double lat, double lng}) driverPos) async {
+    if (_mapboxController == null) return;
     if (_isRoutePlotted || _optimizedPickups.isEmpty) return;
     _isRoutePlotted = true;
 
@@ -266,63 +278,68 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
         break;
     }
 
-    return Positioned(
-      top: 15,
-      left: 15,
-      right: 15,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: TranSenColors.primaryGreen,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(turnIcon, color: Colors.white, size: 28),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        color: TranSenColors.primaryGreen,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    instruction,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
+            child: Icon(turnIcon, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "GUIDAGE NAVIGATION",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _remainingDistance > 1000
-                        ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
-                        : "Dans ${_remainingDistance.toInt()} m",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  instruction,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _remainingDistance > 1000
+                      ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
+                      : "Dans ${_remainingDistance.toInt()} m",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -413,13 +430,25 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   ),
                 ),
                 Expanded(
-                  flex: 4,
-                  child: Stack(
-                    children: [
-                      MapWidget(
+                  flex: 5,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(30),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
+                      ],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(30),
+                      child: MapWidget(
                         viewport: CameraViewportState(
-                          center: Point(coordinates: Position(-17.4677, 14.7167)),
-                          zoom: 13.0,
+                          center: Point(
+                            coordinates: Position(
+                              (ItineraryOptimizer.getRegionCoordinates(widget.pool.departure) ?? const LatLng(14.7167, -17.4677)).longitude,
+                              (ItineraryOptimizer.getRegionCoordinates(widget.pool.departure) ?? const LatLng(14.7167, -17.4677)).latitude,
+                            ),
+                          ),
+                          zoom: 11.0,
                         ),
                         onMapCreated: (MapboxMap mapboxMap) async {
                           _mapboxController = mapboxMap;
@@ -432,12 +461,11 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           }
                         },
                       ),
-                      _buildNavigationBanner(),
-                    ],
+                    ),
                   ),
                 ),
                 Expanded(
-                  flex: 6,
+                  flex: 5,
                   child: Container(
                     decoration: BoxDecoration(
                       color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF121212) : Colors.white,
@@ -448,37 +476,49 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                             offset: const Offset(0, -5))
                       ],
                     ),
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: _optimizedPickups.length,
-                      itemBuilder: (_, index) {
-                        final passengerEntry = _optimizedPickups[index];
-                        final passengerId = passengerEntry.key;
-                        final passenger = passengerEntry.value;
-                        final isLast = index == _optimizedPickups.length - 1;
+                    child: Column(
+                      children: [
+                        if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) ...[
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                            child: _buildNavigationBanner(),
+                          ),
+                        ],
+                        Expanded(
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(20),
+                            itemCount: _optimizedPickups.length,
+                            itemBuilder: (_, index) {
+                              final passengerEntry = _optimizedPickups[index];
+                              final passengerId = passengerEntry.key;
+                              final passenger = passengerEntry.value;
+                              final isLast = index == _optimizedPickups.length - 1;
 
-                        String pName = passenger['name'] ?? 'Passager';
-                        if (passenger['firstName'] != null &&
-                            passenger['lastName'] != null) {
-                          pName =
-                              "${passenger['firstName']} ${passenger['lastName']}";
-                        }
+                              String pName = passenger['name'] ?? 'Passager';
+                              if (passenger['firstName'] != null &&
+                                  passenger['lastName'] != null) {
+                                pName =
+                                    "${passenger['firstName']} ${passenger['lastName']}";
+                              }
 
-                        return Column(
-                          children: [
-                            _buildStepCard(
-                              index + 1,
-                              pName,
-                              passengerId,
-                              passenger,
-                              "Récupération: ${pool.departure}",
-                            ),
-                            if (!isLast)
-                              const Icon(Icons.arrow_downward,
-                                  color: Colors.grey, size: 20),
-                          ],
-                        );
-                      },
+                              return Column(
+                                children: [
+                                  _buildStepCard(
+                                    index + 1,
+                                    pName,
+                                    passengerId,
+                                    passenger,
+                                    "Récupération: ${pool.departure}",
+                                  ),
+                                  if (!isLast)
+                                    const Icon(Icons.arrow_downward,
+                                        color: Colors.grey, size: 20),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

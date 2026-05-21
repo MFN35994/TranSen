@@ -129,6 +129,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   }
 
   void _getPolyline(LatLng driverPos) async {
+    if (_mapController == null) return;
     if (_isRoutePlotted) return;
     
     final List<String> clientCoords = [];
@@ -309,63 +310,68 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         break;
     }
 
-    return Positioned(
-      top: 15,
-      left: 15,
-      right: 15,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.9),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 15,
-              offset: const Offset(0, 5),
-            )
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: const BoxDecoration(
-                color: TranSenColors.primaryGreen,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(turnIcon, color: Colors.white, size: 28),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      decoration: BoxDecoration(
+        color: TranSenColors.primaryGreen,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(
+            color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+          )
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    instruction,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.3,
-                    ),
+            child: Icon(turnIcon, color: Colors.white, size: 28),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "GUIDAGE NAVIGATION",
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _remainingDistance > 1000
-                        ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
-                        : "Dans ${_remainingDistance.toInt()} m",
-                    style: const TextStyle(
-                      color: Colors.white70,
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                    ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  instruction,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _remainingDistance > 1000
+                      ? "Dans ${(_remainingDistance / 1000).toStringAsFixed(1)} km"
+                      : "Dans ${_remainingDistance.toInt()} m",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -417,7 +423,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
         children: [
           // Carte Interactive
           Expanded(
-            flex: 6,
+            flex: 5,
             child: Container(
               margin: const EdgeInsets.all(15),
               decoration: BoxDecoration(
@@ -426,44 +432,48 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                   BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 20, offset: const Offset(0, 10))
                 ],
               ),
-              child: Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(30),
-                    child: MapWidget(
-                      viewport: CameraViewportState(
-                        center: Point(coordinates: Position(-17.4677, 14.7167)),
-                        zoom: 13.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(30),
+                child: MapWidget(
+                  viewport: CameraViewportState(
+                    center: Point(
+                      coordinates: Position(
+                        (ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677)).longitude,
+                        (ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677)).latitude,
                       ),
-                      onMapCreated: (MapboxMap mapboxMap) async {
-                        _mapController = mapboxMap;
-                        _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-                        if (_myPosition != null) {
-                          _mapController?.setCamera(
-                            CameraOptions(
-                              center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
-                              zoom: _isNavigating ? 16.5 : 13.0,
-                              pitch: _isNavigating ? 45.0 : 0.0,
-                            ),
-                          );
-                        }
-                      },
                     ),
+                    zoom: 11.0,
                   ),
-                  _buildNavigationBanner(),
-                ],
+                  onMapCreated: (MapboxMap mapboxMap) async {
+                    _mapController = mapboxMap;
+                    _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                    if (_myPosition != null) {
+                      _mapController?.setCamera(
+                        CameraOptions(
+                          center: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+                          zoom: _isNavigating ? 16.5 : 13.0,
+                          pitch: _isNavigating ? 45.0 : 0.0,
+                        ),
+                      );
+                      _getPolyline(_myPosition!);
+                    }
+                  },
+                ),
               ),
             ),
           ),
           
           // Détails Panel
           Expanded(
-            flex: 4,
+            flex: 5,
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              padding: const EdgeInsets.fromLTRB(20, 15, 20, 20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  _buildNavigationBanner(),
+                  if (_isNavigating && _navSteps.isNotEmpty && _currentStepIndex < _navSteps.length) const SizedBox(height: 20),
+                  
                   // Client Info
                   Container(
                     padding: const EdgeInsets.all(20),

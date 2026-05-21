@@ -95,6 +95,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   }
 
   void _getPolyline(({double lat, double lng}) driverPos, ({double lat, double lng}) clientPos) async {
+    if (_mapController == null) return;
     if (_isRoutePlotted) return;
     _isRoutePlotted = true;
 
@@ -219,7 +220,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                   DraggableScrollableSheet(
                     initialChildSize: 0.45,
                     minChildSize: 0.3,
-                    maxChildSize: 0.7,
+                    maxChildSize: 0.6,
                     builder: (context, scrollController) {
                       return _buildDriverInfoPanel(trip, scrollController);
                     },
@@ -379,8 +380,13 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
         return MapWidget(
           viewport: CameraViewportState(
-            center: Point(coordinates: Position(-17.4677, 14.7167)),
-            zoom: 14.0,
+            center: Point(
+              coordinates: Position(
+                (ItineraryOptimizer.getRegionCoordinates(trip.departure) ?? const LatLng(14.7167, -17.4677)).longitude,
+                (ItineraryOptimizer.getRegionCoordinates(trip.departure) ?? const LatLng(14.7167, -17.4677)).latitude,
+              ),
+            ),
+            zoom: 11.0,
           ),
           onMapCreated: (MapboxMap mapboxMap) async {
             _mapController = mapboxMap;
