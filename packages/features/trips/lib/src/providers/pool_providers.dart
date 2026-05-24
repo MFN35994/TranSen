@@ -10,9 +10,7 @@ final poolDetailProvider = StreamProvider.family<PoolModel?, String>((ref, poolI
   return ref.watch(tripRepositoryProvider).watchPool(poolId);
 });
 
-final demandHeatmapProvider = StreamProvider<Map<String, int>>((ref) {
-  return ref.watch(tripRepositoryProvider).watchDemandHeatmap();
-});
+
 
 final pendingPoolsProvider = StreamProvider.family<List<PoolModel>, String>((ref, filterKey) {
   final parts = filterKey.split('|');
