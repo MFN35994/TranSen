@@ -13,6 +13,7 @@ import 'package:dio/dio.dart';
 import 'dart:math' as math;
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:transen_maps/transen_maps.dart';
 
 class PoolDetailScreen extends ConsumerStatefulWidget {
@@ -30,6 +31,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   PointAnnotationManager? _annotationManager;
   bool _isRoutePlotted = false;
   ({double lat, double lng})? _myPosition;
+  Uint8List? _carIconBytes;
 
   StreamSubscription<geo.Position>? _positionStream;
   List<dynamic> _navSteps = [];
@@ -41,11 +43,17 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   void initState() {
     super.initState();
     _isNavigating = widget.pool.status == 'departed';
+    _loadCarIcon();
     _optimizedPickups = ItineraryOptimizer.optimizePickupOrder(
       const LatLng(14.7167, -17.4677),
       widget.pool.passengerDetails,
     );
     _fetchMyPositionAndRoute();
+  }
+
+  void _loadCarIcon() async {
+    _carIconBytes = await MapMarkerUtils.getCarIconBytes();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -92,7 +100,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     ).listen((pos) {
       if (!mounted) return;
       final driverPos = (lat: pos.latitude, lng: pos.longitude);
-      setState(() => _myPosition = driverPos);
+      setState(() {
+        _myPosition = driverPos;
+        _addPassengerMarkers();
+      });
 
       // Suivi caméra Mapbox pendant navigation
       if (_isNavigating && _mapboxController != null) {
@@ -220,6 +231,22 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   void _addPassengerMarkers() async {
     if (_annotationManager == null) return;
     await _annotationManager!.deleteAll();
+    
+    // Marqueur Chauffeur (Voiture)
+    if (_myPosition != null) {
+      if (_isNavigating && _carIconBytes != null) {
+        await _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(_myPosition!.lng, _myPosition!.lat)),
+          image: _carIconBytes!,
+          iconSize: 1.0,
+        ));
+      } else {
+        await _annotationManager!.create(PointAnnotationOptions(
+          geometry: Point(coordinates: Position(_myPosition!.lng, _myPosition!.lat)),
+        ));
+      }
+    }
+
     final passengerBytes = await MapMarkerUtils.getPassengerIconBytes();
     for (var passenger in widget.pool.passengerDetails.values) {
       if (passenger['lat'] != null && passenger['lng'] != null) {
@@ -361,7 +388,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
               children: [
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 25),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: Theme.of(context).brightness == Brightness.dark 
@@ -370,12 +397,12 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
+                    borderRadius: const BorderRadius.vertical(bottom: Radius.circular(30)),
                     boxShadow: [
                       BoxShadow(
                         color: TranSenColors.primaryGreen.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                        offset: const Offset(0, 10),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
                       )
                     ],
                   ),
@@ -384,29 +411,29 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       Row(
                         children: [
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: TranSenColors.primaryGreen.withValues(alpha: 0.15),
                               shape: BoxShape.circle,
                               border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3), width: 1.5),
                             ),
-                            child: const Icon(Icons.route_rounded, color: TranSenColors.primaryGreen, size: 28),
+                            child: const Icon(Icons.route_rounded, color: TranSenColors.primaryGreen, size: 22),
                           ),
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 15),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text("ITINÉRAIRE EN COURS", 
-                                  style: TextStyle(color: Colors.white60, fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1.5)
+                                  style: TextStyle(color: Colors.white60, fontSize: 9, fontWeight: FontWeight.w900, letterSpacing: 1.2)
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   "${pool.departure} ➔ ${pool.destination}",
                                   style: const TextStyle(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w900,
-                                    fontSize: 18,
+                                    fontSize: 16,
                                     letterSpacing: -0.5
                                   ),
                                   maxLines: 1,
@@ -417,7 +444,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -647,10 +674,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   Widget _buildHeaderStat(String label, String value, IconData icon) {
     return Column(
       children: [
-        Icon(icon, color: TranSenColors.primaryGreen, size: 18),
-        const SizedBox(height: 6),
+        Icon(icon, color: TranSenColors.primaryGreen, size: 16),
+        const SizedBox(height: 3),
         Text(label, style: const TextStyle(color: Colors.white54, fontSize: 8, fontWeight: FontWeight.bold, letterSpacing: 1)),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w900)),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w900)),
       ],
     );
   }

@@ -730,6 +730,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
                               senderPhone: finalSenderPhone,
                               receiverPhone: finalReceiverPhone,
                               paymentMethod: _paymentMethod,
+                              departureLat: lat,
+                              departureLng: lng,
                               passengerDetails: {
                                 userId: {
                                   'name': userName,

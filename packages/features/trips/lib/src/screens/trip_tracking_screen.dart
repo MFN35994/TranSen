@@ -15,6 +15,7 @@ import 'dart:convert';
 
 import 'package:transen_rating/transen_rating.dart';
 import 'dart:ui' as ui;
+import 'package:share_plus/share_plus.dart';
 
 
 class TripTrackingScreen extends ConsumerStatefulWidget {
@@ -148,11 +149,22 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
         title: const Text('Suivi de ma demande'),
         backgroundColor: TranSenColors.primaryGreen,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.share),
+            tooltip: 'Partager mon trajet',
+            onPressed: () {
+              final type = widget.tripId.startsWith('POOL-') ? 'pool' : 'trip';
+              final String shareUrl = "https://transen-api.onrender.com/share/${widget.tripId}?type=$type";
+              Share.share("Suivez mon trajet TranSen en direct : $shareUrl");
+            },
+          ),
+        ],
       ),
       body: StreamBuilder<TripModel?>(
         stream: tripRepo.watchTrip(widget.tripId),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen));
           }
           final trip = snapshot.data;

@@ -24,6 +24,8 @@ class TripModel {
   final String? comment;
   final String? paymentMethod;
   final Map<String, dynamic>? passengerDetails;
+  final double? departureLat;
+  final double? departureLng;
   final double? destinationLat;
   final double? destinationLng;
   final double? pointsDiscount;
@@ -51,6 +53,8 @@ class TripModel {
     this.comment,
     this.paymentMethod,
     this.passengerDetails,
+    this.departureLat,
+    this.departureLng,
     this.destinationLat,
     this.destinationLng,
     this.pointsDiscount,
@@ -81,6 +85,8 @@ class TripModel {
       comment: data['comment'],
       paymentMethod: data['paymentMethod'],
       passengerDetails: data['passengerDetails'],
+      departureLat: data['departureLat']?.toDouble(),
+      departureLng: data['departureLng']?.toDouble(),
       destinationLat: data['destinationLat']?.toDouble(),
       destinationLng: data['destinationLng']?.toDouble(),
       pointsDiscount: data['pointsDiscount']?.toDouble(),
@@ -110,6 +116,8 @@ class TripModel {
       'comment': comment,
       'paymentMethod': paymentMethod,
       'passengerDetails': passengerDetails,
+      'departureLat': departureLat,
+      'departureLng': departureLng,
       'destinationLat': destinationLat,
       'destinationLng': destinationLng,
       'pointsDiscount': pointsDiscount,

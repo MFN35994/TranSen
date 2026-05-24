@@ -26,6 +26,7 @@ class NotificationService {
   );
 
   final Map<String, StreamSubscription> _chatSubscriptions = {};
+  final Map<String, String> _knownTripStatuses = {};
 
   Future<void> init(String userId) async {
     // 1. Demander la permission
@@ -53,9 +54,56 @@ class NotificationService {
         _saveTokenToDatabase(userId, newToken);
       });
 
-      // 5. Démarrer l'écouteur de messages de chat internes
+      // 5. Démarrer les écouteurs locaux (sans Cloud Functions)
       startChatListener(userId);
+      startTripStatusListener(userId);
     }
+  }
+
+  void startTripStatusListener(String userId) {
+    final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+    
+    db.collection('trips')
+      .where('clientId', isEqualTo: userId)
+      .snapshots()
+      .listen((snapshot) {
+        for (var change in snapshot.docChanges) {
+          final data = change.doc.data();
+          if (data == null) continue;
+          
+          final tripId = change.doc.id;
+          final status = data['status'] as String?;
+          
+          if (change.type == DocumentChangeType.added) {
+            _knownTripStatuses[tripId] = status ?? '';
+          } else if (change.type == DocumentChangeType.modified) {
+            final oldStatus = _knownTripStatuses[tripId];
+            if (oldStatus != status) {
+              _knownTripStatuses[tripId] = status ?? '';
+              
+              if (status == 'accepted') {
+                _showLocalNotification(
+                  "Chauffeur en route ! 🚗",
+                  "Votre chauffeur a accepté la course et se dirige vers vous.",
+                  payload: tripId,
+                );
+              } else if (status == 'departed') {
+                _showLocalNotification(
+                  "Course démarrée 🚀",
+                  "Attachez votre ceinture, le trajet a commencé.",
+                  payload: tripId,
+                );
+              } else if (status == 'arrived') {
+                _showLocalNotification(
+                  "Chauffeur sur place 📍",
+                  "Votre chauffeur est arrivé au point de rendez-vous.",
+                  payload: tripId,
+                );
+              }
+            }
+          }
+        }
+      });
   }
 
   void startChatListener(String userId) {

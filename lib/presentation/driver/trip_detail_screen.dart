@@ -9,6 +9,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:dio/dio.dart';
 import 'dart:convert';
@@ -28,6 +29,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   LatLng? _myPosition;
   StreamSubscription<geo.Position>? _positionStream;
   bool _isRoutePlotted = false;
+  Uint8List? _carIconBytes;
 
   List<dynamic> _navSteps = [];
   int _currentStepIndex = 0;
@@ -38,7 +40,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   void initState() {
     super.initState();
     _isNavigating = widget.trip.status == 'departed';
+    _loadCarIcon();
     _checkPermissionAndGetLocation();
+  }
+
+  void _loadCarIcon() async {
+    _carIconBytes = await MapMarkerUtils.getCarIconBytes();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -233,9 +241,17 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
       _annotationManager!.deleteAll();
       
       if (_myPosition != null) {
-        _annotationManager!.create(PointAnnotationOptions(
-          geometry: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
-        ));
+        if (_isNavigating && _carIconBytes != null) {
+          _annotationManager!.create(PointAnnotationOptions(
+            geometry: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+            image: _carIconBytes!,
+            iconSize: 1.0,
+          ));
+        } else {
+          _annotationManager!.create(PointAnnotationOptions(
+            geometry: Point(coordinates: Position(_myPosition!.longitude, _myPosition!.latitude)),
+          ));
+        }
       }
       
       // Client Marker

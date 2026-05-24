@@ -151,8 +151,16 @@ class TripRepository {
       final alreadyClaimed = userData['referralRewardClaimed'] ?? false;
 
       if (referredBy != null && !alreadyClaimed) {
-        debugPrint(">>> PARRAINAGE: Demande de 10 points au backend pour $referredBy");
-        await _paymentRepo.processReferralReward(userId, tripType);
+        debugPrint(">>> PARRAINAGE: Attribution de 10 points au parrain $referredBy");
+        // 1. Give 10 points to the referrer
+        await _firestore.collection('users').doc(referredBy).set({
+          'loyaltyPoints': FieldValue.increment(10)
+        }, SetOptions(merge: true));
+        
+        // 2. Mark as claimed for the new user
+        await _firestore.collection('users').doc(userId).update({
+          'referralRewardClaimed': true,
+        });
       }
     } catch (e) {
       debugPrint("Erreur parrainage: $e");
@@ -192,6 +200,30 @@ class TripRepository {
       throw Exception(error);
     }
   }
+  Future<void> _incrementCompletedTripsAndReward(String userId) async {
+    try {
+      final docRef = _firestore.collection('users').doc(userId);
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(docRef);
+        if (!snapshot.exists) return;
+        
+        final currentCount = (snapshot.data()?['completedTripsCount'] ?? 0) as int;
+        final newCount = currentCount + 1;
+        
+        final updates = <String, dynamic>{
+          'completedTripsCount': newCount,
+        };
+        
+        if (newCount % 10 == 0) {
+          updates['loyaltyPoints'] = FieldValue.increment(10);
+        }
+        
+        transaction.set(docRef, updates, SetOptions(merge: true));
+      });
+    } catch (e) {
+      debugPrint("Error incrementing trips count: $e");
+    }
+  }
 
   Future<void> completeTrip(String tripId, {double? currentLat, double? currentLng}) async {
     final poolDoc = await _firestore.collection('pools').doc(tripId).get();
@@ -205,9 +237,15 @@ class TripRepository {
       });
       
       if (driverId != null) {
+        await _incrementCompletedTripsAndReward(driverId);
         await _firestore.collection('active_drivers').doc(driverId).update({
           'activePoolId': FieldValue.delete(),
         }).catchError((_) {});
+      }
+      
+      final passengerIds = List<String>.from(data['passengerIds'] ?? []);
+      for (final pId in passengerIds) {
+        await _incrementCompletedTripsAndReward(pId);
       }
     } else {
       final tripDoc = await _firestore.collection('trips').doc(tripId).get();
@@ -236,6 +274,9 @@ class TripRepository {
           'completedAt': FieldValue.serverTimestamp(),
           'locationVerified': locationVerified,
         });
+
+        if (driverId != null) await _incrementCompletedTripsAndReward(driverId);
+        if (clientId != null) await _incrementCompletedTripsAndReward(clientId);
 
         if (pointsDiscount > 0 && locationVerified && driverId != null) {
           await _paymentRepo.updateWalletBalance(
@@ -421,6 +462,51 @@ class TripRepository {
           }
           return heatmap;
         });
+  }
+
+  Stream<List<Map<String, double>>> watchDemandHeatpoints() {
+    final tripStream = _firestore.collection('trips')
+        .where('status', isEqualTo: 'pending')
+        .snapshots();
+        
+    final poolStream = _firestore.collection('pools')
+        .where('status', isEqualTo: 'open')
+        .snapshots();
+
+    return Rx.combineLatest2(tripStream, poolStream, (tripSnap, poolSnap) {
+      final List<Map<String, double>> points = [];
+      
+      for (var doc in tripSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        
+        final lat = data['departureLat'];
+        final lng = data['departureLng'];
+        if (lat != null && lng != null) {
+          points.add({'lat': (lat as num).toDouble(), 'lng': (lng as num).toDouble()});
+        }
+      }
+      
+      for (var doc in poolSnap.docs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
+        
+        final passDetails = data['passengerDetails'] as Map<String, dynamic>?;
+        if (passDetails != null) {
+          passDetails.forEach((key, value) {
+            if (value is Map) {
+              final lat = value['lat'];
+              final lng = value['lng'];
+              if (lat != null && lng != null) {
+                points.add({'lat': (lat as num).toDouble(), 'lng': (lng as num).toDouble()});
+              }
+            }
+          });
+        }
+      }
+      
+      return points;
+    });
   }
 
   // 6. ROUTES CHAUFFEUR

@@ -28,7 +28,6 @@ class ProfileScreen extends ConsumerWidget {
               }
               
               final userData = snapshot.data;
-              // Debug pour aider au diagnostic si besoin
               debugPrint("ProfileScreen: UserID=$userId, DataExist=${userData != null}");
               
               String name = userData?['name'] ?? '';
@@ -36,7 +35,6 @@ class ProfileScreen extends ConsumerWidget {
                 name = "${userData!['firstName']} ${userData['lastName'] ?? ''}";
               }
               if (name.isEmpty) {
-                // Fallback ultime
                 name = auth?.role == 'driver' ? 'Chauffeur TranSen' : 'Client TranSen';
               }
               
@@ -52,6 +50,7 @@ class ProfileScreen extends ConsumerWidget {
                 }
               }
               final bool isVerified = userData?['isVerified'] ?? false;
+              final int points = (userData?['loyaltyPoints'] ?? 0) as int;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -92,6 +91,7 @@ class ProfileScreen extends ConsumerWidget {
                     _buildInfoCard(context, 'Nom complet', name, Icons.person_outline, trailing: isVerified ? const Icon(Icons.verified, color: Colors.blue, size: 20) : null),
                     _buildInfoCard(context, 'Téléphone', phone, Icons.phone_outlined),
                     _buildInfoCard(context, 'Rôle', auth?.role.toUpperCase() ?? '', Icons.badge_outlined),
+                    _buildInfoCard(context, 'Points Fidélité', '$points pts', Icons.stars_rounded),
                     
                     if (auth?.role == 'driver' && !isVerified) ...[
                       const SizedBox(height: 30),

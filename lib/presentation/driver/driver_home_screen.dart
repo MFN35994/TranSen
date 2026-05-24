@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:ui';
+import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -114,6 +115,48 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         ),
       );
     } catch (_) {}
+  }
+
+  Future<void> _updateHeatmap(List<Map<String, double>> points) async {
+    if (_mapController == null) return;
+    try {
+      final features = points.map((p) => {
+        "type": "Feature",
+        "geometry": {
+          "type": "Point",
+          "coordinates": [p['lng'], p['lat']]
+        },
+        "properties": {
+          "weight": 1
+        }
+      }).toList();
+
+      final geojson = {
+        "type": "FeatureCollection",
+        "features": features
+      };
+      
+      final sourceId = "demand-source";
+      final layerId = "demand-heatmap-layer";
+      
+      final sourceExists = await _mapController!.style.styleSourceExists(sourceId);
+      
+      if (!sourceExists) {
+        await _mapController!.style.addSource(GeoJsonSource(id: sourceId, data: jsonEncode(geojson)));
+        await _mapController!.style.addLayer(HeatmapLayer(
+          id: layerId,
+          sourceId: sourceId,
+          heatmapWeight: 1.0,
+          heatmapIntensity: 1.5,
+          heatmapRadius: 40.0,
+          heatmapOpacity: 0.8,
+        ));
+      } else {
+        await _mapController!.style.setStyleSourceProperty(sourceId, "data", jsonEncode(geojson));
+      }
+    } catch (e) {
+      debugPrint("Erreur Heatmap: $e");
+    }
   }
 
   @override
@@ -349,6 +392,12 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AsyncValue<List<Map<String, double>>>>(demandHeatpointsProvider, (previous, next) {
+      if (next is AsyncData && _mapController != null) {
+        _updateHeatmap(next.value ?? []);
+      }
+    });
+
     final auth = ref.watch(authProvider);
     final wallet = ref.watch(walletProvider);
     final currentUserId = auth?.userId ?? 'unknown_driver';
@@ -555,37 +604,25 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
 
                         if (_isOnline) ...[
                           Consumer(builder: (context, ref, child) {
-                            final activePoolAsync =
-                                ref.watch(driverActivePoolProvider);
-                            return activePoolAsync.when(
-                              data: (pool) => pool == null
-                                  ? const SizedBox.shrink()
-                                  : _buildActiveDriverTripCard(context, pool),
-                              loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
-                            );
+                            final pool = ref.watch(driverActivePoolProvider).value;
+                            if (pool != null) {
+                              return _buildActiveDriverTripCard(context, pool);
+                            }
+                            return const SizedBox.shrink();
                           }),
                           Consumer(builder: (context, ref, child) {
-                            final activeTripAsync =
-                                ref.watch(driverActiveTripProvider);
-                            return activeTripAsync.when(
-                              data: (trip) => trip == null
-                                  ? const SizedBox.shrink()
-                                  : _buildActiveVtcTripCard(context, trip),
-                              loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
-                            );
+                            final trip = ref.watch(driverActiveTripProvider).value;
+                            if (trip != null) {
+                              return _buildActiveVtcTripCard(context, trip);
+                            }
+                            return const SizedBox.shrink();
                           }),
                           Consumer(builder: (context, ref, child) {
-                            final activeDeliveriesAsync =
-                                ref.watch(driverActiveDeliveriesProvider);
-                            return activeDeliveriesAsync.when(
-                              data: (deliveries) => deliveries.isEmpty
-                                  ? const SizedBox.shrink()
-                                  : _buildActiveDeliveriesBanner(context, deliveries),
-                              loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
-                            );
+                            final deliveries = ref.watch(driverActiveDeliveriesProvider).value;
+                            if (deliveries != null && deliveries.isNotEmpty) {
+                              return _buildActiveDeliveriesBanner(context, deliveries);
+                            }
+                            return const SizedBox.shrink();
                           }),
                           // ── CARTE TRAJET COMPACTE ────────────────────────────
                           Container(

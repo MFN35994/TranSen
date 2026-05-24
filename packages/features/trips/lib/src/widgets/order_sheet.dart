@@ -66,6 +66,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   TimeOfDay _selectedTime = TimeOfDay.now();
   String _paymentMethod = 'Espèces'; // Par défaut
   bool _isProcessing = false;
+  bool _usePoints = false;
 
   final _customDepartureController = TextEditingController();
   final _customDestinationController = TextEditingController();
@@ -874,7 +875,30 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             const SizedBox(height: 20),
 
             const SizedBox(height: 10),
-
+            
+            Consumer(builder: (context, ref, child) {
+              final auth = ref.watch(authProvider);
+              final points = auth?.loyaltyPoints ?? 0;
+              final pointsValue = points * 10;
+              if (points < 10) return const SizedBox.shrink();
+              
+              return Container(
+                margin: const EdgeInsets.only(bottom: 15),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(15),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                ),
+                child: SwitchListTile(
+                  title: Text("Utiliser mes points TranSen", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.amber.shade800)),
+                  subtitle: Text("Réduction de $pointsValue FCFA sur cette course", style: const TextStyle(fontSize: 12)),
+                  value: _usePoints,
+                  activeThumbColor: Colors.amber,
+                  secondary: const Icon(Icons.stars_rounded, color: Colors.amber),
+                  onChanged: (val) => setState(() => _usePoints = val),
+                ),
+              );
+            }),
 
             Consumer(builder: (context, ref, child) {
               final activePool = ref.watch(providers.activePoolProvider).value;
@@ -1004,7 +1028,17 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
       final tripRepo = ref.read(tripRepositoryProvider);
       final scheduledDate = overrideDate ?? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
       
+      final loyaltyPoints = auth?.loyaltyPoints ?? 0;
+      int pointsDiscount = 0;
+      if (_usePoints && loyaltyPoints > 0) {
+        pointsDiscount = loyaltyPoints * 10;
+      }
+
       int finalPrice = 10000;
+      if (finalPrice < pointsDiscount) {
+        pointsDiscount = finalPrice;
+      }
+      finalPrice = finalPrice - pointsDiscount;
 
       double lat = _preciseDepartureLat ?? 14.7167; 
       double lng = _preciseDepartureLng ?? -17.4677;
@@ -1038,8 +1072,15 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
           'lastName': userLastName,
           'phone': finalPhone,
           'paymentMethod': _paymentMethod,
+          'pointsDiscount': pointsDiscount,
         },
       );
+      
+      // Déduire les points utilisés
+      if (pointsDiscount > 0 && auth != null) {
+        final usedPoints = pointsDiscount ~/ 10;
+        await ref.read(authProvider.notifier).addLoyaltyPoints(-usedPoints);
+      }
 
       if (!mounted) return;
       setState(() => _isProcessing = false);

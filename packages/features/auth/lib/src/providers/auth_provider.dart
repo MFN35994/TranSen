@@ -15,6 +15,7 @@ class AuthState {
   final bool codeSent;
   final String? name;
   final String? phone;
+  final int loyaltyPoints;
 
   AuthState({
     required this.userId,
@@ -23,6 +24,7 @@ class AuthState {
     this.codeSent = false,
     this.name,
     this.phone,
+    this.loyaltyPoints = 0,
   });
 
   AuthState copyWith({
@@ -32,6 +34,7 @@ class AuthState {
     bool? codeSent,
     String? name,
     String? phone,
+    int? loyaltyPoints,
   }) {
     return AuthState(
       userId: userId ?? this.userId,
@@ -40,6 +43,7 @@ class AuthState {
       codeSent: codeSent ?? this.codeSent,
       name: name ?? this.name,
       phone: phone ?? this.phone,
+      loyaltyPoints: loyaltyPoints ?? this.loyaltyPoints,
     );
   }
 
@@ -82,7 +86,8 @@ class AuthNotifier extends Notifier<AuthState?> {
         final role = data['role'] ?? 'none';
         final name = data['name'] ?? data['firstName'];
         final phone = data['phone'];
-        state = state?.copyWith(role: role, name: name, phone: phone, isLoading: false);
+        final points = data['loyaltyPoints'] ?? 0;
+        state = state?.copyWith(role: role, name: name, phone: phone, loyaltyPoints: points, isLoading: false);
         NotificationService().init(uid);
       } else {
         state = state?.copyWith(role: 'none', isLoading: false);
@@ -104,6 +109,20 @@ class AuthNotifier extends Notifier<AuthState?> {
     } catch (e) {
       debugPrint("Erreur saving role: $e");
       rethrow;
+    }
+  }
+
+  Future<void> addLoyaltyPoints(int pointsToAdd) async {
+    if (state == null) return;
+    try {
+      final newPoints = state!.loyaltyPoints + pointsToAdd;
+      await _firestore.collection('users').doc(state!.userId).set({
+        'loyaltyPoints': FieldValue.increment(pointsToAdd),
+      }, SetOptions(merge: true));
+      
+      state = state?.copyWith(loyaltyPoints: newPoints);
+    } catch (e) {
+      debugPrint("Erreur ajout points fidélité: $e");
     }
   }
 

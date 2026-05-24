@@ -575,22 +575,52 @@ app.post('/api/trips/accept', verifyFirebaseToken, async (req, res) => {
 
             if (!isActive) {
                 const balance = driverData.walletBalance || 0;
-                if (balance < commission) throw new Error("Solde insuffisant pour la commission");
+                const points = driverData.loyaltyPoints || 0;
+                const pointsValue = points * 10;
+                
+                let remainingCommission = commission;
+                let pointsDeducted = 0;
+                let cashDeducted = 0;
 
-                // Déduire la commission
-                t.update(userRef, { walletBalance: balance - commission });
+                if (pointsValue > 0) {
+                    const pointsNeeded = Math.ceil(remainingCommission / 10);
+                    if (points >= pointsNeeded) {
+                        pointsDeducted = pointsNeeded;
+                        remainingCommission = 0;
+                    } else {
+                        pointsDeducted = points;
+                        remainingCommission -= points * 10;
+                    }
+                }
 
-                // Créer la transaction
+                if (remainingCommission > 0) {
+                    if (balance >= remainingCommission) {
+                        cashDeducted = remainingCommission;
+                        remainingCommission = 0;
+                    } else {
+                        throw new Error("Solde et points insuffisants pour la commission");
+                    }
+                }
+
+                const updates = {};
+                if (pointsDeducted > 0) updates.loyaltyPoints = points - pointsDeducted;
+                if (cashDeducted > 0) updates.walletBalance = balance - cashDeducted;
+                if (Object.keys(updates).length > 0) t.update(userRef, updates);
+
                 const transRef = userRef.collection('transactions').doc();
+                let desc = `Commission Course : ${tripId}`;
+                if (pointsDeducted > 0 && cashDeducted === 0) desc = `Commission payée avec ${pointsDeducted} points : ${tripId}`;
+                if (pointsDeducted > 0 && cashDeducted > 0) desc = `Commission payée (${cashDeducted}F + ${pointsDeducted} pts) : ${tripId}`;
+                
                 t.set(transRef, {
-                    amount: -commission,
-                    description: `Commission Course : ${tripId}`,
+                    amount: -cashDeducted,
+                    points: -pointsDeducted,
+                    description: desc,
                     date: admin.firestore.FieldValue.serverTimestamp(),
                     type: 'commission',
                     status: 'completed'
                 });
 
-                // Mettre à jour les stats plateforme
                 t.set(statsRef, {
                     totalCommissions: admin.firestore.FieldValue.increment(Number(commission)),
                     lastUpdate: admin.firestore.FieldValue.serverTimestamp(),
@@ -664,22 +694,52 @@ app.post('/api/pools/accept', verifyFirebaseToken, async (req, res) => {
 
             if (!isActive && commission > 0) {
                 const balance = driverData.walletBalance || 0;
-                if (balance < commission) throw new Error("Solde insuffisant pour la commission");
+                const points = driverData.loyaltyPoints || 0;
+                const pointsValue = points * 10;
+                
+                let remainingCommission = commission;
+                let pointsDeducted = 0;
+                let cashDeducted = 0;
 
-                // Déduire la commission
-                t.update(userRef, { walletBalance: balance - commission });
+                if (pointsValue > 0) {
+                    const pointsNeeded = Math.ceil(remainingCommission / 10);
+                    if (points >= pointsNeeded) {
+                        pointsDeducted = pointsNeeded;
+                        remainingCommission = 0;
+                    } else {
+                        pointsDeducted = points;
+                        remainingCommission -= points * 10;
+                    }
+                }
 
-                // Créer la transaction
+                if (remainingCommission > 0) {
+                    if (balance >= remainingCommission) {
+                        cashDeducted = remainingCommission;
+                        remainingCommission = 0;
+                    } else {
+                        throw new Error("Solde et points insuffisants pour la commission");
+                    }
+                }
+
+                const updates = {};
+                if (pointsDeducted > 0) updates.loyaltyPoints = points - pointsDeducted;
+                if (cashDeducted > 0) updates.walletBalance = balance - cashDeducted;
+                if (Object.keys(updates).length > 0) t.update(userRef, updates);
+
                 const transRef = userRef.collection('transactions').doc();
+                let desc = `Commission Covoiturage : ${poolId}`;
+                if (pointsDeducted > 0 && cashDeducted === 0) desc = `Commission payée avec ${pointsDeducted} points : ${poolId}`;
+                if (pointsDeducted > 0 && cashDeducted > 0) desc = `Commission payée (${cashDeducted}F + ${pointsDeducted} pts) : ${poolId}`;
+                
                 t.set(transRef, {
-                    amount: -commission,
-                    description: `Commission Covoiturage : ${poolId}`,
+                    amount: -cashDeducted,
+                    points: -pointsDeducted,
+                    description: desc,
                     date: admin.firestore.FieldValue.serverTimestamp(),
                     type: 'commission',
                     status: 'completed'
                 });
 
-                // Mettre à jour les stats plateforme
                 t.set(statsRef, {
                     totalCommissions: admin.firestore.FieldValue.increment(Number(commission)),
                     lastUpdate: admin.firestore.FieldValue.serverTimestamp(),
@@ -726,6 +786,137 @@ app.get('/api/payment/payout-status/:internalId', async (req, res) => {
     } catch (error) {
         res.status(500).send({ error: "Erreur payout status proxy" });
     }
+});
+
+// ENDPOINTS POUR LE PARTAGE DE TRAJET (WEB)
+app.get('/api/share/location/:tripId', async (req, res) => {
+    const { tripId } = req.params;
+    const { type } = req.query;
+
+    try {
+        const collectionName = type === 'pool' ? 'pools' : 'trips';
+        const tripDoc = await db.collection(collectionName).doc(tripId).get();
+        
+        if (!tripDoc.exists) return res.status(404).json({ error: "Trajet introuvable" });
+
+        const tripData = tripDoc.data();
+        const driverId = tripData.driverId;
+
+        if (!driverId) return res.status(404).json({ error: "Chauffeur non assigné" });
+
+        const driverDoc = await db.collection('active_drivers').doc(driverId).get();
+        if (!driverDoc.exists) return res.status(404).json({ error: "Position chauffeur indisponible" });
+
+        const posData = driverDoc.data();
+        res.status(200).json({
+            lat: posData.lat,
+            lng: posData.lng,
+            driverName: tripData.driverName || 'Chauffeur TranSen',
+            status: tripData.status,
+            departure: tripData.departure,
+            destination: tripData.destination,
+            updatedAt: posData.lastUpdated ? posData.lastUpdated.toDate() : null
+        });
+
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.get('/share/:tripId', (req, res) => {
+    const { tripId } = req.params;
+    const { type } = req.query;
+    
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Suivi de Trajet TranSen</title>
+    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.js"></script>
+    <style>
+        body { margin: 0; padding: 0; font-family: sans-serif; background: #f5f5f5; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        #info-card {
+            position: absolute; bottom: 30px; left: 20px; right: 20px;
+            background: white; padding: 20px; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15); z-index: 100;
+        }
+        .header { display: flex; align-items: center; margin-bottom: 10px; }
+        .title { font-weight: 800; font-size: 18px; color: #2E7D32; }
+        .subtitle { font-size: 14px; color: #555; margin-bottom: 5px; font-weight: 600; }
+        .route { font-size: 13px; color: #888; }
+        .badge { background: #E8F5E9; color: #2E7D32; padding: 4px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-left: auto; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    <div id="info-card">
+        <div class="header">
+            <div class="title">TranSen - Suivi en direct</div>
+            <div class="badge">EN COURS</div>
+        </div>
+        <div class="subtitle" id="driver-info">Recherche de la position...</div>
+        <div class="route" id="route-info">Veuillez patienter...</div>
+    </div>
+
+    <script>
+        mapboxgl.accessToken = 'pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng';
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v12',
+            center: [-17.4677, 14.7167],
+            zoom: 13
+        });
+
+        let marker = null;
+
+        async function fetchLocation() {
+            try {
+                const response = await fetch('/api/share/location/${tripId}?type=${type || 'trip'}');
+                if (!response.ok) {
+                    if (response.status === 404) document.getElementById('driver-info').innerText = 'Course terminée ou chauffeur introuvable.';
+                    return;
+                }
+                
+                const data = await response.json();
+                document.getElementById('driver-info').innerText = 'Chauffeur: ' + data.driverName;
+                document.getElementById('route-info').innerText = (data.departure || 'Départ') + ' → ' + (data.destination || 'Arrivée');
+
+                if (!marker) {
+                    const el = document.createElement('div');
+                    el.style.width = '24px';
+                    el.style.height = '24px';
+                    el.style.backgroundColor = '#2E7D32';
+                    el.style.borderRadius = '50%';
+                    el.style.border = '4px solid white';
+                    el.style.boxShadow = '0 0 10px rgba(0,0,0,0.5)';
+                    
+                    marker = new mapboxgl.Marker(el)
+                        .setLngLat([data.lng, data.lat])
+                        .addTo(map);
+                        
+                    map.flyTo({ center: [data.lng, data.lat], zoom: 15 });
+                } else {
+                    marker.setLngLat([data.lng, data.lat]);
+                    map.panTo([data.lng, data.lat]);
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        map.on('load', () => {
+            fetchLocation();
+            setInterval(fetchLocation, 5000);
+        });
+    </script>
+</body>
+</html>
+    `;
+    res.send(html);
 });
 
 const PORT = process.env.PORT || 10000;
