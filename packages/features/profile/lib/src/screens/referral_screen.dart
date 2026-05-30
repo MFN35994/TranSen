@@ -13,7 +13,9 @@ class ReferralScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final auth = ref.watch(authProvider);
-    if (auth == null) return const Scaffold(body: Center(child: Text("Non connecté")));
+    if (auth == null) {
+      return const Scaffold(body: Center(child: Text("Non connecté")));
+    }
 
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
@@ -26,7 +28,9 @@ class ReferralScreen extends ConsumerWidget {
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).snapshots(),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
           
           final isDark = Theme.of(context).brightness == Brightness.dark;
           final data = snapshot.data!.data() as Map<String, dynamic>;
@@ -156,10 +160,8 @@ class ReferralScreen extends ConsumerWidget {
                 ElevatedButton.icon(
                   onPressed: () {
                     SharePlus.instance.share(
-                      ShareParams(
-                        text: "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
-                        subject: 'Mon code parrainage TranSen',
-                      ),
+                      "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
+                      subject: 'Mon code parrainage TranSen',
                     );
                   },
                   icon: const Icon(Icons.share),

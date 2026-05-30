@@ -1,14 +1,12 @@
 import 'dart:math' as math;
-import 'dart:convert';
 import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:http/http.dart' as http;
+import 'package:transen_auth/transen_auth.dart';
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -18,26 +16,16 @@ class TripRepository {
 
   // 1. ACTIONS COVOITURAGE (POOL)
   Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
-    // 1. Obtenir le token ID de l'utilisateur actuel pour sécuriser l'appel
-    final user = firebase_auth.FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception("Utilisateur non connecté");
-    final token = await user.getIdToken();
-
-    // 2. Appeler le backend pour accepter le covoiturage
-    final response = await http.post(
-      Uri.parse("https://transen-api.onrender.com/api/pools/accept"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'poolId': poolId,
-      }),
-    );
-
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body)['error'] ?? "Erreur lors de l'acceptation";
-      throw Exception(error);
+    try {
+      await ApiClient().dio.post(
+        '/pools/accept',
+        data: {
+          'poolId': poolId,
+        },
+      );
+    } catch (e) {
+      debugPrint("Erreur lors de l'acceptation du pool: $e");
+      throw Exception("Erreur lors de l'acceptation");
     }
   }
 
@@ -169,37 +157,69 @@ class TripRepository {
 
   // 3. ACTIONS COURSES (VTC)
   Future<String> createTrip(TripModel trip) async {
-    final ref = _firestore.collection('trips').doc();
-    await ref.set({
-      ...trip.toMap(),
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-    return ref.id;
+    try {
+      final response = await ApiClient().dio.post(
+        '/trips/request',
+        data: {
+          'passengerId': trip.clientId,
+          'pickupLocation': trip.departure,
+          'dropoffLocation': trip.destination,
+          'price': trip.price,
+          'targetCompanyId': null, // À implémenter plus tard si on ajoute companyId au TripModel
+        },
+      );
+      return response.data['id']?.toString() ?? '';
+    } catch (e) {
+      debugPrint("Erreur createTrip: $e");
+      // On log mais on sauvegarde aussi sur Firestore pour ne pas casser
+      // l'écoute temps réel existante sur l'app.
+      // Dans une phase 5, tout Firebase sera retiré des streams.
+      final ref = _firestore.collection('trips').doc();
+      await ref.set({
+        ...trip.toMap(),
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return ref.id;
+    }
   }
 
   Future<void> acceptTrip(String tripId, String driverId) async {
-    // 1. Obtenir le token ID de l'utilisateur actuel pour sécuriser l'appel
-    final user = firebase_auth.FirebaseAuth.instance.currentUser;
-    if (user == null) throw Exception("Utilisateur non connecté");
-    final token = await user.getIdToken();
+    try {
+      await ApiClient().dio.post('/trips/$tripId/accept?driverId=$driverId');
+    } catch (e) {
+      debugPrint("Erreur acceptTrip sur le backend: $e");
+    }
 
-    // 2. Appeler le backend pour accepter la course
-    final response = await http.post(
-      Uri.parse("https://transen-api.onrender.com/api/trips/accept"),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        'tripId': tripId,
-      }),
-    );
+    // On maintient la logique locale Firebase pour l'écoute temps réel.
+    await _firestore.collection('trips').doc(tripId).update({
+      'driverId': driverId,
+      'status': 'accepted',
+      'acceptedAt': FieldValue.serverTimestamp(),
+    });
+  }
 
-    if (response.statusCode != 200) {
-      final error = jsonDecode(response.body)['error'] ?? "Erreur lors de l'acceptation";
-      throw Exception(error);
+  // 4. RÉSERVATION DE BILLETS DE BUS (Phase 5)
+  Future<Map<String, dynamic>> bookSeat(String tripId, String passengerId, int seats) async {
+    try {
+      final response = await ApiClient().dio.post(
+        '/bookings/book?tripId=$tripId&passengerId=$passengerId&seats=$seats',
+      );
+      return response.data;
+    } catch (e) {
+      debugPrint("Erreur bookSeat: $e");
+      throw Exception("Erreur lors de la réservation de la place.");
     }
   }
+
+  Future<void> scanTicket(String boardingCode) async {
+    try {
+      await ApiClient().dio.post('/bookings/$boardingCode/scan');
+    } catch (e) {
+      debugPrint("Erreur scanTicket: $e");
+      throw Exception("Erreur lors de la validation du billet.");
+    }
+  }
+
   Future<void> _incrementCompletedTripsAndReward(String userId) async {
     try {
       final docRef = _firestore.collection('users').doc(userId);

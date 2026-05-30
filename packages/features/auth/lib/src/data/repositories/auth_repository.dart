@@ -1,40 +1,44 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:dio/dio.dart';
+import '../api_client.dart';
 
 class AuthRepository {
-  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final ApiClient _apiClient = ApiClient();
 
-  Stream<User?> get authStateChanges => _auth.authStateChanges();
-
-  User? get currentUser => _auth.currentUser;
-
-  // Phone Auth
-  Future<void> verifyPhoneNumber({
-    required String phoneNumber,
-    required Function(PhoneAuthCredential) verificationCompleted,
-    required Function(FirebaseAuthException) verificationFailed,
-    required Function(String, int?) codeSent,
-    required Function(String) codeAutoRetrievalTimeout,
-  }) async {
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: verificationCompleted,
-      verificationFailed: verificationFailed,
-      codeSent: codeSent,
-      codeAutoRetrievalTimeout: codeAutoRetrievalTimeout,
-    );
+  // On garde un getter local (plus utilisé comme Stream Firebase)
+  // car l'état sera géré par AuthProvider via SharedPreferences
+  
+  Future<void> sendOtp(String phoneNumber) async {
+    try {
+      await _apiClient.dio.post('/auth/send-otp', data: {
+        'phone': phoneNumber,
+      });
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(e.response?.data['message'] ?? e.response?.data ?? "Erreur lors de l'envoi du SMS");
+      }
+      throw Exception("Erreur de connexion au serveur");
+    }
   }
 
-  Future<UserCredential> signInWithSmsCode(String verificationId, String smsCode) async {
-    final AuthCredential credential = PhoneAuthProvider.credential(
-      verificationId: verificationId,
-      smsCode: smsCode,
-    );
-    return await _auth.signInWithCredential(credential);
+  Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String smsCode, {String? companyAccessCode}) async {
+    try {
+      final response = await _apiClient.dio.post('/auth/verify-otp', data: {
+        'phone': phoneNumber,
+        'otp': smsCode,
+        if (companyAccessCode != null && companyAccessCode.isNotEmpty) 'companyAccessCode': companyAccessCode,
+      });
+      return response.data as Map<String, dynamic>;
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(e.response?.data['message'] ?? e.response?.data ?? "Code incorrect ou expiré");
+      }
+      throw Exception("Erreur de connexion au serveur");
+    }
   }
 
   Future<void> signOut() async {
-    await _auth.signOut();
+    // Déconnexion gérée dans le provider (suppression du token local)
   }
 }
 

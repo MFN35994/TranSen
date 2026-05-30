@@ -24,6 +24,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _phoneController = TextEditingController();
   final _otpController = TextEditingController();
   final _referralController = TextEditingController();
+  final _companyCodeController = TextEditingController();
 
   final _phoneMaskFormatter = MaskTextInputFormatter(mask: '## ### ## ##', filter: { "#": RegExp(r'[0-9]') });
   String _validatedPhone = "";
@@ -49,6 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     _phoneController.dispose();
     _otpController.dispose();
     _referralController.dispose();
+    _companyCodeController.dispose();
     super.dispose();
   }
 
@@ -151,9 +153,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
     try {
-      await ref.read(authProvider.notifier).verifySmsCode(code);
+      await ref.read(authProvider.notifier).verifySmsCode(
+        code,
+        companyAccessCode: _companyCodeController.text.trim(),
+      );
     } catch (e) {
-      _showError("Code incorrect ou expiré");
+      _showError(e.toString().replaceAll("Exception: ", ""));
     }
   }
 
@@ -333,13 +338,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     inputFormatters: [_phoneMaskFormatter],
                     isDarkMode: isDarkMode),
 
-              if (step == AuthStep.otp)
+              if (step == AuthStep.otp) ...[
                 _buildTextField(
                     controller: _otpController,
                     label: "Code OTP",
                     icon: Icons.vibration,
                     keyboardType: TextInputType.number,
                     isDarkMode: isDarkMode),
+                const SizedBox(height: 15),
+                _buildTextField(
+                    controller: _companyCodeController,
+                    label: "Code Compagnie (Optionnel)",
+                    icon: Icons.business,
+                    textCapitalization: TextCapitalization.characters,
+                    isDarkMode: isDarkMode),
+              ],
 
               if (step == AuthStep.identity) ...[
                 Padding(

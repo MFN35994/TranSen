@@ -1,9 +1,8 @@
-import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 import 'package:transen_core/transen_core.dart';
 import '../data/repositories/auth_repository.dart';
@@ -66,16 +65,23 @@ class AuthNotifier extends Notifier<AuthState?> {
   AuthState? build() {
     _repository = ref.watch(authRepositoryProvider);
     
-    // Écouter les changements d'état d'authentification
-    _repository.authStateChanges.listen((user) async {
-      if (user == null) {
-        state = null;
-      } else {
-        state = AuthState(userId: user.uid, role: 'none', isLoading: true);
-        await _fetchUserRole(user.uid);
-      }
-    });
+    // Vérification asynchrone du token local
+    _checkLocalToken();
+    
     return null;
+  }
+
+  Future<void> _checkLocalToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString('jwt_token');
+    final userId = prefs.getString('user_id');
+    
+    if (token != null && userId != null) {
+      state = AuthState(userId: userId, role: 'none', isLoading: true);
+      await _fetchUserRole(userId);
+    } else {
+      state = null;
+    }
   }
 
   Future<void> _fetchUserRole(String uid) async {
@@ -160,70 +166,60 @@ class AuthNotifier extends Notifier<AuthState?> {
     }
   }
 
-  String? _verificationId;
-  ConfirmationResult? _webConfirmationResult;
+  String? _phoneNumberBeingVerified;
 
   Future<void> sendPhoneVerificationCode(String phoneNumber) async {
     state = state?.copyWith(isLoading: true) ??
         AuthState(userId: '', role: 'none', isLoading: true);
     
-    if (kIsWeb) {
-      try {
-        _webConfirmationResult = await FirebaseAuth.instance.signInWithPhoneNumber(phoneNumber);
-        state = state?.copyWith(isLoading: false, codeSent: true);
-      } catch (e) {
-        state = state?.copyWith(isLoading: false);
-        throw Exception(e.toString());
-      }
-      return;
-    }
-
-    final completer = Completer<void>();
-    await _repository.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await FirebaseAuth.instance.signInWithCredential(credential);
-        if (!completer.isCompleted) completer.complete();
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        if (!completer.isCompleted) completer.completeError(Exception(e.message));
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        _verificationId = verificationId;
-        state = state?.copyWith(isLoading: false, codeSent: true);
-        if (!completer.isCompleted) completer.complete();
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        _verificationId = verificationId;
-      },
-    );
-    return completer.future;
-  }
-
-  Future<void> verifySmsCode(String smsCode) async {
-    state = state?.copyWith(isLoading: true);
     try {
-      if (kIsWeb) {
-        if (_webConfirmationResult == null) {
-          throw Exception("Demandez d'abord un code SMS.");
-        }
-        await _webConfirmationResult!.confirm(smsCode);
-      } else {
-        if (_verificationId == null) {
-          throw Exception("Demandez d'abord un code SMS.");
-        }
-        await _repository.signInWithSmsCode(_verificationId!, smsCode);
-      }
+      await _repository.sendOtp(phoneNumber);
+      _phoneNumberBeingVerified = phoneNumber;
+      state = state?.copyWith(isLoading: false, codeSent: true);
     } catch (e) {
       state = state?.copyWith(isLoading: false);
-      throw Exception("Code incorrect.");
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> verifySmsCode(String smsCode, {String? companyAccessCode}) async {
+    state = state?.copyWith(isLoading: true);
+    try {
+      if (_phoneNumberBeingVerified == null) {
+        throw Exception("Demandez d'abord un code SMS.");
+      }
+      
+      final response = await _repository.verifyOtp(
+        _phoneNumberBeingVerified!, 
+        smsCode, 
+        companyAccessCode: companyAccessCode
+      );
+      
+      final token = response['token'];
+      final role = response['role'] ?? 'none';
+      final userId = response['userId'];
+      
+      // Sauvegarder le token dans SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('jwt_token', token);
+      await prefs.setString('user_id', userId);
+      await prefs.setString('user_role', role);
+
+      state = AuthState(userId: userId, role: role, isLoading: true); // isLoading true pendant qu'on fetch le reste
+      
+      // On peut continuer à utiliser Firestore pour les autres infos de l'utilisateur (points, etc)
+      // Ou appeler un endpoint Spring Boot /api/users/me (à l'avenir).
+      await _fetchUserRole(userId);
+      
+    } catch (e) {
+      state = state?.copyWith(isLoading: false);
+      throw Exception(e.toString());
     }
   }
 
   Future<void> signInAsAnonymousClient() async {
     try {
-      final credential = await FirebaseAuth.instance.signInAnonymously();
-      final uid = credential.user!.uid;
+      final uid = "anon_${DateTime.now().millisecondsSinceEpoch}";
       await _firestore.collection('users').doc(uid).set({
         'role': 'client',
         'createdAt': FieldValue.serverTimestamp(),
@@ -240,9 +236,8 @@ class AuthNotifier extends Notifier<AuthState?> {
     required String phone,
   }) async {
     try {
-      final currentUser = FirebaseAuth.instance.currentUser;
-      if (currentUser == null) throw Exception("Utilisateur non connecté");
-      final uid = currentUser.uid;
+      if (state == null) throw Exception("Utilisateur non authentifié (JWT manquant)");
+      final uid = state!.userId;
       final name = "$firstName $lastName";
       final cleanPhone = phone.replaceAll(' ', '');
 
@@ -252,11 +247,11 @@ class AuthNotifier extends Notifier<AuthState?> {
         'firstName': firstName,
         'lastName': lastName,
         'phone': cleanPhone,
-        'email': currentUser.email ?? currentUser.phoneNumber ?? '',
+        'email': '',
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      state = AuthState(userId: uid, role: 'driver', isLoading: false);
+      state = state!.copyWith(role: 'driver', isLoading: false);
 
       // ── Activation automatique de l'essai gratuit 5 jours ──
       // Écriture directe en Firestore pour éviter la dépendance circulaire
@@ -316,6 +311,11 @@ class AuthNotifier extends Notifier<AuthState?> {
   }
 
   Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('jwt_token');
+    await prefs.remove('user_id');
+    await prefs.remove('user_role');
+    
     await _repository.signOut();
     state = null;
   }
@@ -329,15 +329,11 @@ class AuthNotifier extends Notifier<AuthState?> {
         await _firestore.collection('driver_routes').doc(uid).delete();
       }
       await _firestore.collection('users').doc(uid).delete();
-      final user = FirebaseAuth.instance.currentUser;
-      if (user != null) {
-        await user.delete();
-      }
-      state = null;
-    } on FirebaseAuthException catch (e) {
-      if (e.code == 'requires-recent-login') {
-        throw Exception("Opération nécessite une connexion récente.");
-      }
+      
+      // On déconnecte l'utilisateur localement
+      await logout();
+      
+    } catch (e) {
       debugPrint("Erreur suppression compte: $e");
     }
   }
