@@ -10,7 +10,7 @@ class AuthRepository {
   
   Future<void> sendOtp(String phoneNumber) async {
     try {
-      await _apiClient.dio.post('/auth/send-otp', data: {
+      await _apiClient.dio.post('/api/auth/send-otp', data: {
         'phone': phoneNumber,
       });
     } on DioException catch (e) {
@@ -23,7 +23,7 @@ class AuthRepository {
 
   Future<Map<String, dynamic>> verifyOtp(String phoneNumber, String smsCode, {String? companyAccessCode}) async {
     try {
-      final response = await _apiClient.dio.post('/auth/verify-otp', data: {
+      final response = await _apiClient.dio.post('/api/auth/verify-otp', data: {
         'phone': phoneNumber,
         'otp': smsCode,
         if (companyAccessCode != null && companyAccessCode.isNotEmpty) 'companyAccessCode': companyAccessCode,

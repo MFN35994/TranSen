@@ -18,7 +18,7 @@ class TripRepository {
   Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
     try {
       await ApiClient().dio.post(
-        '/pools/accept',
+        '/api/pools/accept',
         data: {
           'poolId': poolId,
         },
@@ -159,7 +159,7 @@ class TripRepository {
   Future<String> createTrip(TripModel trip) async {
     try {
       final response = await ApiClient().dio.post(
-        '/trips/request',
+        '/api/trips/request',
         data: {
           'passengerId': trip.clientId,
           'pickupLocation': trip.departure,
@@ -185,7 +185,7 @@ class TripRepository {
 
   Future<void> acceptTrip(String tripId, String driverId) async {
     try {
-      await ApiClient().dio.post('/trips/$tripId/accept?driverId=$driverId');
+      await ApiClient().dio.post('/api/trips/$tripId/accept?driverId=$driverId');
     } catch (e) {
       debugPrint("Erreur acceptTrip sur le backend: $e");
     }
@@ -202,7 +202,7 @@ class TripRepository {
   Future<Map<String, dynamic>> bookSeat(String tripId, String passengerId, int seats) async {
     try {
       final response = await ApiClient().dio.post(
-        '/bookings/book?tripId=$tripId&passengerId=$passengerId&seats=$seats',
+        '/api/bookings/book?tripId=$tripId&passengerId=$passengerId&seats=$seats',
       );
       return response.data;
     } catch (e) {
@@ -213,7 +213,7 @@ class TripRepository {
 
   Future<void> scanTicket(String boardingCode) async {
     try {
-      await ApiClient().dio.post('/bookings/$boardingCode/scan');
+      await ApiClient().dio.post('/api/bookings/$boardingCode/scan');
     } catch (e) {
       debugPrint("Erreur scanTicket: $e");
       throw Exception("Erreur lors de la validation du billet.");
