@@ -12,7 +12,6 @@ dependencies:
     sdk: flutter
   transen_core:
     path: ../../core
-  firebase_auth: ^6.3.0
   cloud_firestore: ^6.2.0
   flutter_riverpod: ^3.3.1
   mask_text_input_formatter: ^2.9.0

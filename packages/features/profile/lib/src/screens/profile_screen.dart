@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_auth/transen_auth.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -40,10 +39,7 @@ class ProfileScreen extends ConsumerWidget {
               
               String phone = userData?['phone'] ?? (userData?['phoneNumber'] ?? '');
               if (phone.trim() == '+221' || phone.trim().isEmpty || phone.trim().length <= 4) {
-                final fbUser = FirebaseAuth.instance.currentUser;
-                if (fbUser?.phoneNumber != null && fbUser!.phoneNumber!.length > 4) {
-                  phone = fbUser.phoneNumber!;
-                } else if (auth?.phone != null && auth!.phone!.length > 4) {
+                if (auth?.phone != null && auth!.phone!.length > 4) {
                   phone = auth.phone!;
                 } else {
                   phone = 'Non renseigné';

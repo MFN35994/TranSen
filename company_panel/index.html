@@ -63,6 +63,7 @@
             </div>
             <nav id="mainNav">
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Vue d'ensemble</a>
+                <a href="#" data-section="wallet"><i class="fas fa-wallet"></i> Mon Portefeuille</a>
                 <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
                 <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses de la Flotte</a>
             </nav>
@@ -129,6 +130,73 @@
                         </div>
                     </section>
                 </div>
+            </div>
+
+            <!-- Wallet -->
+            <div id="section-wallet" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card" style="background: linear-gradient(135deg, rgba(212, 175, 55, 0.2), rgba(0, 0, 0, 0.8)); border-color: var(--gold);">
+                        <div class="stat-icon gold"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info">
+                            <p>Solde TransPay</p>
+                            <h2 id="walletBalance" style="color: var(--gold); font-size: 2rem;">0 F</h2>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 15px;">
+                            <button id="depositBtn" class="btn-primary" style="flex: 1; font-size: 0.9rem; padding: 10px; background-color: var(--green); border-color: var(--green);">
+                                <i class="fas fa-arrow-down"></i> Déposer
+                            </button>
+                            <button id="withdrawBtn" class="btn-primary" style="flex: 1; font-size: 0.9rem; padding: 10px;">
+                                <i class="fas fa-arrow-up"></i> Retirer
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal SenePay -->
+                <div id="senepayModal" class="login-overlay" style="display: none; align-items: center; justify-content: center;">
+                    <div class="login-card glass" style="max-width: 400px; padding: 30px;">
+                        <h3 id="senepayModalTitle" style="color: var(--gold); margin-bottom: 20px;">Action SenePay</h3>
+                        <div class="input-group">
+                            <i class="fas fa-money-bill"></i>
+                            <input type="number" id="senepayAmount" placeholder="Montant en FCFA" min="100" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-phone"></i>
+                            <input type="tel" id="senepayPhone" placeholder="Téléphone SenePay (ex: 77 123 45 67)" required>
+                        </div>
+                        <div class="input-group" id="senepayOperatorGroup" style="display: none;">
+                            <i class="fas fa-building-columns"></i>
+                            <select id="senepayOperator" style="width: 100%; padding: 12px; border: 1px solid var(--border-color); border-radius: 8px; background: rgba(255, 255, 255, 0.05); color: var(--text-color);">
+                                <option value="wave">Wave</option>
+                                <option value="orange">Orange Money</option>
+                                <option value="free">Free Money</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; gap: 10px; margin-top: 20px;">
+                            <button id="cancelSenepayBtn" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--text-dim); color: var(--text-color);">Annuler</button>
+                            <button id="confirmSenepayBtn" class="btn-primary" style="flex: 1;">Confirmer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="table-container glass-card" style="margin-top: 20px;">
+                    <div class="table-header"><h2>Historique des Transactions</h2></div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionsTableBody">
+                                <tr><td colspan="4" class="loading-cell">Chargement de l'historique...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <!-- Drivers -->

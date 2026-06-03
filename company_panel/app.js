@@ -144,6 +144,77 @@ function setupNavigation() {
 }
 
 // ==========================================
+// SenePay Wallet Logic
+// ==========================================
+let currentSenepayAction = null; // 'deposit' or 'withdraw'
+
+document.getElementById('depositBtn').onclick = () => {
+    currentSenepayAction = 'deposit';
+    document.getElementById('senepayModalTitle').innerText = "Déposer des fonds (SenePay)";
+    document.getElementById('senepayOperatorGroup').style.display = "none";
+    document.getElementById('senepayModal').style.display = "flex";
+};
+
+document.getElementById('withdrawBtn').onclick = () => {
+    currentSenepayAction = 'withdraw';
+    document.getElementById('senepayModalTitle').innerText = "Retirer vers Mobile Money";
+    document.getElementById('senepayOperatorGroup').style.display = "block";
+    document.getElementById('senepayModal').style.display = "flex";
+};
+
+document.getElementById('cancelSenepayBtn').onclick = () => {
+    document.getElementById('senepayModal').style.display = "none";
+    document.getElementById('senepayAmount').value = "";
+    document.getElementById('senepayPhone').value = "";
+};
+
+document.getElementById('confirmSenepayBtn').onclick = async () => {
+    const amountStr = document.getElementById('senepayAmount').value;
+    const phone = document.getElementById('senepayPhone').value;
+    
+    if (!amountStr || !phone) {
+        alert("Veuillez remplir tous les champs.");
+        return;
+    }
+
+    const amount = parseFloat(amountStr);
+    const operator = document.getElementById('senepayOperator').value;
+    const btn = document.getElementById('confirmSenepayBtn');
+    btn.innerHTML = "Traitement..."; btn.disabled = true;
+
+    try {
+        const url = `${API_BASE_URL}/api/company/dashboard/wallet/${currentSenepayAction}?companyId=${currentCompanyId}`;
+        const requestBody = { amount: amount, phone: phone };
+        if (currentSenepayAction === 'withdraw') {
+            requestBody.operator = operator;
+        }
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+        });
+
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(result.message + "\nRéférence: " + result.reference);
+            document.getElementById('cancelSenepayBtn').click();
+            loadDashboardData(); // Refresh wallet data
+        } else {
+            alert("Erreur: " + (result.message || "Action refusée"));
+        }
+    } catch (error) {
+        alert("Erreur réseau avec le serveur SenePay.");
+    } finally {
+        btn.innerHTML = "Confirmer"; btn.disabled = false;
+    }
+};
+
+// ==========================================
 // API CALLS (Spring Boot)
 // ==========================================
 
@@ -226,6 +297,32 @@ async function loadDashboardData() {
                         <td><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
                     </tr>`;
                 }
+            });
+        }
+
+        // 4. Load Wallet Data
+        const walletData = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/wallet?companyId=${currentCompanyId}`);
+        document.getElementById('walletBalance').innerText = `${walletData.balance.toLocaleString()} F`;
+        
+        const txTbody = document.getElementById('transactionsTableBody');
+        txTbody.innerHTML = "";
+        if (walletData.transactions.length === 0) {
+            txTbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune transaction pour le moment.</td></tr>`;
+        } else {
+            walletData.transactions.forEach(tx => {
+                const dateStr = new Date(tx.date).toLocaleString('fr-FR');
+                let color = "var(--text-color)";
+                let amountStr = `${tx.amount} F`;
+                if (tx.amount > 0) { color = "var(--green)"; amountStr = `+${tx.amount} F`; }
+                else if (tx.amount < 0) { color = "var(--red)"; }
+                
+                txTbody.innerHTML += `
+                    <tr>
+                        <td>${dateStr}</td>
+                        <td><b>${tx.type}</b></td>
+                        <td style="color: ${color}; font-weight: bold;">${amountStr}</td>
+                        <td><span class="status-tag ${tx.status.toLowerCase()}">${tx.status}</span></td>
+                    </tr>`;
             });
         }
 

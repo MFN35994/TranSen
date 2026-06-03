@@ -9,7 +9,6 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 
@@ -340,11 +339,11 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                         final nav = Navigator.of(ctx);
 
                         try {
-                          final auth = FirebaseAuth.instance.currentUser;
-                          if (auth == null) throw Exception("Non connecté");
+                          final auth = ref.read(authProvider);
+                          if (auth == null || auth.userId.isEmpty) throw Exception("Non connecté");
                           
                           await ref.read(paymentRepositoryProvider).requestPayout(
-                            userId: auth.uid,
+                            userId: auth.userId,
                             amount: amount,
                             recipientPhone: phoneController.text,
                             recipientName: nameController.text,

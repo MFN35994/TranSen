@@ -5,7 +5,6 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   cloud_firestore
   firebase_app_check
-  firebase_auth
   firebase_core
   geolocator_windows
   share_plus

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../providers/auth_provider.dart';
 import '../providers/referral_provider.dart';
 import 'package:flutter/services.dart';
@@ -35,12 +34,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Si l'utilisateur est déjà connecté via Firebase (cas du remount par AuthGate après OTP réussi)
-    // mais qu'il arrive ici, c'est qu'il doit finaliser son profil.
-    final currentUser = FirebaseAuth.instance.currentUser;
-    if (currentUser != null) {
-      _step = AuthStep.identity;
-    }
+    // Le remount et la reprise de session sont gérés par AuthGate et SharedPreferences
   }
 
   @override
@@ -98,19 +92,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // 1. Essayer de récupérer le numéro mémorisé localement
       String finalPhone = _validatedPhone;
 
-      // 2. Si perdu (remount), essayer de le récupérer depuis Firebase Auth
-      if (finalPhone.length < 9) {
-        final currentUser = FirebaseAuth.instance.currentUser;
-        if (currentUser?.phoneNumber != null && currentUser!.phoneNumber!.length >= 9) {
-          finalPhone = currentUser.phoneNumber!.replaceAll(RegExp(r'\D'), '');
-          // Enlever le 221 si présent pour garder 9 chiffres
-          if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
-            finalPhone = finalPhone.substring(3);
-          }
-        }
-      }
-
-      // 3. Si toujours rien, essayer de relire le controller
+      // 2. Si perdu (remount), essayer de relire le controller
       if (finalPhone.length < 9) {
         String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
         finalPhone = rawPhone.replaceAll(RegExp(r'\D'), '');
@@ -294,10 +276,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   builder: (context) {
                     String displayPhone = _validatedPhone;
                     if (displayPhone.isEmpty) {
-                      displayPhone = FirebaseAuth.instance.currentUser?.phoneNumber?.replaceAll(RegExp(r'\D'), '') ?? '';
-                      if (displayPhone.startsWith('221') && displayPhone.length >= 12) {
-                        displayPhone = displayPhone.substring(3);
-                      }
+                      final auth = ref.read(authProvider);
+                      displayPhone = auth?.phone ?? '';
                     }
                     return Container(
                       padding: const EdgeInsets.all(12),
