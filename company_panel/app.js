@@ -219,6 +219,67 @@ document.getElementById('confirmSenepayBtn').onclick = async () => {
 };
 
 // ==========================================
+// Receipt Modal Logic
+// ==========================================
+window.openReceipt = function(ref, date, type, status, amountStr) {
+    let statusFr = status;
+    if (status === 'PENDING') statusFr = 'EN ATTENTE';
+    if (status === 'COMPLETED') statusFr = 'COMPLÉTÉ';
+    if (status === 'FAILED') statusFr = 'ÉCHOUÉ';
+
+    document.getElementById('receiptRef').innerText = ref;
+    document.getElementById('receiptDate').innerText = date;
+    document.getElementById('receiptType').innerText = type;
+    document.getElementById('receiptStatus').innerText = statusFr;
+    document.getElementById('receiptStatus').className = `receipt-val status-tag ${status.toLowerCase()}`;
+    document.getElementById('receiptAmount').innerText = amountStr;
+    
+    document.getElementById('receiptModal').style.display = "flex";
+};
+
+document.getElementById('closeReceiptBtn').onclick = () => {
+    document.getElementById('receiptModal').style.display = "none";
+};
+
+document.getElementById('shareReceiptBtn').onclick = async () => {
+    const receiptElement = document.getElementById('receiptContent');
+    const btn = document.getElementById('shareReceiptBtn');
+    const originalText = btn.innerHTML;
+    
+    try {
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Génération...';
+        btn.disabled = true;
+        
+        // Use html2canvas to capture the receipt element
+        const canvas = await html2canvas(receiptElement, {
+            scale: 2, // Higher resolution
+            backgroundColor: null // Transparent or default
+        });
+        
+        // Convert to data URL
+        const image = canvas.toDataURL("image/png");
+        
+        // Create a download link
+        const link = document.createElement('a');
+        link.href = image;
+        const ref = document.getElementById('receiptRef').innerText;
+        link.download = `Transen_Recu_${ref}.png`;
+        
+        // Trigger download
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+    } catch (error) {
+        console.error("Erreur lors de la génération du reçu:", error);
+        alert("Impossible de générer le reçu.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+// ==========================================
 // API CALLS (Spring Boot)
 // ==========================================
 
@@ -320,12 +381,18 @@ async function loadDashboardData() {
                 if (tx.amount > 0) { color = "var(--green)"; amountStr = `+${tx.amount} F`; }
                 else if (tx.amount < 0) { color = "var(--red)"; }
                 
+                let ref = tx.id ? tx.id.substring(0, 8).toUpperCase() : "N/A";
+                let statusFr = tx.status;
+                if (statusFr === 'PENDING') statusFr = 'EN ATTENTE';
+                if (statusFr === 'COMPLETED') statusFr = 'COMPLÉTÉ';
+                if (statusFr === 'FAILED') statusFr = 'ÉCHOUÉ';
+                
                 txTbody.innerHTML += `
-                    <tr>
+                    <tr style="cursor: pointer;" onclick="openReceipt('${ref}', '${dateStr}', '${tx.type}', '${tx.status}', '${amountStr}')" title="Cliquez pour voir le reçu">
                         <td>${dateStr}</td>
                         <td><b>${tx.type}</b></td>
                         <td style="color: ${color}; font-weight: bold;">${amountStr}</td>
-                        <td><span class="status-tag ${tx.status.toLowerCase()}">${tx.status}</span></td>
+                        <td><span class="status-tag ${tx.status.toLowerCase()}">${statusFr}</span></td>
                     </tr>`;
             });
         }

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://transen.org/assets/logo.png">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <!-- Login Section -->
@@ -175,6 +176,54 @@
                         <div style="display: flex; gap: 10px; margin-top: 20px;">
                             <button id="cancelSenepayBtn" class="btn-primary" style="flex: 1; background: transparent; border: 1px solid var(--text-dim); color: var(--text-color);">Annuler</button>
                             <button id="confirmSenepayBtn" class="btn-primary" style="flex: 1;">Confirmer</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Modal Reçu Transaction -->
+                <div id="receiptModal" class="login-overlay" style="display: none; align-items: center; justify-content: center; z-index: 1000;">
+                    <div style="max-width: 450px; width: 100%; display: flex; flex-direction: column; align-items: center;">
+                        <div id="receiptContent" class="receipt-card glass" style="width: 100%; padding: 0;">
+                            <div class="receipt-header">
+                                <img src="https://transen.org/assets/logo.png" alt="TranSen Logo" style="width: 50px; height: 50px; border-radius: 12px; margin-bottom: 10px;">
+                                <h3>Reçu de Transaction</h3>
+                                <p style="font-size: 0.8rem; color: var(--text-dim); margin: 0;">Reçu officiel généré par TranSen B2B</p>
+                            </div>
+                            <div class="receipt-body">
+                                <div class="receipt-row">
+                                    <span class="receipt-label">RÉFÉRENCE</span>
+                                    <span class="receipt-val" id="receiptRef">--</span>
+                                </div>
+                                <div class="receipt-row">
+                                    <span class="receipt-label">DATE & HEURE</span>
+                                    <span class="receipt-val" id="receiptDate">--</span>
+                                </div>
+                                <div class="receipt-row">
+                                    <span class="receipt-label">TYPE D'OPÉRATION</span>
+                                    <span class="receipt-val" id="receiptType">--</span>
+                                </div>
+                                <div class="receipt-row">
+                                    <span class="receipt-label">STATUT</span>
+                                    <span class="receipt-val status-tag" id="receiptStatus">--</span>
+                                </div>
+                                <div class="receipt-divider"></div>
+                                <div class="receipt-row total-row">
+                                    <span class="receipt-label">MONTANT</span>
+                                    <span class="receipt-val total-val" id="receiptAmount">--</span>
+                                </div>
+                            </div>
+                            <div class="receipt-footer">
+                                <p>Merci de votre confiance.</p>
+                                <p><strong>compagnie.transen.org</strong></p>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 15px; margin-top: 20px; width: 100%;">
+                            <button id="closeReceiptBtn" class="btn-primary" style="flex: 1; background: rgba(255, 255, 255, 0.1); border: 1px solid var(--border-color); color: var(--text-color);">
+                                <i class="fas fa-times"></i> Fermer
+                            </button>
+                            <button id="shareReceiptBtn" class="btn-primary" style="flex: 1;">
+                                <i class="fas fa-download"></i> Télécharger PNG
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -342,3 +342,77 @@ td { padding: 20px 15px; border-bottom: 1px solid var(--glass-border); font-size
 
 .stat-card.small { padding: 15px 20px; }
 .stat-card.small h3 { font-size: 1.3rem; }
+
+/* Receipt Modal Styles */
+.receipt-card {
+    background: #ffffff;
+    color: #1a1a1a;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+}
+
+.receipt-header {
+    background: #f8f9fa;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 2px dashed #e2e8f0;
+}
+
+.receipt-header h3 {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    color: #0f172a;
+    font-family: 'Outfit', sans-serif;
+}
+
+.receipt-body {
+    padding: 25px 20px;
+}
+
+.receipt-row {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+}
+
+.receipt-label {
+    color: #64748b;
+    font-weight: 600;
+}
+
+.receipt-val {
+    font-weight: 700;
+    text-align: right;
+}
+
+.receipt-divider {
+    border-bottom: 2px dashed #e2e8f0;
+    margin: 15px 0;
+}
+
+.total-row {
+    font-size: 1.1rem;
+    margin-top: 15px;
+}
+
+.total-val {
+    color: #0f172a;
+    font-size: 1.3rem;
+}
+
+.receipt-footer {
+    background: #f8f9fa;
+    padding: 15px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: #64748b;
+    border-top: 2px dashed #e2e8f0;
+}
+
+.receipt-footer strong {
+    color: #0f172a;
+}
