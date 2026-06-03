@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Espace Compagnie - TranSen</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="icon" type="image/png" href="https://transen.org/assets/logo.png">
+</head>
+<body>
+    <!-- Login Section -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card glass">
+            <div class="login-logo">
+                <img src="https://transen.org/assets/logo.png" alt="TranSen Logo" onerror="this.src='https://via.placeholder.com/80?text=Logo'">
+                <h2>Espace Compagnie</h2>
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 10px;">Authentification Sécurisée (Numéro Administrateur)</p>
+            </div>
+            <form id="login-form">
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="loginEmail" placeholder="Email de la compagnie" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Mot de passe" required>
+                </div>
+                <button type="submit" id="signInBtn">Se connecter <i class="fas fa-arrow-right"></i></button>
+                <button type="button" class="btn-text" id="showRegisterBtn" style="margin-top: 15px; font-size: 0.85rem; color: var(--gold);">Créer un compte compagnie</button>
+            </form>
+
+            <form id="register-form" style="display: none;">
+                <div class="input-group">
+                    <i class="fas fa-building"></i>
+                    <input type="text" id="regCompanyName" placeholder="Nom de la compagnie" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-phone"></i>
+                    <input type="tel" id="regPhone" placeholder="Téléphone (+221...)" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="regEmail" placeholder="Email (Identifiant)" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="regPassword" placeholder="Mot de passe" required minlength="6">
+                </div>
+                <button type="submit" id="registerBtn">Créer mon compte <i class="fas fa-check-circle"></i></button>
+                <button type="button" class="btn-text" id="showLoginBtn" style="margin-top: 15px; font-size: 0.85rem; color: var(--text-dim);">J'ai déjà un compte</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="admin-app" class="admin-container" style="display: none;">
+        <aside class="sidebar glass">
+            <div class="logo">
+                <img src="https://transen.org/assets/logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/40?text=Logo'">
+                <span>TranSen B2B</span>
+            </div>
+            <nav id="mainNav">
+                <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Vue d'ensemble</a>
+                <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
+                <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses de la Flotte</a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="admin-profile">
+                    <div class="avatar" id="adminInitial">C</div>
+                    <div class="admin-details">
+                        <span id="companyName">Compagnie</span>
+                        <small id="companyPhone">--</small>
+                    </div>
+                </div>
+                <button id="logoutBtn" title="Déconnexion"><i class="fas fa-power-off"></i></button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header>
+                <div class="header-left">
+                    <h1 id="sectionTitle">Vue d'ensemble</h1>
+                    <p id="currentDate">--</p>
+                </div>
+                <div class="header-actions">
+                    <div class="company-code-badge" title="Donnez ce code à vos chauffeurs pour qu'ils rejoignent votre flotte sur l'application.">
+                        Code Recrutement: <span id="companyCodeDisplay">--</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dashboard -->
+            <div id="section-dashboard" class="admin-section">
+                <section class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-steering-wheel"></i></div>
+                        <div class="stat-info"><p>Chauffeurs Actifs</p><h3 id="activeDriversCount">0 / 0</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-car-side"></i></div>
+                        <div class="stat-info"><p>Courses du jour</p><h3 id="todayTrips">0</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
+                        <div class="stat-info"><p>Chiffre d'affaires total</p><h3 id="totalRevenue">0 F</h3></div>
+                    </div>
+                </section>
+
+                <div class="dashboard-grid">
+                    <section class="table-container glass-card">
+                        <div class="table-header"><h2>Dernières Activités de la Flotte</h2></div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Chauffeur</th>
+                                        <th>Service</th>
+                                        <th>Prix</th>
+                                        <th>Statut</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="activityTableBody">
+                                    <tr><td colspan="5" class="loading-cell">Chargement...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- Drivers -->
+            <div id="section-drivers" class="admin-section" style="display: none;">
+                <div class="stats-grid mini">
+                    <div class="stat-card glass-card small" style="background: rgba(46, 204, 113, 0.1);">
+                        <div class="stat-info"><p>En Ligne</p><h3 id="onlineDriversCount">0</h3></div>
+                    </div>
+                    <div class="stat-card glass-card small" style="background: rgba(231, 76, 60, 0.1);">
+                        <div class="stat-info"><p>Hors Ligne</p><h3 id="offlineDriversCount">0</h3></div>
+                    </div>
+                </div>
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Chauffeur</th>
+                                    <th>Téléphone</th>
+                                    <th>Véhicule</th>
+                                    <th>Courses (Total)</th>
+                                    <th>Revenus Générés</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="driversTableBody">
+                                <tr><td colspan="7" class="loading-cell">Aucun chauffeur rattaché pour le moment. Donnez votre Code Recrutement !</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- Trips -->
+            <div id="section-trips" class="admin-section" style="display: none;">
+                <div class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID / Date</th>
+                                    <th>Chauffeur</th>
+                                    <th>Client (Nom)</th>
+                                    <th>Trajet</th>
+                                    <th>Prix</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liveTripsTableBody">
+                                <tr><td colspan="6" class="loading-cell">Chargement des courses...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>

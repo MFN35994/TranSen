@@ -195,10 +195,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
             _buildHeader(isDarkMode),
             const SizedBox(height: 30),
-            AnimatedContainer(
+            AnimatedSize(
               duration: const Duration(milliseconds: 300),
-              // Ajuste la hauteur de manière fluide en fonction des champs affichés
-              height: currentStep == AuthStep.otp ? 200 : (currentStep == AuthStep.identity ? 450 : 200),
+              curve: Curves.easeInOut,
               child: _buildPhoneForm(isDarkMode, isLoading, currentStep),
             ),
             const SizedBox(height: 40),
@@ -438,7 +437,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 15),
 
               if (isLoading)
-                const CircularProgressIndicator(color: TranSenColors.primaryGreen)
+                const CircularProgressIndicator(color: Colors.white)
               else
                 SizedBox(
                   width: double.infinity,

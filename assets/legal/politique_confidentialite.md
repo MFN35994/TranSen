@@ -34,4 +34,4 @@ Conformément à la législation sénégalaise sur la protection des données (C
 Nous mettons en œuvre des mesures de sécurité techniques et organisationnelles pour protéger vos données contre tout accès non autorisé.
 
 ## 7. Contact
-Pour toute question concernant vos données, vous pouvez nous contacter à l'adresse support@transen.sn.
+Pour toute question concernant vos données, vous pouvez nous contacter à l'adresse contact@transen.org.

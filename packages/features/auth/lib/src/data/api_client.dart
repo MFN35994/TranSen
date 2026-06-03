@@ -9,8 +9,8 @@ class ApiClient {
 
   late Dio dio;
 
-  // L'URL de production sur Render
-  final String baseUrl = 'https://transen-backend.onrender.com';
+  // L'URL de production sur le domaine personnalisé
+  final String baseUrl = 'https://api.transen.org';
 
   ApiClient._internal() {
     dio = Dio(
