@@ -644,10 +644,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     if (subInfo.isActive) return true;
     
     // 2. Vérifier le solde (Pool prix fixe 10000F, donc 1% = 100F)
-    final wallet = ref.read(walletProvider);
+    final wallet = ref.read(walletProvider).value;
     const commission = 100.0; 
     
-    if (wallet.balance < commission) {
+    if ((wallet?.balance ?? 0.0) < commission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

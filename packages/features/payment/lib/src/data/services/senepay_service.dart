@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:transen_auth/transen_auth.dart';
+
+import 'package:transen_core/transen_core.dart';
 
 class SenePayService {
   final ApiClient _apiClient = ApiClient();

@@ -7,8 +7,6 @@ import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'dart:ui' as ui;
 import 'package:flutter/rendering.dart';
 
@@ -30,24 +28,8 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
   }
 
   Future<void> _handleSync() async {
-    final auth = ref.read(authProvider);
-    if (auth == null) return;
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      final db = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
-      final pendingDeps = await db.collection('users').doc(auth.userId).collection('pending_deposits').get();
-      if (pendingDeps.docs.isEmpty) return;
-      int creditedCount = 0;
-      for (var doc in pendingDeps.docs) {
-        final success = await ref.read(paymentRepositoryProvider).verifyAndCreditDeposit(auth.userId, doc.id);
-        if (success) {
-          creditedCount++;
-          await doc.reference.delete();
-        }
-      }
-      if (creditedCount > 0) {
-        messenger.showSnackBar(SnackBar(content: Text('$creditedCount dépôt(s) crédité(s) !'), backgroundColor: Colors.green));
-      }
+      await ref.read(walletProvider.notifier).refresh();
     } catch (e) {
       debugPrint("Erreur sync auto: $e");
     }
@@ -55,7 +37,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final walletState = ref.watch(walletProvider);
+    final walletAsync = ref.watch(walletProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -69,99 +51,103 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           IconButton(icon: const Icon(Icons.sync), onPressed: () => _handleSync()),
         ],
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              // Balance Card
-              Container(
-                margin: const EdgeInsets.all(20),
-                padding: const EdgeInsets.all(25),
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark 
-                        ? [const Color(0xFF1E1E1E), const Color(0xFF121212)] 
-                        : [TranSenColors.primaryGreen, TranSenColors.darkGreen],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 15,
-                      offset: const Offset(0, 8),
-                    )
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text('SOLDE DISPONIBLE', 
-                          style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                        Icon(Icons.account_balance_wallet, color: Colors.white.withValues(alpha: 0.3), size: 24),
-                      ],
+      body: walletAsync.when(
+        data: (walletState) => Stack(
+          children: [
+            Column(
+              children: [
+                // Balance Card
+                Container(
+                  margin: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(25),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: isDark 
+                          ? [const Color(0xFF1E1E1E), const Color(0xFF121212)] 
+                          : [TranSenColors.primaryGreen, TranSenColors.darkGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
                     ),
-                    const SizedBox(height: 12),
-                    Text('${walletState.balance.toInt()} FCFA', 
-                      style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        _buildQuickAction(Icons.add, "Déposer", () => _showRechargeDialog(context)),
-                        const SizedBox(width: 12),
-                        _buildQuickAction(Icons.arrow_upward, "Retirer", () => _showWithdrawDialog(context, walletState.balance)),
-                      ],
-                    )
-                  ],
+                    borderRadius: BorderRadius.circular(28),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 15,
+                        offset: const Offset(0, 8),
+                      )
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text('SOLDE DISPONIBLE', 
+                            style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                          Icon(Icons.account_balance_wallet, color: Colors.white.withValues(alpha: 0.3), size: 24),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Text('${walletState.balance.toInt()} FCFA', 
+                        style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          _buildQuickAction(Icons.add, "Déposer", () => _showRechargeDialog(context)),
+                          const SizedBox(width: 12),
+                          _buildQuickAction(Icons.arrow_upward, "Retirer", () => _showWithdrawDialog(context, walletState.balance)),
+                        ],
+                      )
+                    ],
+                  ),
                 ),
-              ),
 
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-                child: Row(
-                  children: [
-                    Text('HISTORIQUE', 
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
-                    Spacer(),
-                  ],
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+                  child: Row(
+                    children: [
+                      Text('HISTORIQUE', 
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),
+                      Spacer(),
+                    ],
+                  ),
                 ),
-              ),
-              
-              Expanded(
-                child: _buildTransactionsList(context, walletState),
-              ),
-            ],
-          ),
-          if (_isLoading)
-            Positioned.fill(
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.6),
-                child: Center(
-                  child: Container(
-                    padding: const EdgeInsets.all(30),
-                    decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        CircularProgressIndicator(color: TranSenColors.primaryGreen),
-                        SizedBox(height: 20),
-                        Text("Traitement SenePay...", style: TextStyle(fontWeight: FontWeight.bold)),
-                        Text("Veuillez patienter", style: TextStyle(fontSize: 12, color: Colors.grey)),
-                      ],
+                
+                Expanded(
+                  child: _buildTransactionsList(context, walletState),
+                ),
+              ],
+            ),
+            if (_isLoading)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(30),
+                      decoration: BoxDecoration(
+                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          CircularProgressIndicator(color: TranSenColors.primaryGreen),
+                          SizedBox(height: 20),
+                          Text("Traitement...", style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text("Veuillez patienter", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text("Erreur: $e")),
       ),
     );
   }
@@ -223,16 +209,6 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
                   messenger.showSnackBar(const SnackBar(content: Text('✅ URL reçue ! Ouverture...'), backgroundColor: Colors.green));
                   
-                  try {
-                    await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-                        .collection('users').doc(auth.userId).collection('pending_deposits').doc(orderId).set({
-                      'amount': amount, 'method': 'SenePay', 'status': 'Pending', 'createdAt': FieldValue.serverTimestamp(),
-                    });
-                  } catch (fsErr) {
-                    debugPrint('>>> Firestore save pending deposit error: $fsErr');
-                    // On ne bloque pas l'ouverture de l'URL même si Firebase refuse l'écriture (règles de sécurité)
-                  }
-
                   final uri = Uri.parse(checkoutUrl);
                   try {
                     await launchUrl(uri);

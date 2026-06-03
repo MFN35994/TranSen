@@ -18,7 +18,6 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   @override
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
-    final tripRepo = ref.watch(tripRepositoryProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -29,16 +28,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _buildTripsTab(context, tripRepo, auth?.userId ?? ''),
+      body: _buildTripsTab(context, auth?.userId ?? ''),
     );
   }
 
 
-  Widget _buildTripsTab(BuildContext context, TripRepository repo, String userId) {
+  Widget _buildTripsTab(BuildContext context, String userId) {
     return Column(
       children: [
         _buildFilters(),
-        Expanded(child: _buildTripsList(context, repo, userId)),
+        Expanded(child: _buildTripsList(context, userId)),
       ],
     );
   }
@@ -75,15 +74,14 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildTripsList(BuildContext context, TripRepository repo, String userId) {
-    return StreamBuilder<List<TripModel>>(
-      stream: repo.watchUserTrips(userId),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen));
-        }
-        
-        var trips = snapshot.data ?? [];
+  Widget _buildTripsList(BuildContext context, String userId) {
+    final tripsAsync = ref.watch(tripHistoryProvider(userId));
+    
+    return tripsAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+      error: (err, _) => Center(child: Text("Erreur: $err")),
+      data: (dataTrips) {
+        var trips = dataTrips;
         
         // Appliquer le filtre
         if (_selectedType != 'Tous') {

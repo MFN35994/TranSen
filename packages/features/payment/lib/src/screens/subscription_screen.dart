@@ -29,10 +29,10 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
 
       // Vérifier le solde avant de tenter
-      if (walletState.balance < plan.price) {
+      if ((walletState.value?.balance ?? 0.0) < plan.price) {
         messenger.showSnackBar(SnackBar(
           content: Text(
-            '❌ Solde insuffisant. Vous avez ${walletState.balance.toInt()} FCFA, '
+            '❌ Solde insuffisant. Vous avez ${walletState.value?.balance.toInt() ?? 0} FCFA, '
             'il vous faut ${plan.price.toInt()} FCFA.',
           ),
           backgroundColor: Colors.red,
@@ -105,13 +105,13 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                       _buildPlanCard(
                         plan: SubscriptionPlan.weekly,
                         isRecommended: false,
-                        walletBalance: walletState.balance,
+                        walletBalance: walletState.value?.balance ?? 0.0,
                       ),
                       const SizedBox(height: 14),
                       _buildPlanCard(
                         plan: SubscriptionPlan.monthly,
                         isRecommended: true,
-                        walletBalance: walletState.balance,
+                        walletBalance: walletState.value?.balance ?? 0.0,
                       ),
                       const SizedBox(height: 28),
 
@@ -128,7 +128,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
                             const Icon(Icons.account_balance_wallet, color: TranSenColors.primaryGreen),
                             const SizedBox(width: 12),
                             Text(
-                              'Solde TransPay : ${walletState.balance.toInt()} FCFA',
+                              'Solde TransPay : ${walletState.value?.balance.toInt() ?? 0} FCFA',
                               style: const TextStyle(color: Colors.white70, fontSize: 14),
                             ),
                           ],

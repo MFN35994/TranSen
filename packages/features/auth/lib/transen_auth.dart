@@ -6,4 +6,3 @@ export 'src/providers/referral_provider.dart';
 export 'src/screens/login_screen.dart';
 export 'src/screens/role_selection_screen.dart';
 export 'src/screens/driver_signup_screen.dart';
-export 'src/data/api_client.dart';

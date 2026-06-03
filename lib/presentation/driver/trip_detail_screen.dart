@@ -399,10 +399,10 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final subInfo = await SubscriptionService().checkSubscription(auth.userId);
     if (subInfo.isActive) return true;
     
-    final wallet = ref.read(walletProvider);
+    final wallet = ref.read(walletProvider).value;
     final commission = widget.trip.price * 0.01;
     
-    if (wallet.balance < commission) {
+    if ((wallet?.balance ?? 0.0) < commission) {
       if (!mounted) return false;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

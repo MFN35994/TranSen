@@ -270,10 +270,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     try {
       // Pré-validation financière
       final subInfo = await SubscriptionService().checkSubscription(auth.userId);
-      final wallet = ref.read(walletProvider);
+      final wallet = ref.read(walletProvider).value;
       final commission = trip.price * 0.01;
 
-      if (!subInfo.isActive && wallet.balance < commission) {
+      if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -325,10 +325,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     try {
       // Pré-validation financière
       final subInfo = await SubscriptionService().checkSubscription(auth.userId);
-      final wallet = ref.read(walletProvider);
+      final wallet = ref.read(walletProvider).value;
       final commission = (pool.currentFilling * 10000) * 0.01;
 
-      if (!subInfo.isActive && wallet.balance < commission) {
+      if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -481,7 +481,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               }
 
               final isExpired = info.isExpired || info.isNone;
-              final hasBalanceForCommission = wallet.balance >= 100; // Seuil arbitraire pour le message
+              final hasBalanceForCommission = (wallet.value?.balance ?? 0.0) >= 100; // Seuil arbitraire pour le message
 
               return GestureDetector(
                 onTap: () => Navigator.push(
@@ -728,10 +728,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                               context: context,
                                               icon: Icons.account_balance_wallet_rounded,
                                               label: 'TransPay',
-                                              sublabel: wallet.balance == 0.0 && wallet.transactions.isEmpty
+                                              sublabel: (wallet.value?.balance ?? 0.0) == 0.0 && (wallet.value?.transactions.isEmpty ?? true)
                                                   ? 'chargement...'
-                                                  : '${wallet.balance.toInt()} FCFA',
-                                              isLoading: wallet.balance == 0.0 && wallet.transactions.isEmpty,
+                                                  : '${wallet.value?.balance.toInt() ?? 0} FCFA',
+                                              isLoading: (wallet.value?.balance ?? 0.0) == 0.0 && (wallet.value?.transactions.isEmpty ?? true),
                                               gradientColors: const [Color(0xFF1A3A5C), Color(0xFF0D6EFD)],
                                               iconColor: const Color(0xFF5BB8FF),
                                               onTap: () {

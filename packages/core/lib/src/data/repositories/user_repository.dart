@@ -1,34 +1,41 @@
-import 'package:firebase_core/firebase_core.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
+import '../../api/api_client.dart';
 
 class UserRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+  final ApiClient _apiClient;
+
+  UserRepository(this._apiClient);
 
   /// Génère un code de parrainage unique pour l'utilisateur s'il n'en a pas
   Future<String> ensureReferralCode(String userId) async {
-    final doc = await _firestore.collection('users').doc(userId).get();
-    if (doc.exists && doc.data()?.containsKey('referralCode') == true) {
-      return doc.data()!['referralCode'];
+    // Cette logique sera déplacée sur le backend plus tard si besoin.
+    // Pour l'instant, on retourne juste un code.
+    return "TS${userId.substring(0, 4).toUpperCase()}";
+  }
+
+  /// Récupère le profil depuis Spring Boot
+  Future<Map<String, dynamic>?> getUserData() async {
+    try {
+      final response = await _apiClient.dio.get('/api/users/me');
+      if (response.statusCode == 200) {
+        return response.data as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint("Erreur chargement profil: $e");
     }
-    
-    // Générer un code court basé sur l'UID ou aléatoire
-    final code = "TS${userId.substring(0, 4).toUpperCase()}";
-    await _firestore.collection('users').doc(userId).set({
-      'referralCode': code,
-    }, SetOptions(merge: true));
-    return code;
+    return null;
   }
 
-  Stream<Map<String, dynamic>?> watchUser(String userId) {
-    return _firestore.collection('users').doc(userId).snapshots().map((doc) => doc.data());
-  }
-
-  Future<void> updateUserData(String userId, Map<String, dynamic> data) async {
-    await _firestore.collection('users').doc(userId).set(data, SetOptions(merge: true));
+  Future<void> updateUserData(Map<String, dynamic> data) async {
+    try {
+      await _apiClient.dio.put('/api/users/me', data: data);
+    } catch (e) {
+      debugPrint("Erreur update profil: $e");
+    }
   }
 }
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
-  return UserRepository();
+  return UserRepository(ApiClient());
 });

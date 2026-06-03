@@ -9,6 +9,7 @@ export 'src/providers/theme_provider.dart';
 export 'src/models/trip_model.dart';
 export 'src/models/pool_model.dart';
 export 'src/data/repositories/user_repository.dart';
+export 'src/api/api_client.dart';
 export 'src/widgets/animated_count_text.dart';
 export 'src/widgets/success_dialog.dart';
 export 'src/widgets/skeleton_loader.dart';

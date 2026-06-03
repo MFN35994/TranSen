@@ -5,8 +5,8 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 
-final userStreamProvider = StreamProvider.family<Map<String, dynamic>?, String>((ref, userId) {
-  return ref.watch(userRepositoryProvider).watchUser(userId);
+final userFutureProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
+  return ref.read(userRepositoryProvider).getUserData();
 });
 
 
@@ -123,9 +123,9 @@ class ProfileDrawer extends ConsumerWidget {
   Widget _buildHeader(BuildContext context, WidgetRef ref, String userId, String? role) {
     if (userId.isEmpty) return const SizedBox.shrink();
 
-    final userStream = ref.watch(userStreamProvider(userId));
+    final userFuture = ref.watch(userFutureProvider(userId));
 
-    return userStream.when(
+    return userFuture.when(
       data: (userData) {
         String name = userData?['name'] ?? '';
         if (name.isEmpty && userData?['firstName'] != null) {
@@ -224,7 +224,7 @@ class ProfileDrawer extends ConsumerWidget {
                           const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
                           const SizedBox(width: 8),
                           Text(
-                            "${wallet.balance.toInt()} FCFA",
+                            "${wallet.value?.balance.toInt() ?? 0} FCFA",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 14,

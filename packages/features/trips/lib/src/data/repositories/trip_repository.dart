@@ -6,7 +6,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
-import 'package:transen_auth/transen_auth.dart';
+
 
 class TripRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
@@ -454,12 +454,28 @@ class TripRepository {
     });
   }
 
-  Stream<List<TripModel>> watchUserTrips(String userId) {
-    return _firestore.collection('trips')
-        .where('clientId', isEqualTo: userId)
-        .where('status', whereIn: ['completed', 'cancelled'])
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => TripModel.fromFirestore(doc)).toList());
+  Future<List<TripModel>> getUserTrips(String userId) async {
+    try {
+      final response = await ApiClient().dio.get('/api/trips/history');
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((json) {
+          return TripModel(
+            id: json['id'] ?? '',
+            departure: json['pickupLocation'] ?? '',
+            destination: json['dropoffLocation'] ?? '',
+            price: (json['price'] ?? 0).toDouble(),
+            status: json['status']?.toString().toLowerCase() ?? 'completed',
+            type: 'Course',
+            driverName: json['driverName'],
+            createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+          );
+        }).toList();
+      }
+    } catch (e) {
+      debugPrint("Erreur getUserTrips: $e");
+    }
+    return [];
   }
 
   Stream<int> watchDriverOccupancy(String driverId) {

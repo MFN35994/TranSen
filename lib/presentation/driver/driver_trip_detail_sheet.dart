@@ -112,10 +112,10 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
     if (subInfo.isActive) return true;
     
     // 2. Vérifier le solde (doit être >= 1% du prix)
-    final wallet = ref.read(walletProvider);
+    final wallet = ref.read(walletProvider).value;
     final commission = widget.trip.price * 0.01;
     
-    if (wallet.balance < commission) {
+    if ((wallet?.balance ?? 0.0) < commission) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

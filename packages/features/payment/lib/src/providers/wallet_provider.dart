@@ -1,16 +1,15 @@
-import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_auth/transen_auth.dart';
-import '../data/repositories/payment_repository.dart';
+import 'package:transen_core/transen_core.dart';
+import 'package:flutter/foundation.dart';
 
 class WalletTransaction {
   final String id;
   final String description;
   final double amount;
   final DateTime date;
-  final int points;
-  final String type; // 'deposit', 'withdrawal', 'commission', 'subscription', 'points'
-  final String status; // 'completed', 'pending', 'failed'
+  final String type; 
+  final String status;
   final String? reference;
 
   WalletTransaction({
@@ -18,7 +17,6 @@ class WalletTransaction {
     required this.description,
     required this.amount,
     required this.date,
-    this.points = 0,
     this.type = '',
     this.status = 'completed',
     this.reference,
@@ -27,67 +25,57 @@ class WalletTransaction {
 
 class WalletState {
   final double balance;
-  final int points;
   final List<WalletTransaction> transactions;
 
-  WalletState(this.balance, this.points, this.transactions);
+  WalletState({this.balance = 0.0, this.transactions = const []});
 }
 
-class WalletNotifier extends Notifier<WalletState> {
-  late final PaymentRepository _paymentRepo;
-
+class WalletNotifier extends AsyncNotifier<WalletState> {
   @override
-  WalletState build() {
-    _paymentRepo = ref.watch(paymentRepositoryProvider);
+  Future<WalletState> build() async {
+    return _fetchWallet();
+  }
+
+  Future<WalletState> _fetchWallet() async {
     final auth = ref.watch(authProvider);
-    final userId = auth?.userId ?? 'unknown_user';
+    if (auth == null || auth.userId.isEmpty) {
+      return WalletState();
+    }
     
-    _init(userId);
-    return WalletState(0.0, 0, []);
+    try {
+      final apiClient = ApiClient();
+      final response = await apiClient.dio.get('/api/payments/wallet/me');
+      
+      if (response.statusCode == 200) {
+        final data = response.data;
+        final double balance = (data['balance'] ?? 0).toDouble();
+        final List txnsRaw = data['transactions'] ?? [];
+        
+        final List<WalletTransaction> transactions = txnsRaw.map((t) {
+          return WalletTransaction(
+            id: t['id'] ?? '',
+            description: t['description'] ?? '',
+            amount: (t['amount'] ?? 0).toDouble(),
+            date: t['date'] != null ? DateTime.parse(t['date']) : DateTime.now(),
+            type: t['type'] ?? '',
+            status: t['status'] ?? 'completed',
+            reference: t['reference'],
+          );
+        }).toList();
+        
+        return WalletState(balance: balance, transactions: transactions);
+      }
+    } catch (e) {
+      debugPrint("Erreur chargement wallet: $e");
+    }
+    return WalletState();
   }
 
-  void _init(String userId) {
-    if (userId == 'unknown_user') return;
-    
-    // Écouter le solde
-    _paymentRepo.watchWalletBalance(userId).listen((balance) {
-      state = WalletState(balance, state.points, state.transactions);
-    });
-
-    // Écouter les points
-    _paymentRepo.watchPoints(userId).listen((points) {
-      state = WalletState(state.balance, points, state.transactions);
-    });
-
-    // Écouter les transactions
-    _paymentRepo.watchTransactions(userId).listen((transData) {
-      final transactions = transData.map((data) {
-        return WalletTransaction(
-          id: data['id'] ?? '',
-          description: data['description'] ?? '',
-          amount: (data['amount'] ?? 0).toDouble(),
-          date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-          points: data['points'] ?? 0,
-          type: data['type'] ?? '',
-          status: data['status'] ?? 'completed',
-          reference: data['reference'],
-        );
-      }).toList();
-      state = WalletState(state.balance, state.points, transactions);
-    });
-  }
-
-  Future<void> debit(double amount, String description) async {
-    final auth = ref.read(authProvider);
-    if (auth == null) return;
-    await _paymentRepo.updateWalletBalance(auth.userId, -amount, description);
-  }
-
-  Future<void> credit(double amount, String description) async {
-    final auth = ref.read(authProvider);
-    if (auth == null) return;
-    await _paymentRepo.updateWalletBalance(auth.userId, amount, description);
+  Future<void> refresh() async {
+    state = const AsyncLoading();
+    state = await AsyncValue.guard(() => _fetchWallet());
   }
 }
 
-final walletProvider = NotifierProvider<WalletNotifier, WalletState>(WalletNotifier.new);
+final walletProvider = AsyncNotifierProvider<WalletNotifier, WalletState>(WalletNotifier.new);
+

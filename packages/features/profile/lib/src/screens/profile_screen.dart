@@ -19,8 +19,8 @@ class ProfileScreen extends ConsumerWidget {
       ),
       body: userId.isEmpty 
         ? const Center(child: CircularProgressIndicator())
-        : StreamBuilder<Map<String, dynamic>?>(
-            stream: ref.read(userRepositoryProvider).watchUser(userId),
+        : FutureBuilder<Map<String, dynamic>?>(
+            future: ref.read(userRepositoryProvider).getUserData(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
@@ -197,9 +197,8 @@ class ProfileScreen extends ConsumerWidget {
               }
 
               try {
-                await ref.read(userRepositoryProvider).updateUserData(userId, {
+                await ref.read(userRepositoryProvider).updateUserData({
                   'phone': finalPhone,
-                  'phoneNumber': finalPhone, 
                 });
                 if (context.mounted) Navigator.pop(context);
                 if (context.mounted) {

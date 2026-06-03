@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
-import '../api_client.dart';
+import 'package:transen_core/transen_core.dart';
 
 class AuthRepository {
   final ApiClient _apiClient = ApiClient();

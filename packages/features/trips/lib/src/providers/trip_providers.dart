@@ -162,8 +162,8 @@ final driverActiveDeliveriesProvider = StreamProvider<List<TripModel>>((ref) {
       });
 });
 
-final tripHistoryProvider = StreamProvider.family<List<TripModel>, String>((ref, userId) {
-  return ref.watch(tripRepositoryProvider).watchUserTrips(userId);
+final tripHistoryProvider = FutureProvider.family<List<TripModel>, String>((ref, userId) async {
+  return ref.read(tripRepositoryProvider).getUserTrips(userId);
 });
 
 final demandHeatmapProvider = StreamProvider<Map<String, int>>((ref) {

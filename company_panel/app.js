@@ -201,9 +201,13 @@ document.getElementById('confirmSenepayBtn').onclick = async () => {
         const result = await response.json();
         
         if (response.ok) {
-            alert(result.message + "\nRéférence: " + result.reference);
-            document.getElementById('cancelSenepayBtn').click();
-            loadDashboardData(); // Refresh wallet data
+            if (result.checkoutUrl) {
+                window.location.href = result.checkoutUrl;
+            } else {
+                alert(result.message + "\nRéférence: " + (result.reference || "N/A"));
+                document.getElementById('cancelSenepayBtn').click();
+                loadDashboardData(); // Refresh wallet data
+            }
         } else {
             alert("Erreur: " + (result.message || "Action refusée"));
         }
