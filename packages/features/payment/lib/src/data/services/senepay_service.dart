@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import '../../../../core/api/api_client.dart';
+import 'package:transen_auth/transen_auth.dart';
 
 class SenePayService {
   final ApiClient _apiClient = ApiClient();
@@ -14,19 +14,9 @@ class SenePayService {
     String? providerId,
   }) async {
     try {
-      // Test de connexion basique d'abord
-      debugPrint(">>> SenePayService: Test de connexion à Google...");
-      try {
-        await http.get(Uri.parse("https://www.google.com")).timeout(const Duration(seconds: 5));
-        debugPrint(">>> SenePayService: Internet OK");
-      } catch (e) {
-        debugPrint(">>> SenePayService: Pas d'internet ou bloqué: $e");
-      }
-
-      final url = Uri.parse("$backendUrl/api/payment/create-session");
-      
-      final returnUrl = kIsWeb ? "https://transen-pro.web.app/payment/success" : "$backendUrl/payment/success";
-      final failUrl = kIsWeb ? "https://transen-pro.web.app/payment/cancel" : "$backendUrl/payment/cancel";
+      const String apiBase = "https://api.transen.org";
+      final returnUrl = kIsWeb ? "https://transen-pro.web.app/payment/success" : "$apiBase/payment/success";
+      final failUrl = kIsWeb ? "https://transen-pro.web.app/payment/cancel" : "$apiBase/payment/cancel";
 
       final bodyMap = {
         "amount": amount.toInt(),
