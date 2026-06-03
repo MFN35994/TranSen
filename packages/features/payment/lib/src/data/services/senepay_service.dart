@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/api/api_client.dart';
 
 class SenePayService {
-  static const String backendUrl = "https://transen-api.onrender.com";
+  final ApiClient _apiClient = ApiClient();
   
   Future<String?> createCheckoutSession({
     required double amount,
@@ -37,7 +35,7 @@ class SenePayService {
         "description": description,
         "successUrl": returnUrl,
         "cancelUrl": failUrl,
-        "webhookUrl": "$backendUrl/webhook/senepay",
+        "webhookUrl": "https://api.transen.org/api/payments/webhook/senepay",
         "metadata": {
           "order_id": orderId,
           "platform": kIsWeb ? "web_app" : "mobile_app"
@@ -49,31 +47,21 @@ class SenePayService {
         bodyMap["providerId"] = providerId;
       }
 
-      debugPrint(">>> SenePayService: Appel $url (Timeout 60s)");
+      debugPrint(">>> SenePayService: Appel /api/payments/create-session");
       
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "User-Agent": "Mozilla/5.0 (Linux; Android 10) TranSenApp/1.0"
-        },
-        body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 60));
+      final response = await _apiClient.dio.post(
+        '/api/payments/create-session',
+        data: bodyMap,
+      );
       
-      debugPrint(">>> SenePayService: Statut ${response.statusCode}");
-
       if (response.statusCode == 200 || response.statusCode == 201) {
-        final data = jsonDecode(response.body);
-        return data['checkoutUrl'] as String?;
+        return response.data['checkoutUrl'] as String?;
       } else {
         throw Exception("Erreur Serveur: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint(">>> SenePayService Error: $e");
-      if (e is TimeoutException) {
-        throw Exception("Le serveur Render ne répond pas après 60s. Problème de réseau mobile ?");
-      }
-      rethrow;
+      throw Exception("Erreur lors de la création de la session SenePay");
     }
   }
 
@@ -85,13 +73,6 @@ class SenePayService {
     String? description,
   }) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw Exception("Utilisateur non connecté");
-      
-      final idToken = await user.getIdToken();
-      if (idToken == null) throw Exception("Impossible d'obtenir le jeton d'authentification");
-
-      final url = Uri.parse("$backendUrl/api/payment/secure-payout");
       final bodyMap = {
         "amount": amount,
         "recipientPhone": recipientPhone,
@@ -100,33 +81,21 @@ class SenePayService {
         "description": description,
       };
 
-      debugPrint(">>> SenePayService: Appel secure-payout vers $url");
+      debugPrint(">>> SenePayService: Appel /api/payments/secure-payout");
       
-      final response = await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-          "User-Agent": "Mozilla/5.0 (Linux; Android 10) TranSenApp/1.0"
-        },
-        body: jsonEncode(bodyMap),
-      ).timeout(const Duration(seconds: 60));
-
-      debugPrint(">>> SenePayService: Payout Statut ${response.statusCode}");
-      debugPrint(">>> SenePayService: Payout Réponse ${response.body}");
+      final response = await _apiClient.dio.post(
+        '/api/payments/secure-payout',
+        data: bodyMap,
+      );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return jsonDecode(response.body);
+        return response.data as Map<String, dynamic>;
       } else {
-        final errorData = jsonDecode(response.body);
-        throw Exception(errorData['error'] ?? "Erreur ${response.statusCode}");
+        throw Exception("Erreur ${response.statusCode}");
       }
     } catch (e) {
       debugPrint(">>> SenePayService Payout Error: $e");
-      if (e is TimeoutException) {
-        throw Exception("Le serveur Render ne répond pas après 60s. Veuillez réessayer.");
-      }
-      rethrow;
+      throw Exception("Erreur lors du retrait SenePay.");
     }
   }
 
@@ -139,55 +108,30 @@ class SenePayService {
     required String type,
   }) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-      
-      final idToken = await user.getIdToken();
-      if (idToken == null) return;
-
-      final url = Uri.parse("$backendUrl/api/stats/record-commission");
-      
-      await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-        },
-        body: jsonEncode({
+      await _apiClient.dio.post(
+        '/api/stats/record-commission',
+        data: {
           "commission": amount,
           "tripId": tripId,
           "type": type,
-        }),
-      ).timeout(const Duration(seconds: 10));
+        },
+      );
       
       debugPrint(">>> Stats: Commission de $amount enregistrée via Backend");
     } catch (e) {
       debugPrint(">>> Stats Error: Impossible d'enregistrer la commission ($e)");
-      // On ne bloque pas l'utilisateur si les stats échouent
     }
   }
 
   Future<void> processReferralReward(String referredUserId, String tripId) async {
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-      
-      final idToken = await user.getIdToken();
-      if (idToken == null) return;
-
-      final url = Uri.parse("$backendUrl/api/admin/award-referral-reward");
-      
-      await http.post(
-        url,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer $idToken",
-        },
-        body: jsonEncode({
+      await _apiClient.dio.post(
+        '/api/admin/award-referral-reward',
+        data: {
           "referredUserId": referredUserId,
           "tripId": tripId,
-        }),
-      ).timeout(const Duration(seconds: 10));
+        },
+      );
       
       debugPrint(">>> Parrainage: Demande de récompense envoyée au Backend");
     } catch (e) {
