@@ -369,7 +369,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       itemBuilder: (context, index) {
         final txn = walletState.transactions[index];
         final isDebit = txn.amount < 0;
-        final isPoints = txn.points > 0;
+        final isPoints = txn.type == 'points';
         
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -394,15 +394,30 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                 '${txn.date.day}/${txn.date.month}/${txn.date.year} à ${txn.date.hour}:${txn.date.minute.toString().padLeft(2, "0")}',
                 style: const TextStyle(fontSize: 11, color: Colors.grey),
               ),
-              trailing: Text(
-                isPoints 
-                    ? '+${txn.points} pts'
-                    : '${isDebit ? "" : "+"}${txn.amount.toInt()} F',
-                style: TextStyle(
-                  color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                ),
+              trailing: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    isPoints 
+                        ? '+${txn.amount.toInt()} pts'
+                        : '${isDebit ? "" : "+"}${txn.amount.toInt()} F',
+                    style: TextStyle(
+                      color: isPoints ? Colors.amber.shade700 : (isDebit ? Colors.red : Colors.green),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (txn.status.toLowerCase() != 'completed')
+                    Text(
+                      _getStatusLabel(txn.status),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: _getStatusColor(txn.status),
+                      ),
+                    ),
+                ],
               ),
             ),
           ),
