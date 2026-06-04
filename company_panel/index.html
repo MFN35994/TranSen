@@ -69,6 +69,7 @@
                 <a href="#" data-section="wallet"><i class="fas fa-wallet"></i> Mon Portefeuille</a>
                 <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
                 <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses de la Flotte</a>
+                <a href="#" data-section="kyc"><i class="fas fa-id-card-clip"></i> Dossier KYC</a>
             </nav>
             <div class="sidebar-footer">
                 <div class="admin-profile">
@@ -103,6 +104,16 @@
             <!-- Dashboard -->
             <div id="section-dashboard" class="admin-section">
                 
+                <!-- KYC Alert Banner -->
+                <div id="kycAlertBanner" class="glass-card" style="display: none; margin-bottom: 25px; background: rgba(231, 76, 60, 0.15); border-color: var(--red);">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <i class="fas fa-triangle-exclamation" style="color: var(--red); font-size: 1.5rem;"></i>
+                        <div>
+                            <h4 style="color: var(--red); font-weight: bold; margin-bottom: 4px;">Compte non vérifié réglementairement</h4>
+                            <p style="font-size: 0.85rem; color: var(--text-dim);">Votre compagnie n'est pas encore visible sur les applications mobiles TranSen. Veuillez soumettre vos documents de vérification ou corriger votre dossier.</p>
+                        </div>
+                    </div>
+                </div>
                 <!-- TOP CARDS -->
                 <section class="stats-grid">
                     <div class="stat-card glass-card active-veh">
@@ -293,6 +304,66 @@
                         </table>
                     </div>
                 </section>
+            </div>
+
+            <!-- KYC Section -->
+            <div id="section-kyc" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card" id="kycStatusCard" style="background: rgba(243, 156, 18, 0.1); border-color: var(--gold); grid-column: 1 / -1;">
+                        <div class="stat-info">
+                            <p>Statut Réglementaire de la Compagnie</p>
+                            <h2 id="kycStatusText" style="color: var(--gold); font-size: 1.5rem; margin-top: 10px;">EN ATTENTE DE SOUMISSION</h2>
+                            <p id="kycRejectionReason" style="color: var(--red); margin-top: 10px; display: none; font-size: 0.95rem; font-weight: bold;"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="margin-top: 20px; padding: 30px;">
+                    <div class="panel-header" style="margin-bottom: 25px; flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <h2>Documents d'Enregistrement Réglementaires</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-dim);">Veuillez fournir vos justificatifs officiels pour validation. Formats acceptés : PDF, PNG, JPG (Max 5 Mo).</p>
+                    </div>
+
+                    <form id="kycUploadForm" style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="input-file-group">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Registre de Commerce (RCCM)</label>
+                                <input type="file" id="kycRccm" accept="image/*,application/pdf">
+                                <a href="#" class="file-link" id="rccmLink" style="display: none;" target="_blank">Visualiser le fichier actuel</a>
+                            </div>
+                            <div class="input-file-group">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Code NINEA</label>
+                                <input type="file" id="kycNinea" accept="image/*,application/pdf">
+                                <a href="#" class="file-link" id="nineaLink" style="display: none;" target="_blank">Visualiser le fichier actuel</a>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div class="input-file-group">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Pièce d'Identité du Gérant (Recto)</label>
+                                <input type="file" id="kycIdFront" accept="image/*,application/pdf">
+                                <a href="#" class="file-link" id="idFrontLink" style="display: none;" target="_blank">Visualiser le fichier actuel</a>
+                            </div>
+                            <div class="input-file-group">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Pièce d'Identité du Gérant (Verso)</label>
+                                <input type="file" id="kycIdBack" accept="image/*,application/pdf">
+                                <a href="#" class="file-link" id="idBackLink" style="display: none;" target="_blank">Visualiser le fichier actuel</a>
+                            </div>
+                        </div>
+
+                        <div class="input-file-group">
+                            <label style="display: block; margin-bottom: 8px; font-weight: 600;">Autorisation de transport (Biens ou Personnes)</label>
+                            <input type="file" id="kycAuth" accept="image/*,application/pdf">
+                            <a href="#" class="file-link" id="authLink" style="display: none;" target="_blank">Visualiser le fichier actuel</a>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <button type="submit" id="submitKycBtn" class="btn-primary" style="padding: 15px 30px; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-cloud-arrow-up"></i> Soumettre les documents
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- Drivers -->

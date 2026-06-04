@@ -162,6 +162,10 @@ function setupNavigation() {
             document.querySelectorAll('#mainNav a').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             document.getElementById('sectionTitle').innerText = link.innerText;
+
+            if (section === 'kyc') {
+                loadKycData();
+            }
         };
     });
 }
@@ -325,6 +329,34 @@ async function loadDashboardData() {
     if (!currentCompanyId) return;
 
     try {
+        // 0. Load KYC Status
+        try {
+            const kycStatus = await fetchWithAuth(`${API_BASE_URL}/api/companies/${currentCompanyId}/status`);
+            const banner = document.getElementById('kycAlertBanner');
+            if (banner) {
+                if (kycStatus.status !== 'APPROVED') {
+                    banner.style.display = 'block';
+                    if (kycStatus.status === 'REJECTED') {
+                        banner.querySelector('p').innerText = `Votre dossier a été refusé pour la raison suivante : ${kycStatus.rejectionReason || "Documents non conformes"}. Veuillez le corriger dans la rubrique Dossier KYC.`;
+                        banner.querySelector('h4').innerText = "Dossier KYC Rejeté";
+                        banner.style.borderColor = "var(--red)";
+                        banner.querySelector('i').style.color = "var(--red)";
+                        banner.querySelector('h4').style.color = "var(--red)";
+                    } else if (kycStatus.status === 'PENDING') {
+                        banner.querySelector('p').innerText = "Vos documents de vérification sont en cours de validation par notre équipe. Vous serez notifié dès qu'ils seront approuvés.";
+                        banner.querySelector('h4').innerText = "Vérification en cours";
+                        banner.style.borderColor = "var(--gold)";
+                        banner.querySelector('i').style.color = "var(--gold)";
+                        banner.querySelector('h4').style.color = "var(--gold)";
+                    }
+                } else {
+                    banner.style.display = 'none';
+                }
+            }
+        } catch (kycErr) {
+            console.error("Erreur lors de la récupération du statut KYC :", kycErr);
+        }
+
         // 1. Load Stats
         const stats = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/stats?companyId=${currentCompanyId}`);
         document.getElementById('activeDriversCount').innerText = `${stats.activeDrivers} / ${stats.totalDrivers}`;
@@ -683,5 +715,122 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
         }
     } catch (error) {
         alert("Erreur de connexion.");
+    }
+};
+
+// ==========================================
+// KYC Documents Upload Logic
+// ==========================================
+window.loadKycData = async function() {
+    if (!currentCompanyId) return;
+
+    const statusText = document.getElementById('kycStatusText');
+    const rejectionReason = document.getElementById('kycRejectionReason');
+    const statusCard = document.getElementById('kycStatusCard');
+
+    try {
+        const kyc = await fetchWithAuth(`${API_BASE_URL}/api/companies/${currentCompanyId}/status`);
+        
+        // Update Status Presentation
+        if (kyc.status === 'APPROVED') {
+            statusText.innerText = "DOSSIER APPROUVÉ (CONFORME)";
+            statusText.style.color = "var(--green)";
+            statusCard.style.background = "rgba(46, 204, 113, 0.15)";
+            statusCard.style.borderColor = "var(--green)";
+            rejectionReason.style.display = "none";
+        } else if (kyc.status === 'REJECTED') {
+            statusText.innerText = "DOSSIER REFUSÉ / REJETÉ";
+            statusText.style.color = "var(--red)";
+            statusCard.style.background = "rgba(231, 76, 60, 0.15)";
+            statusCard.style.borderColor = "var(--red)";
+            rejectionReason.innerText = `Motif du rejet : ${kyc.rejectionReason || "Documents non conformes"}`;
+            rejectionReason.style.display = "block";
+        } else if (kyc.status === 'PENDING') {
+            statusText.innerText = "DOSSIER EN COURS D'EXAMEN";
+            statusText.style.color = "var(--gold)";
+            statusCard.style.background = "rgba(243, 156, 18, 0.15)";
+            statusCard.style.borderColor = "var(--gold)";
+            rejectionReason.style.display = "none";
+        } else {
+            statusText.innerText = "EN ATTENTE DE SOUMISSION";
+            statusText.style.color = "var(--text-dim)";
+            statusCard.style.background = "rgba(255, 255, 255, 0.03)";
+            statusCard.style.borderColor = "var(--glass-border)";
+            rejectionReason.style.display = "none";
+        }
+
+        // Show Links to current files if they exist
+        const showLink = (elementId, url) => {
+            const link = document.getElementById(elementId);
+            if (url) {
+                link.href = url;
+                link.style.display = "inline-block";
+            } else {
+                link.style.display = "none";
+            }
+        };
+
+        showLink('rccmLink', kyc.rccmFileUrl);
+        showLink('nineaLink', kyc.nineaFileUrl);
+        showLink('idFrontLink', kyc.managerIdFrontUrl);
+        showLink('idBackLink', kyc.managerIdBackUrl);
+        showLink('authLink', kyc.transportAuthUrl);
+
+    } catch (e) {
+        console.error("Erreur lors de la récupération du KYC :", e);
+    }
+};
+
+document.getElementById('kycUploadForm').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!currentCompanyId) return;
+
+    const btn = document.getElementById('submitKycBtn');
+    const originalHtml = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi des fichiers...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    const rccmFile = document.getElementById('kycRccm').files[0];
+    const nineaFile = document.getElementById('kycNinea').files[0];
+    const idFront = document.getElementById('kycIdFront').files[0];
+    const idBack = document.getElementById('kycIdBack').files[0];
+    const authFile = document.getElementById('kycAuth').files[0];
+
+    if (rccmFile) formData.append('rccmFile', rccmFile);
+    if (nineaFile) formData.append('nineaFile', nineaFile);
+    if (idFront) formData.append('idCardFront', idFront);
+    if (idBack) formData.append('idCardBack', idBack);
+    if (authFile) formData.append('transportAuth', authFile);
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/companies/${currentCompanyId}/kyc`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            alert("Documents KYC soumis avec succès ! Notre équipe va procéder à la vérification.");
+            // Reset files inputs
+            document.getElementById('kycRccm').value = "";
+            document.getElementById('kycNinea').value = "";
+            document.getElementById('kycIdFront').value = "";
+            document.getElementById('kycIdBack').value = "";
+            document.getElementById('kycAuth').value = "";
+            
+            await loadKycData();
+            loadDashboardData();
+        } else {
+            const err = await response.text();
+            alert("Erreur lors de la soumission: " + err);
+        }
+    } catch (err) {
+        alert("Erreur réseau ou fichier trop volumineux.");
+    } finally {
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
     }
 };

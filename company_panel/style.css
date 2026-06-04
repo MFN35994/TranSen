@@ -202,3 +202,35 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
 /* Wallet Section Specifics */
 .stats-grid.mini { grid-template-columns: repeat(2, 1fr); }
+
+/* KYC Section Specifics */
+.input-file-group {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.input-file-group label {
+    font-size: 0.9rem;
+    color: var(--text-main);
+}
+.input-file-group input[type="file"] {
+    display: block;
+    margin-top: 8px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+}
+.file-link {
+    display: inline-block;
+    color: var(--primary);
+    text-decoration: underline;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 5px;
+}
+.file-link:hover {
+    color: #fff;
+}
