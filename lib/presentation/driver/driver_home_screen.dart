@@ -20,6 +20,11 @@ import 'trip_detail_screen.dart';
 import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import 'active_deliveries_sheet.dart';
+import 'company_reservations_screen.dart';
+
+final driverProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) {
+  return ref.watch(userRepositoryProvider).getUserData();
+});
 
 final pendingTripsProvider =
     StreamProvider.family<List<TripModel>, String>((ref, filterStr) {
@@ -469,61 +474,70 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       body: Column(
         children: [
           // ── BANNIÈRE ABONNEMENT ──────────────────────────────────────
-          StreamBuilder<SubscriptionInfo>(
-            stream: SubscriptionService().watchSubscription(currentUserId),
-            builder: (context, snapshot) {
-              final info = snapshot.data;
-              if (info == null) return const SizedBox.shrink();
-              
-              // Si l'abonnement est actif et ne finit pas bientôt, on ne montre rien
-              if (info.isActive && !info.expiresSOon) {
-                return const SizedBox.shrink();
-              }
+          ref.watch(driverProfileProvider).when(
+            data: (profile) {
+              final isCompanyDriver = profile != null && profile.containsKey('companyId');
+              if (isCompanyDriver) return const SizedBox.shrink();
 
-              final isExpired = info.isExpired || info.isNone;
-              final hasBalanceForCommission = (wallet.value?.balance ?? 0.0) >= 100; // Seuil arbitraire pour le message
+              return StreamBuilder<SubscriptionInfo>(
+                stream: SubscriptionService().watchSubscription(currentUserId),
+                builder: (context, snapshot) {
+                  final info = snapshot.data;
+                  if (info == null) return const SizedBox.shrink();
+                  
+                  // Si l'abonnement est actif et ne finit pas bientôt, on ne montre rien
+                  if (info.isActive && !info.expiresSOon) {
+                    return const SizedBox.shrink();
+                  }
 
-              return GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
-                ),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  color: isExpired 
-                    ? (hasBalanceForCommission ? Colors.blue.shade700 : Colors.red.shade700)
-                    : Colors.orange.shade700,
-                  child: Row(
-                    children: [
-                      Icon(
-                        isExpired 
-                          ? (hasBalanceForCommission ? Icons.info_outline : Icons.lock)
-                          : Icons.warning_amber,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          isExpired
-                              ? (hasBalanceForCommission 
-                                  ? 'ℹ️ Mode Commission (1%) actif — Abonnez-vous pour l\'illimité'
-                                  : '⛔ Solde insuffisant pour la commission (1%) — Rechargez ou Abonnez-vous')
-                              : '⚠️ Abonnement expire dans ${info.daysRemaining}j ${info.hoursRemaining}h — Appuyez pour renouveler',
-                          style: const TextStyle(
+                  final isExpired = info.isExpired || info.isNone;
+                  final hasBalanceForCommission = (wallet.value?.balance ?? 0.0) >= 100; // Seuil arbitraire pour le message
+
+                  return GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()),
+                    ),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      color: isExpired 
+                        ? (hasBalanceForCommission ? Colors.blue.shade700 : Colors.red.shade700)
+                        : Colors.orange.shade700,
+                      child: Row(
+                        children: [
+                          Icon(
+                            isExpired 
+                              ? (hasBalanceForCommission ? Icons.info_outline : Icons.lock)
+                              : Icons.warning_amber,
                             color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            size: 18,
                           ),
-                        ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              isExpired
+                                  ? (hasBalanceForCommission 
+                                      ? 'ℹ️ Mode Commission (1%) actif — Abonnez-vous pour l\'illimité'
+                                      : '⛔ Solde insuffisant pour la commission (1%) — Rechargez ou Abonnez-vous')
+                                  : '⚠️ Abonnement expire dans ${info.daysRemaining}j ${info.hoursRemaining}h — Appuyez pour renouveler',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                          const Icon(Icons.chevron_right, color: Colors.white),
+                        ],
                       ),
-                      const Icon(Icons.chevron_right, color: Colors.white),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
             },
+            loading: () => const SizedBox.shrink(),
+            error: (_, __) => const SizedBox.shrink(),
           ),
           // ────────────────────────────────────────────────────────────
           Expanded(
@@ -708,12 +722,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                               ],
                             ),
                           ),
-
                           // ── BOUTONS D'ACTION RAPIDE 2×2 ──────────────────────
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                             child: Consumer(builder: (context, ref, child) {
                               final subStream = SubscriptionService().watchSubscription(currentUserId);
+                              final profileAsync = ref.watch(driverProfileProvider);
+                              final isCompanyDriver = profileAsync.value?.containsKey('companyId') ?? false;
+
                               return StreamBuilder<SubscriptionInfo>(
                                 stream: subStream,
                                 builder: (context, subSnap) {
@@ -742,38 +758,54 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                             ),
                                           ),
                                           const SizedBox(width: 10),
-                                          // ── Abonnement
+                                          // ── Abonnement ou Réservations
                                           Expanded(
-                                            child: ScaleTransition(
-                                              scale: _pulseAnimation,
-                                              child: _buildQuickActionTile(
-                                                context: context,
-                                                icon: Icons.workspace_premium_rounded,
-                                                label: 'Abonnement',
-                                                sublabel: subSnap.connectionState == ConnectionState.waiting
-                                                    ? 'chargement...'
-                                                    : subInfo == null
-                                                        ? 'Souscrire'
-                                                        : subInfo.isActive
-                                                            ? '${subInfo.daysRemaining}j restants'
-                                                            : 'Renouveler',
-                                                isLoading: subSnap.connectionState == ConnectionState.waiting,
-                                                gradientColors: subInfo != null && subInfo.isExpired
-                                                    ? const [Color(0xFF5C1A1A), Color(0xFFB71C1C)]
-                                                    : const [Color(0xFF3A2A00), Color(0xFFF9A825)],
-                                                iconColor: subInfo != null && subInfo.isExpired
-                                                    ? Colors.red.shade300
-                                                    : const Color(0xFFFFD54F),
-                                                badge: subInfo != null && (subInfo.isExpired || subInfo.expiresSOon)
-                                                    ? '!'
-                                                    : null,
-                                                onTap: () {
-                                                  HapticFeedback.lightImpact();
-                                                  Navigator.push(context,
-                                                      MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
-                                                },
-                                              ),
-                                            ),
+                                            child: isCompanyDriver
+                                                ? _buildQuickActionTile(
+                                                    context: context,
+                                                    icon: Icons.directions_bus_rounded,
+                                                    label: 'Mes Réservations',
+                                                    sublabel: 'Gérer les sièges',
+                                                    gradientColors: const [Color(0xFF0F4D32), Color(0xFF1E824C)],
+                                                    iconColor: const Color(0xFF2ECC71),
+                                                    onTap: () {
+                                                      HapticFeedback.lightImpact();
+                                                      Navigator.push(
+                                                          context,
+                                                          MaterialPageRoute(
+                                                              builder: (_) => const CompanyReservationsScreen()));
+                                                    },
+                                                  )
+                                                : ScaleTransition(
+                                                    scale: _pulseAnimation,
+                                                    child: _buildQuickActionTile(
+                                                      context: context,
+                                                      icon: Icons.workspace_premium_rounded,
+                                                      label: 'Abonnement',
+                                                      sublabel: subSnap.connectionState == ConnectionState.waiting
+                                                          ? 'chargement...'
+                                                          : subInfo == null
+                                                              ? 'Souscrire'
+                                                              : subInfo.isActive
+                                                                  ? '${subInfo.daysRemaining}j restants'
+                                                                  : 'Renouveler',
+                                                      isLoading: subSnap.connectionState == ConnectionState.waiting,
+                                                      gradientColors: subInfo != null && subInfo.isExpired
+                                                          ? const [Color(0xFF5C1A1A), Color(0xFFB71C1C)]
+                                                          : const [Color(0xFF3A2A00), Color(0xFFF9A825)],
+                                                      iconColor: subInfo != null && subInfo.isExpired
+                                                          ? Colors.red.shade300
+                                                          : const Color(0xFFFFD54F),
+                                                      badge: subInfo != null && (subInfo.isExpired || subInfo.expiresSOon)
+                                                          ? '!'
+                                                          : null,
+                                                      onTap: () {
+                                                        HapticFeedback.lightImpact();
+                                                        Navigator.push(context,
+                                                            MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                                                      },
+                                                    ),
+                                                  ),
                                           ),
                                         ],
                                       ),
