@@ -354,6 +354,19 @@ a {
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
 }
 
+.app-mockup {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4);
+    transition: transform var(--transition-speed);
+}
+
+.app-mockup:hover {
+    transform: scale(1.02);
+}
+
 /* Join Form Section */
 .join-section {
     padding: 100px 0;
