@@ -52,6 +52,8 @@ document.getElementById('register-form').onsubmit = async (e) => {
     btn.innerHTML = 'Création en cours...'; btn.disabled = true;
 
     const data = {
+        firstName: document.getElementById('regFirstName').value,
+        lastName: document.getElementById('regLastName').value,
         companyName: document.getElementById('regCompanyName').value,
         phone: document.getElementById('regPhone').value,
         email: document.getElementById('regEmail').value,
@@ -165,6 +167,8 @@ function setupNavigation() {
 
             if (section === 'kyc') {
                 loadKycData();
+            } else if (section === 'profile') {
+                loadProfileData();
             }
         };
     });
@@ -280,7 +284,9 @@ document.getElementById('shareReceiptBtn').onclick = async () => {
         // Use html2canvas to capture the receipt element
         const canvas = await html2canvas(receiptElement, {
             scale: 2, // Higher resolution
-            backgroundColor: null // Transparent or default
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: '#0f1322'
         });
         
         // Convert to data URL
@@ -497,7 +503,7 @@ function setupMapbox(drivers) {
         mapboxgl.accessToken = 'pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng';
         map = new mapboxgl.Map({
             container: 'fleetMap',
-            style: 'mapbox://styles/mapbox/dark-v11',
+            style: 'mapbox://styles/mapbox/streets-v12',
             center: dakarCenter,
             zoom: 12
         });
@@ -832,5 +838,54 @@ document.getElementById('kycUploadForm').onsubmit = async (e) => {
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
+    }
+};
+
+// ==========================================
+// User Profile Logic
+// ==========================================
+window.loadProfileData = async function() {
+    if (!currentCompanyId) return;
+
+    try {
+        // Fetch User details
+        const user = await fetchWithAuth(`${API_BASE_URL}/api/users/me`);
+        
+        // Fetch Company/KYC details
+        const company = await fetchWithAuth(`${API_BASE_URL}/api/companies/${currentCompanyId}/status`);
+
+        // Populate User elements
+        document.getElementById('profileManagerName').innerText = user.fullName || "Gérant";
+        document.getElementById('profileEmail').innerText = user.email || "Non renseigné";
+        document.getElementById('profilePhone').innerText = user.phone || "Non renseigné";
+
+        // Set Avatar initials
+        if (user.fullName) {
+            document.getElementById('profileAvatar').innerText = user.fullName.charAt(0).toUpperCase();
+        }
+
+        // Populate Company elements
+        document.getElementById('profileCompanyName').innerText = user.companyName || company.name || "Compagnie";
+        document.getElementById('profileCompanyType').innerText = `Type: ${company.type || "Non spécifié"}`;
+        document.getElementById('profileAccessCode').innerText = company.accessCode || "------";
+
+        // Style and populate KYC status
+        const kycStatusText = document.getElementById('profileKycStatus');
+        if (company.status === 'APPROVED') {
+            kycStatusText.innerText = "APPROUVÉ";
+            kycStatusText.style.color = "var(--green)";
+        } else if (company.status === 'REJECTED') {
+            kycStatusText.innerText = "REJETÉ";
+            kycStatusText.style.color = "var(--red)";
+        } else if (company.status === 'PENDING') {
+            kycStatusText.innerText = "EN ATTENTE";
+            kycStatusText.style.color = "var(--gold)";
+        } else {
+            kycStatusText.innerText = "NON SOUMIS";
+            kycStatusText.style.color = "var(--text-dim)";
+        }
+
+    } catch (e) {
+        console.error("Erreur lors du chargement du profil :", e);
     }
 };
