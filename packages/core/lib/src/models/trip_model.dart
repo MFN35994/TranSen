@@ -29,6 +29,8 @@ class TripModel {
   final double? destinationLat;
   final double? destinationLng;
   final double? pointsDiscount;
+  final String? routingType;
+  final String? targetCompanyId;
 
   TripModel({
     required this.id,
@@ -58,6 +60,8 @@ class TripModel {
     this.destinationLat,
     this.destinationLng,
     this.pointsDiscount,
+    this.routingType,
+    this.targetCompanyId,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -90,6 +94,8 @@ class TripModel {
       destinationLat: data['destinationLat']?.toDouble(),
       destinationLng: data['destinationLng']?.toDouble(),
       pointsDiscount: data['pointsDiscount']?.toDouble(),
+      routingType: data['routingType'],
+      targetCompanyId: data['targetCompanyId'],
     );
   }
 
@@ -121,6 +127,8 @@ class TripModel {
       'destinationLat': destinationLat,
       'destinationLng': destinationLng,
       'pointsDiscount': pointsDiscount,
+      'routingType': routingType,
+      'targetCompanyId': targetCompanyId,
     };
   }
 }

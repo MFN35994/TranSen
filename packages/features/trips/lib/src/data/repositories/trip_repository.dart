@@ -156,8 +156,29 @@ class TripRepository {
   }
 
   // 3. ACTIONS COURSES (VTC)
+  Future<List<Map<String, dynamic>>> getCompanies() async {
+    try {
+      final response = await ApiClient().dio.get('/api/companies');
+      if (response.statusCode == 200) {
+        final List data = response.data;
+        return data.map((item) => Map<String, dynamic>.from(item)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint("Erreur getCompanies: $e");
+      return [];
+    }
+  }
+
   Future<String> createTrip(TripModel trip) async {
     try {
+      String category = 'ALLO_DAKAR';
+      if (trip.type.toLowerCase().contains('colis') || trip.type.toLowerCase().contains('livraison')) {
+        category = 'YOBANTE';
+      } else if (trip.routingType == 'COMPANY_ONLY' || trip.targetCompanyId != null) {
+        category = 'BUS_COMPANY';
+      }
+
       final response = await ApiClient().dio.post(
         '/api/trips/request',
         data: {
@@ -165,7 +186,12 @@ class TripRepository {
           'pickupLocation': trip.departure,
           'dropoffLocation': trip.destination,
           'price': trip.price,
-          'targetCompanyId': null, // À implémenter plus tard si on ajoute companyId au TripModel
+          'targetCompanyId': trip.targetCompanyId,
+          'routingType': trip.routingType,
+          'category': category,
+          'senderPhone': trip.senderPhone,
+          'receiverPhone': trip.receiverPhone,
+          'baggageDescription': trip.baggageDescription,
         },
       );
       return response.data['id']?.toString() ?? '';

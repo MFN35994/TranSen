@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'trip_detail_screen.dart';
 
 // --- Models ---
 enum SeatStatus { free, reserved, boarded }
@@ -115,6 +116,8 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
     final String dateStr = trip['createdAt'] != null
         ? trip['createdAt'].toString().substring(0, 10)
         : '';
+    final String category = trip['category'] ?? '';
+    final bool isYobante = category == 'YOBANTE';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
@@ -139,15 +142,42 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
           color: Colors.transparent,
           child: InkWell(
             onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => VisualSeatMapScreen(
-                    tripId: tripId,
-                    routeLabel: '$from ➔ $to',
+              if (isYobante) {
+                final tripModel = TripModel(
+                  id: tripId,
+                  departure: from,
+                  destination: to,
+                  type: 'Livraison de colis',
+                  price: price,
+                  status: status.toLowerCase(),
+                  createdAt: trip['createdAt'] != null ? DateTime.parse(trip['createdAt'].toString()) : DateTime.now(),
+                  clientName: trip['clientName'] ?? 'Client',
+                  clientPhone: trip['clientPhone'] ?? '770000000',
+                  clientId: trip['clientId'] ?? '',
+                  driverId: trip['driverId'] ?? '',
+                  baggageDescription: trip['baggageDescription'],
+                  senderPhone: trip['senderPhone'],
+                  receiverPhone: trip['receiverPhone'],
+                  routingType: trip['routingType'] ?? 'COMPANY_ONLY',
+                  targetCompanyId: trip['targetCompanyId'],
+                );
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => TripDetailScreen(trip: tripModel),
                   ),
-                ),
-              );
+                );
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => VisualSeatMapScreen(
+                      tripId: tripId,
+                      routeLabel: '$from ➔ $to',
+                    ),
+                  ),
+                );
+              }
             },
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -160,15 +190,15 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                          color: (isYobante ? Colors.orange : TranSenColors.primaryGreen).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(30),
                         ),
                         child: Text(
-                          "BUS SCHEDULER",
+                          isYobante ? "YOBANTÉ - COLIS" : "BUS SCHEDULER",
                           style: GoogleFonts.outfit(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: TranSenColors.primaryGreen,
+                            color: isYobante ? Colors.orange.shade800 : TranSenColors.primaryGreen,
                           ),
                         ),
                       ),
