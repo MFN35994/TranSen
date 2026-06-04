@@ -320,11 +320,16 @@ async function loadDashboardData() {
         // 2. Load Drivers
         const drivers = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/drivers?companyId=${currentCompanyId}`);
         const driversTbody = document.getElementById('driversTableBody');
+        const dashboardDriverList = document.getElementById('dashboardDriverList');
+        
         driversTbody.innerHTML = "";
+        if (dashboardDriverList) dashboardDriverList.innerHTML = "";
+
         if (drivers.length === 0) {
             driversTbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Aucun chauffeur. Donnez votre Code de Recrutement !</td></tr>`;
+            if (dashboardDriverList) dashboardDriverList.innerHTML = `<div class="loading-cell" style="text-align:center; padding:20px; color:var(--text-dim);">Aucun chauffeur rattaché.</div>`;
         } else {
-            drivers.forEach(d => {
+            drivers.forEach((d, index) => {
                 driversTbody.innerHTML += `
                     <tr>
                         <td><b>${d.name}</b></td>
@@ -335,8 +340,24 @@ async function loadDashboardData() {
                         <td><span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${d.status}</span></td>
                         <td><button class="icon-btn glass" style="color:var(--text-dim)"><i class="fas fa-ban"></i></button></td>
                     </tr>`;
+                
+                if (dashboardDriverList && index < 6) {
+                    let badgeClass = d.status === 'ACTIVE' ? 'available' : 'maintenance';
+                    let statusText = d.status === 'ACTIVE' ? 'En Ligne' : 'Hors Ligne';
+                    dashboardDriverList.innerHTML += `
+                    <div class="driver-status-item">
+                        <div class="driver-info-sm">
+                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(d.name)}&background=random" alt="${d.name}">
+                            <div><span class="d-name">${d.name}</span><span class="d-car">${d.phone}</span></div>
+                        </div>
+                        <span class="status-badge ${badgeClass}">${statusText}</span>
+                    </div>`;
+                }
             });
         }
+
+        // Initialize Mapbox with active drivers
+        setupMapbox(drivers);
 
         // 3. Load Trips
         const trips = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips?companyId=${currentCompanyId}`);
@@ -408,4 +429,62 @@ async function loadDashboardData() {
     } catch (error) {
         console.error("Erreur chargement données API", error);
     }
+}
+
+let map;
+let markers = [];
+
+function setupMapbox(drivers) {
+    if (!document.getElementById('fleetMap')) return;
+    
+    // Dakar Center
+    const dakarCenter = [-17.4677, 14.7167];
+
+    if (!map) {
+        mapboxgl.accessToken = 'pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng';
+        map = new mapboxgl.Map({
+            container: 'fleetMap',
+            style: 'mapbox://styles/mapbox/dark-v11',
+            center: dakarCenter,
+            zoom: 11
+        });
+        map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+    }
+
+    // Clear old markers
+    markers.forEach(m => m.remove());
+    markers = [];
+
+    // Add markers for active drivers
+    drivers.forEach(d => {
+        if (d.status === 'ACTIVE') {
+            // Simulate realistic spread around Dakar for now
+            const lng = dakarCenter[0] + (Math.random() - 0.5) * 0.12;
+            const lat = dakarCenter[1] + (Math.random() - 0.5) * 0.12;
+
+            const el = document.createElement('div');
+            el.className = 'driver-marker';
+            el.style.width = '18px';
+            el.style.height = '18px';
+            el.style.backgroundColor = 'var(--primary)';
+            el.style.border = '3px solid white';
+            el.style.borderRadius = '50%';
+            el.style.boxShadow = '0 0 15px var(--primary-glow)';
+            el.style.cursor = 'pointer';
+
+            const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`
+                <div style="color: #333; padding: 5px; font-family: 'Outfit', sans-serif;">
+                    <h4 style="margin:0 0 4px 0; font-size: 14px;">${d.name}</h4>
+                    <p style="margin:0; font-size: 12px; color: #666;">Statut: En Ligne</p>
+                </div>
+            `);
+
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([lng, lat])
+                .setPopup(popup)
+                .addTo(map);
+                
+            markers.push(marker);
+        }
+    });
 }

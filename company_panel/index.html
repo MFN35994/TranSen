@@ -9,6 +9,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="icon" type="image/png" href="https://transen.org/assets/transen-logo.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
 </head>
 <body>
     <!-- Login Section -->
@@ -134,29 +136,8 @@
                             <h2>STATUT DES CHAUFFEURS</h2>
                             <i class="fas fa-ellipsis-h" style="color: var(--text-dim);"></i>
                         </div>
-                        <div class="driver-status-list">
-                            <!-- Placeholder Data for Velocity Look -->
-                            <div class="driver-status-item">
-                                <div class="driver-info-sm">
-                                    <img src="https://ui-avatars.com/api/?name=Aliou+Ndiaye&background=random" alt="Aliou">
-                                    <div><span class="d-name">Aliou Ndiaye</span><span class="d-car">Toyota Corolla</span></div>
-                                </div>
-                                <span class="status-badge available">Disponible</span>
-                            </div>
-                            <div class="driver-status-item">
-                                <div class="driver-info-sm">
-                                    <img src="https://ui-avatars.com/api/?name=Moussa+Diop&background=random" alt="Moussa">
-                                    <div><span class="d-name">Moussa Diop</span><span class="d-car">Hyundai Elantra</span></div>
-                                </div>
-                                <span class="status-badge ontrip">En Course</span>
-                            </div>
-                            <div class="driver-status-item">
-                                <div class="driver-info-sm">
-                                    <img src="https://ui-avatars.com/api/?name=Cheikh+Fall&background=random" alt="Cheikh">
-                                    <div><span class="d-name">Cheikh Fall</span><span class="d-car">Ford Escape</span></div>
-                                </div>
-                                <span class="status-badge maintenance">Inactif</span>
-                            </div>
+                        <div class="driver-status-list" id="dashboardDriverList">
+                            <div class="loading-cell">Chargement des chauffeurs...</div>
                         </div>
                         <a href="#" style="display: block; text-align: center; color: var(--primary); font-size: 0.85rem; margin-top: 15px; font-weight: 600;">VOIR TOUT</a>
                     </div>
@@ -167,8 +148,7 @@
                             <h2>CARTE EN TEMPS RÉEL (FLOTTE)</h2>
                             <i class="fas fa-ellipsis-h" style="color: var(--text-dim);"></i>
                         </div>
-                        <div class="map-placeholder">
-                            <!-- Background is styled in CSS to look like a dark map -->
+                        <div class="map-placeholder" id="fleetMap">
                         </div>
                     </div>
                 </div>
