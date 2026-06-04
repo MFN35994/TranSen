@@ -60,7 +60,7 @@
         <aside class="sidebar glass">
             <div class="logo">
                 <img src="https://transen.org/assets/logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/40?text=Logo'">
-                <span>TranSen B2B</span>
+                <span>TRAN<span style="color: var(--primary);">SEN</span> B2B</span>
             </div>
             <nav id="mainNav">
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Vue d'ensemble</a>
@@ -83,36 +83,103 @@
         <main class="content">
             <header>
                 <div class="header-left">
-                    <h1 id="sectionTitle">Vue d'ensemble</h1>
-                    <p id="currentDate">--</p>
+                    <h1 id="sectionTitle" style="display:none;">Vue d'ensemble</h1>
+                    <div class="header-search">
+                        <i class="fas fa-search" style="color: var(--text-dim);"></i>
+                        <input type="text" placeholder="Rechercher chauffeur, course...">
+                    </div>
                 </div>
                 <div class="header-actions">
-                    <div class="company-code-badge" title="Donnez ce code à vos chauffeurs pour qu'ils rejoignent votre flotte sur l'application.">
-                        Code Recrutement: <span id="companyCodeDisplay">--</span>
+                    <div class="company-code-badge" title="Code Recrutement Chauffeurs">
+                        CODE RECRUTEMENT: <span id="companyCodeDisplay" style="margin-left: 5px;">--</span>
                     </div>
+                    <div style="font-size: 1.2rem; margin-left: 10px; cursor: pointer;"><i class="far fa-bell"></i></div>
+                    <p id="currentDate" style="display:none;">--</p>
                 </div>
             </header>
 
             <!-- Dashboard -->
             <div id="section-dashboard" class="admin-section">
+                
+                <!-- TOP CARDS -->
                 <section class="stats-grid">
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon blue"><i class="fas fa-steering-wheel"></i></div>
-                        <div class="stat-info"><p>Chauffeurs Actifs</p><h3 id="activeDriversCount">0 / 0</h3></div>
+                    <div class="stat-card glass-card active-veh">
+                        <div class="stat-info">
+                            <p>CHAUFFEURS ACTIFS</p>
+                            <h3 id="activeDriversCount">0 / 0</h3>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--text-dim);"></i>
                     </div>
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon green"><i class="fas fa-car-side"></i></div>
-                        <div class="stat-info"><p>Courses du jour</p><h3 id="todayTrips">0</h3></div>
+                    <div class="stat-card glass-card idle-veh">
+                        <div class="stat-info">
+                            <p>COURSES DU JOUR</p>
+                            <h3 id="todayTrips">0</h3>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--text-dim);"></i>
                     </div>
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon gold"><i class="fas fa-sack-dollar"></i></div>
-                        <div class="stat-info"><p>Chiffre d'affaires total</p><h3 id="totalRevenue">0 F</h3></div>
+                    <div class="stat-card glass-card revenue-card">
+                        <div class="stat-info">
+                            <p>CHIFFRE D'AFFAIRES</p>
+                            <h3 id="totalRevenue">0 F</h3>
+                        </div>
+                        <i class="fas fa-chevron-right" style="color: var(--text-dim);"></i>
                     </div>
                 </section>
 
-                <div class="dashboard-grid">
-                    <section class="table-container glass-card">
-                        <div class="table-header"><h2>Dernières Activités de la Flotte</h2></div>
+                <!-- MIDDLE SECTION -->
+                <div class="dashboard-middle">
+                    <!-- Left: Driver Status -->
+                    <div class="glass-card">
+                        <div class="panel-header">
+                            <h2>STATUT DES CHAUFFEURS</h2>
+                            <i class="fas fa-ellipsis-h" style="color: var(--text-dim);"></i>
+                        </div>
+                        <div class="driver-status-list">
+                            <!-- Placeholder Data for Velocity Look -->
+                            <div class="driver-status-item">
+                                <div class="driver-info-sm">
+                                    <img src="https://ui-avatars.com/api/?name=Aliou+Ndiaye&background=random" alt="Aliou">
+                                    <div><span class="d-name">Aliou Ndiaye</span><span class="d-car">Toyota Corolla</span></div>
+                                </div>
+                                <span class="status-badge available">Disponible</span>
+                            </div>
+                            <div class="driver-status-item">
+                                <div class="driver-info-sm">
+                                    <img src="https://ui-avatars.com/api/?name=Moussa+Diop&background=random" alt="Moussa">
+                                    <div><span class="d-name">Moussa Diop</span><span class="d-car">Hyundai Elantra</span></div>
+                                </div>
+                                <span class="status-badge ontrip">En Course</span>
+                            </div>
+                            <div class="driver-status-item">
+                                <div class="driver-info-sm">
+                                    <img src="https://ui-avatars.com/api/?name=Cheikh+Fall&background=random" alt="Cheikh">
+                                    <div><span class="d-name">Cheikh Fall</span><span class="d-car">Ford Escape</span></div>
+                                </div>
+                                <span class="status-badge maintenance">Inactif</span>
+                            </div>
+                        </div>
+                        <a href="#" style="display: block; text-align: center; color: var(--primary); font-size: 0.85rem; margin-top: 15px; font-weight: 600;">VOIR TOUT</a>
+                    </div>
+
+                    <!-- Right: Map -->
+                    <div class="glass-card" style="padding: 0;">
+                        <div class="panel-header" style="padding: 20px 20px 0 20px; position: absolute; z-index: 10; width: 100%;">
+                            <h2>CARTE EN TEMPS RÉEL (FLOTTE)</h2>
+                            <i class="fas fa-ellipsis-h" style="color: var(--text-dim);"></i>
+                        </div>
+                        <div class="map-placeholder">
+                            <!-- Background is styled in CSS to look like a dark map -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BOTTOM SECTION (Real Data Table) -->
+                <div class="dashboard-bottom">
+                    <section class="table-container glass-card" style="grid-column: 1 / -1;">
+                        <div class="panel-header">
+                            <h2>DERNIÈRES ACTIVITÉS DE LA FLOTTE</h2>
+                            <i class="fas fa-ellipsis-h" style="color: var(--text-dim);"></i>
+                        </div>
                         <div class="custom-table-wrapper">
                             <table>
                                 <thead>
