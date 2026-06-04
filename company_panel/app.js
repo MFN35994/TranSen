@@ -7,12 +7,14 @@ let currentToken = null;
 window.onload = () => {
     const token = localStorage.getItem('transen_company_token');
     const companyId = localStorage.getItem('transen_company_id');
-    if (token && companyId) {
+    if (token && companyId && companyId !== 'undefined' && companyId !== 'null') {
         currentToken = token;
         currentCompanyId = companyId;
         const companyName = localStorage.getItem('transen_company_name');
         const companyCode = localStorage.getItem('transen_company_code');
         showApp({ name: companyName, companyCode: companyCode });
+    } else {
+        hideApp();
     }
 };
 
@@ -292,7 +294,8 @@ async function fetchWithAuth(url) {
     });
     if (response.status === 401 || response.status === 403) {
         localStorage.clear();
-        window.location.reload();
+        hideApp();
+        throw new Error("Unauthorized");
     }
     return response.json();
 }
