@@ -1,3 +1,19 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
+import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+
+// Configuration Firebase (transen-pro)
+const firebaseConfig = {
+    apiKey: "AIzaSyBI9aic0z55HA8AT31In3fbHUJy-AQ4qq4",
+    appId: "1:552529206563:web:db7af28ae9b752e203c096",
+    messagingSenderId: "552529206563",
+    projectId: "transen-pro",
+    authDomain: "transen-pro.firebaseapp.com",
+    storageBucket: "transen-pro.firebasestorage.app",
+    measurementId: "G-3RZNWXB756"
+};
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp, "transen");
+
 const API_BASE_URL = 'https://api.transen.org'; // The Spring Boot backend
 
 let currentCompanyId = null;
@@ -432,7 +448,7 @@ async function loadDashboardData() {
 }
 
 let map;
-let markers = [];
+let markers = {}; // Store markers by driverId
 
 function setupMapbox(drivers) {
     if (!document.getElementById('fleetMap')) return;
@@ -446,45 +462,63 @@ function setupMapbox(drivers) {
             container: 'fleetMap',
             style: 'mapbox://styles/mapbox/dark-v11',
             center: dakarCenter,
-            zoom: 11
+            zoom: 12
         });
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
     }
 
-    // Clear old markers
-    markers.forEach(m => m.remove());
-    markers = [];
+    // Subscribe to Firestore for real-time driver locations
+    const activeDriversRef = collection(db, "active_drivers");
+    
+    onSnapshot(activeDriversRef, (snapshot) => {
+        snapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const driverId = doc.id;
+            
+            // Check if this driver belongs to our company (is in our drivers array)
+            const isOurDriver = drivers.find(d => d.id === driverId);
+            
+            if (isOurDriver && data.status === 'online') {
+                const lng = data.lng;
+                const lat = data.lat;
 
-    // Add markers for active drivers
-    drivers.forEach(d => {
-        if (d.status === 'ACTIVE') {
-            // Simulate realistic spread around Dakar for now
-            const lng = dakarCenter[0] + (Math.random() - 0.5) * 0.12;
-            const lat = dakarCenter[1] + (Math.random() - 0.5) * 0.12;
+                if (markers[driverId]) {
+                    // Update existing marker position smoothly
+                    markers[driverId].setLngLat([lng, lat]);
+                } else {
+                    // Create new marker
+                    const el = document.createElement('div');
+                    el.className = 'driver-marker';
+                    el.style.width = '18px';
+                    el.style.height = '18px';
+                    el.style.backgroundColor = 'var(--primary)';
+                    el.style.border = '3px solid white';
+                    el.style.borderRadius = '50%';
+                    el.style.boxShadow = '0 0 15px var(--primary-glow)';
+                    el.style.cursor = 'pointer';
+                    el.style.transition = 'all 0.3s ease'; // Smooth movement
 
-            const el = document.createElement('div');
-            el.className = 'driver-marker';
-            el.style.width = '18px';
-            el.style.height = '18px';
-            el.style.backgroundColor = 'var(--primary)';
-            el.style.border = '3px solid white';
-            el.style.borderRadius = '50%';
-            el.style.boxShadow = '0 0 15px var(--primary-glow)';
-            el.style.cursor = 'pointer';
+                    const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`
+                        <div style="color: #333; padding: 5px; font-family: 'Outfit', sans-serif;">
+                            <h4 style="margin:0 0 4px 0; font-size: 14px;">${isOurDriver.name}</h4>
+                            <p style="margin:0; font-size: 12px; color: #666;">Statut: En Ligne</p>
+                        </div>
+                    `);
 
-            const popup = new mapboxgl.Popup({ offset: 25, closeButton: false }).setHTML(`
-                <div style="color: #333; padding: 5px; font-family: 'Outfit', sans-serif;">
-                    <h4 style="margin:0 0 4px 0; font-size: 14px;">${d.name}</h4>
-                    <p style="margin:0; font-size: 12px; color: #666;">Statut: En Ligne</p>
-                </div>
-            `);
-
-            const marker = new mapboxgl.Marker(el)
-                .setLngLat([lng, lat])
-                .setPopup(popup)
-                .addTo(map);
-                
-            markers.push(marker);
-        }
+                    const marker = new mapboxgl.Marker(el)
+                        .setLngLat([lng, lat])
+                        .setPopup(popup)
+                        .addTo(map);
+                        
+                    markers[driverId] = marker;
+                }
+            } else if (markers[driverId]) {
+                // If driver goes offline or leaves, remove marker
+                markers[driverId].remove();
+                delete markers[driverId];
+            }
+        });
+    }, (error) => {
+        console.error("Erreur Firestore temps réel:", error);
     });
 }
