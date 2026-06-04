@@ -90,6 +90,11 @@ document.getElementById('login-form').onsubmit = async (e) => {
         const result = await response.json();
         
         if (response.ok) {
+            if (!result.companyId) {
+                alert("Votre compte n'est pas encore rattaché à une compagnie valide. Contactez l'administrateur.");
+                btn.innerHTML = 'Se connecter'; btn.disabled = false;
+                return;
+            }
             localStorage.setItem('transen_company_token', result.token);
             localStorage.setItem('transen_company_id', result.companyId);
             localStorage.setItem('transen_company_name', result.companyName);

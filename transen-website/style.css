@@ -306,7 +306,8 @@ a {
 }
 
 .split-content {
-    flex: 1;
+    flex: 1 1 50%;
+    max-width: 50%;
 }
 
 .section-title {
@@ -338,7 +339,8 @@ a {
 }
 
 .split-image {
-    flex: 1;
+    flex: 1 1 45%;
+    max-width: 45%;
     min-height: 400px;
     border-radius: 20px;
     display: flex;
