@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 
 // Configuration Firebase (transen-pro)
 const firebaseConfig = {
@@ -395,6 +395,11 @@ async function loadDashboardData() {
                         <td><small><b>De:</b> ${t.departure}<br><b>À:</b> ${t.destination}</small></td>
                         <td><b>${t.price} F</b></td>
                         <td><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
+                        <td>
+                            <button class="btn-primary" onclick="window.openPassengerManager('${t.id}', '${t.departure} ➔ ${t.destination}')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
+                                <i class="fas fa-users"></i> Gérer
+                            </button>
+                        </td>
                     </tr>`;
                     
                 if (index < 8) {
@@ -522,3 +527,161 @@ function setupMapbox(drivers) {
         console.error("Erreur Firestore temps réel:", error);
     });
 }
+
+// ==========================================
+// PASSENGER MANAGER LOGIC (B2B Busses / Minibusses)
+// ==========================================
+let currentPassengerTripId = null;
+
+window.openPassengerManager = async function(tripId, route) {
+    currentPassengerTripId = tripId;
+    document.getElementById('pmTripRoute').innerText = route;
+    document.getElementById('passengerModal').style.display = "flex";
+    await loadTripBookings();
+};
+
+document.getElementById('closePassengerModalBtn').onclick = () => {
+    document.getElementById('passengerModal').style.display = "none";
+    currentPassengerTripId = null;
+};
+
+async function loadTripBookings() {
+    if (!currentPassengerTripId) return;
+    const listBody = document.getElementById('pmPassengersList');
+    listBody.innerHTML = `<tr><td colspan="5" class="loading-cell" style="text-align:center;">Chargement...</td></tr>`;
+
+    try {
+        const bookings = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips/${currentPassengerTripId}/bookings`);
+        listBody.innerHTML = "";
+        
+        if (bookings.length === 0) {
+            listBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 15px; color: var(--text-dim);">Aucun passager sur ce trajet.</td></tr>`;
+        } else {
+            bookings.forEach(b => {
+                let payStatusText = b.paymentStatus === 'PAID_IN_ADVANCE' ? 'PAYÉ D\'AVANCE' : 'ESPÈCES';
+                let payBadgeClass = b.paymentStatus === 'PAID_IN_ADVANCE' ? 'status-COMPLETED' : 'status-PENDING';
+                let boardText = b.status === 'BOARDED' ? 'À Bord' : (b.status === 'CANCELLED' ? 'Annulé' : 'Réservé');
+                let boardBadgeClass = b.status === 'BOARDED' ? 'status-COMPLETED' : (b.status === 'CANCELLED' ? 'status-FAILED' : 'status-PENDING');
+                
+                listBody.innerHTML += `
+                    <tr>
+                        <td style="padding: 10px;"><b>${b.passengerName}</b><br><small>${b.passengerPhone}</small></td>
+                        <td style="padding: 10px; text-align: center;">${b.seatsBooked}</td>
+                        <td style="padding: 10px;"><span class="status-tag ${payBadgeClass}" style="padding: 2px 8px; font-size: 0.7rem;">${payStatusText}</span></td>
+                        <td style="padding: 10px;"><small>${b.boardingCode}</small><br><span class="status-tag ${boardBadgeClass}" style="padding: 2px 8px; font-size: 0.7rem;">${boardText}</span></td>
+                        <td style="padding: 10px;">
+                            ${b.status !== 'CANCELLED' ? `
+                            <button class="icon-btn" onclick="window.revokePassenger('${b.id}', '${b.passengerPhone}')" style="background: none; border: none; color: var(--red); cursor: pointer;" title="Révoquer le passager">
+                                <i class="fas fa-user-minus"></i>
+                            </button>` : `<span style="color:var(--text-dim);">Annulé</span>`}
+                        </td>
+                    </tr>`;
+            });
+        }
+    } catch (error) {
+        listBody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 15px; color: var(--red);">Erreur lors du chargement.</td></tr>`;
+    }
+}
+
+window.revokePassenger = async function(bookingId, passengerId) {
+    if (!confirm("Voulez-vous vraiment révoquer ce passager de ce trajet ?")) return;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/cancel`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        if (response.ok) {
+            // Tenter la désinscription sur Firestore en temps réel
+            try {
+                const tripRef = doc(db, "pools", currentPassengerTripId);
+                await updateDoc(tripRef, {
+                    passengerIds: arrayRemove(passengerId),
+                    [`passengerDetails.${passengerId}`]: deleteField()
+                });
+            } catch(e) {
+                try {
+                    const tripRef = doc(db, "trips", currentPassengerTripId);
+                    await updateDoc(tripRef, {
+                        passengerIds: arrayRemove(passengerId),
+                        [`passengerDetails.${passengerId}`]: deleteField()
+                    });
+                } catch(err) {
+                    console.log("Désinscription Firestore ignorée :", err);
+                }
+            }
+
+            alert("Passager révoqué avec succès !");
+            await loadTripBookings();
+            loadDashboardData(); // Refresh seats / stats
+        } else {
+            const err = await response.text();
+            alert("Erreur: " + err);
+        }
+    } catch (error) {
+        alert("Erreur de connexion lors de la révocation.");
+    }
+};
+
+document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!currentPassengerTripId) return;
+
+    const name = document.getElementById('pmPassengerName').value;
+    const phone = document.getElementById('pmPassengerPhone').value;
+    const seats = document.getElementById('pmPassengerSeats').value;
+    
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/bookings/manual-book?tripId=${currentPassengerTripId}&passengerPhone=${encodeURIComponent(phone)}&fullName=${encodeURIComponent(name)}&seats=${seats}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`
+            }
+        });
+
+        if (response.ok) {
+            // Tenter l'inscription sur Firestore en temps réel pour avertir le chauffeur
+            try {
+                const tripRef = doc(db, "pools", currentPassengerTripId);
+                await updateDoc(tripRef, {
+                    passengerIds: arrayUnion(phone),
+                    [`passengerDetails.${phone}`]: {
+                        fullName: name,
+                        phone: phone,
+                        seats: parseInt(seats)
+                    }
+                });
+            } catch(e) {
+                try {
+                    const tripRef = doc(db, "trips", currentPassengerTripId);
+                    await updateDoc(tripRef, {
+                        passengerIds: arrayUnion(phone),
+                        [`passengerDetails.${phone}`]: {
+                            fullName: name,
+                            phone: phone,
+                            seats: parseInt(seats)
+                        }
+                    });
+                } catch(err) {
+                    console.log("Inscription Firestore ignorée :", err);
+                }
+            }
+
+            alert("Passager ajouté avec succès !");
+            document.getElementById('pmPassengerName').value = "";
+            document.getElementById('pmPassengerPhone').value = "";
+            document.getElementById('pmPassengerSeats').value = "1";
+            await loadTripBookings();
+            loadDashboardData(); // Refresh
+        } else {
+            const err = await response.text();
+            alert("Erreur: " + err);
+        }
+    } catch (error) {
+        alert("Erreur de connexion.");
+    }
+};
