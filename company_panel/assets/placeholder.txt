@@ -1,0 +1,2 @@
+Placez le fichier logo nommé 'transen-logo.png' dans ce dossier assets/.
+Il sera automatiquement affiché sur l'interface de connexion, la barre latérale et les reçus de transaction téléchargeables.

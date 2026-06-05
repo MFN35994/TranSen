@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
 :root {
     /* Velocity Theme Colors */
     --primary: #00E1FF;
@@ -13,7 +15,7 @@
     --glass-border: rgba(255, 255, 255, 0.08);
     --text-main: #FFFFFF;
     --text-dim: #8B949E;
-    --transition: all 0.3s ease;
+    --transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -106,12 +108,25 @@ button#signInBtn:hover { background: #00C3DD; box-shadow: 0 0 30px var(--primary
 nav { display: flex; flex-direction: column; gap: 5px; }
 nav a {
     color: var(--text-dim); text-decoration: none; padding: 12px 15px; border-radius: 10px;
-    display: flex; align-items: center; gap: 15px; transition: var(--transition); font-size: 0.95rem; font-weight: 500;
+    display: flex; align-items: center; gap: 15px; transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1); font-size: 0.95rem; font-weight: 500;
+    position: relative;
 }
-nav a i { font-size: 1.1rem; width: 20px; text-align: center; }
-nav a:hover, nav a.active { background: rgba(0, 225, 255, 0.1); color: var(--text-main); }
+nav a i { font-size: 1.1rem; width: 20px; text-align: center; transition: transform 0.3s ease; }
+nav a:hover {
+    background: rgba(0, 225, 255, 0.08);
+    color: var(--primary);
+    transform: translateX(6px);
+}
+nav a:hover i {
+    transform: scale(1.2);
+}
+nav a.active {
+    background: rgba(0, 225, 255, 0.15) !important;
+    color: var(--primary) !important;
+    font-weight: 700;
+}
 nav a.active::before {
-    content: ''; position: absolute; left: 0; width: 4px; height: 30px; background: var(--primary); border-radius: 0 4px 4px 0;
+    content: ''; position: absolute; left: 0; width: 4px; height: 20px; background: var(--primary); border-radius: 0 4px 4px 0;
 }
 
 .sidebar-footer { margin-top: auto; padding: 15px 10px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid var(--glass-border); }
@@ -304,4 +319,25 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
     font-size: 0.85rem;
     color: var(--text-dim);
     line-height: 1.5;
+}
+
+/* Premium Navigation Section Animation */
+.admin-section {
+    display: none;
+    opacity: 0;
+}
+.admin-section.active-section {
+    display: block !important;
+    animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

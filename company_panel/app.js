@@ -159,8 +159,17 @@ function setupNavigation() {
         link.onclick = (e) => {
             e.preventDefault();
             const section = link.getAttribute('data-section');
-            document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
-            document.getElementById(`section-${section}`).style.display = 'block';
+            document.querySelectorAll('.admin-section').forEach(s => {
+                s.classList.remove('active-section');
+                s.style.display = 'none';
+            });
+            const target = document.getElementById(`section-${section}`);
+            if (target) {
+                target.style.display = 'block';
+                // Trigger reflow to animate
+                target.offsetHeight;
+                target.classList.add('active-section');
+            }
             document.querySelectorAll('#mainNav a').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             document.getElementById('sectionTitle').innerText = link.innerText;

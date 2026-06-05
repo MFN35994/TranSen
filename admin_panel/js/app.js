@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app-check.js";
 import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
-import { getAuth, onAuthStateChanged, RecaptchaVerifier, signInWithPhoneNumber, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
+import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyBI9aic0z55HA8AT31In3fbHUJy-AQ4qq4",
@@ -25,62 +25,96 @@ initializeAppCheck(app, {
     isTokenAutoRefreshEnabled: true
 });
 
+// Helper for REST calls to Spring Boot backend
+async function adminFetch(url, options = {}) {
+    const token = localStorage.getItem('adminToken');
+    const headers = {
+        'Content-Type': 'application/json',
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options.headers
+    };
+    const response = await fetch(`https://api.transen.org${url}`, {
+        ...options,
+        headers
+    });
+    if (response.status === 401 || response.status === 403) {
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+        signOut(auth);
+        hideApp();
+        throw new Error("Session expirée ou droits insuffisants. Veuillez vous reconnecter.");
+    }
+    return response;
+}
+
 // Global Error Handler for Snapshots
 const handleError = (error, context) => {
     console.error(`Firestore Error [${context}]:`, error);
-    if (error.code === 'failed-precondition') {
-        alert(`Index manquant pour ${context}. Vérifiez la console Firebase.`);
-    } else if (error.code === 'permission-denied') {
-        alert(`Permission refusée pour ${context}. Vérifiez vos règles de sécurité.`);
-    }
 };
 
-// Auth State
-let confirmationResult = null;
-window.onload = () => {
-    window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', { 'size': 'invisible' });
-};
-
-onAuthStateChanged(auth, async (user) => {
-    if (user) {
-        console.log("User logged in:", user.uid);
+// Check auth state on load
+window.onload = async () => {
+    const token = localStorage.getItem('adminToken');
+    const userStr = localStorage.getItem('adminUser');
+    if (token && userStr) {
         try {
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists() && userDoc.data().role === 'admin') {
-                showApp(userDoc.data());
-            } else {
-                alert("Accès refusé. Votre compte n'a pas le rôle 'admin' dans la base 'transen'.");
-                signOut(auth);
-            }
+            const userData = JSON.parse(userStr);
+            // Sign in anonymously to Firebase to satisfy Firestore rules
+            await signInAnonymously(auth);
+            showApp(userData);
         } catch (e) {
-            handleError(e, "Vérification Rôle Admin");
+            console.error("Auth initialization error:", e);
+            localStorage.removeItem('adminToken');
+            localStorage.removeItem('adminUser');
+            hideApp();
         }
     } else {
         hideApp();
     }
-});
-
-// Login UI
-document.getElementById('sendCodeBtn').onclick = async () => {
-    const phone = document.getElementById('phoneNumber').value;
-    try {
-        confirmationResult = await signInWithPhoneNumber(auth, phone, window.recaptchaVerifier);
-        document.getElementById('phone-step').style.display = "none";
-        document.getElementById('otp-step').style.display = "block";
-    } catch (e) { alert("Erreur SMS: " + e.message); }
 };
 
+// Login Form Submit (Professional Email + Password)
 document.getElementById('loginForm').onsubmit = async (e) => {
     e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorMsg = document.getElementById('loginError');
+    errorMsg.innerText = "";
+
     try {
-        await confirmationResult.confirm(document.getElementById('otpCode').value);
-    } catch (e) { alert("Code invalide"); }
+        const res = await fetch('https://api.transen.org/api/auth/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            localStorage.setItem('adminToken', data.token);
+            localStorage.setItem('adminUser', JSON.stringify(data.user));
+            
+            // Sign in anonymously to Firebase to satisfy Firestore rules
+            await signInAnonymously(auth);
+            
+            showApp(data.user);
+        } else {
+            errorMsg.innerText = data.message || "Identifiants incorrects.";
+        }
+    } catch (err) {
+        errorMsg.innerText = "Erreur de connexion au serveur.";
+        console.error(err);
+    }
 };
 
 function showApp(userData) {
     document.getElementById('login-overlay').style.display = "none";
     document.getElementById('admin-app').style.display = "flex";
-    document.getElementById('adminName').innerText = userData.name || "Admin";
+    document.getElementById('adminName').innerText = userData.fullName || userData.name || "Admin";
+    const initialElem = document.getElementById('adminInitial');
+    if (initialElem) {
+        const name = userData.fullName || userData.name || "Admin";
+        initialElem.innerText = name.charAt(0).toUpperCase();
+    }
     document.getElementById('currentDate').innerText = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
     initDashboard();
 }
@@ -96,7 +130,9 @@ function initDashboard() {
     syncRecentActivity();
     syncLiveFeed();
     syncDrivers();
+    syncCompanies();
     syncUsers();
+    syncAdmins();
 }
 
 function setupNavigation() {
@@ -109,50 +145,35 @@ function setupNavigation() {
             document.querySelectorAll('#mainNav a').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
             document.getElementById('sectionTitle').innerText = link.innerText;
+
+            // Refresh on click
+            if (section === 'companies') syncCompanies();
+            if (section === 'admins') syncAdmins();
+            if (section === 'dashboard') {
+                syncGlobalStats();
+                syncRecentActivity();
+            }
+            if (section === 'drivers') syncDrivers();
+            if (section === 'users') syncUsers();
         };
     });
 }
 
-function syncGlobalStats() {
-    console.log("Syncing Global Stats from database 'transen'...");
-    
-    onSnapshot(collection(db, "trips"), 
-        snap => {
-            console.log("TRIPS SNAPSHOT RECEIVED. Size:", snap.size);
-            if (snap.size === 0) {
-                console.warn("WARNING: Trips collection is EMPTY or access denied in 'transen' db.");
-            }
-            document.getElementById('totalTrips').innerText = snap.size;
-            let rev = 0;
-            snap.forEach(d => rev += (d.data().price || 0));
-            document.getElementById('totalRevenue').innerText = rev.toLocaleString() + " F";
-            document.getElementById('estCommissions').innerText = (rev * 0.05).toLocaleString() + " F";
-        }, 
-        e => {
-            console.error("ERROR syncing trips:", e);
-            alert("Erreur lecture 'trips' sur base 'transen': " + e.message);
-        }
-    );
-
-    onSnapshot(collection(db, "users"), 
-        snap => {
-            console.log("USERS SNAPSHOT RECEIVED. Size:", snap.size);
-            document.getElementById('totalUsers').innerText = snap.size;
-            let active = 0, inactive = 0;
-            snap.forEach(d => {
-                const data = d.data();
-                if (data.role === 'driver') {
-                    if (data.status === 'active') active++; else inactive++;
-                }
-            });
-            document.getElementById('activeDriversCount').innerText = active;
-            document.getElementById('inactiveDriversCount').innerText = inactive;
-        },
-        e => {
-            console.error("ERROR syncing users:", e);
-            alert("Erreur lecture 'users' sur base 'transen': " + e.message);
-        }
-    );
+async function syncGlobalStats() {
+    console.log("Syncing Global Stats from REST API...");
+    try {
+        const res = await adminFetch('/api/admin/stats');
+        if (!res.ok) throw new Error("Impossible de charger les statistiques.");
+        const stats = await res.json();
+        
+        document.getElementById('totalTrips').innerText = stats.totalTrips || 0;
+        document.getElementById('totalUsers').innerText = stats.totalUsers || 0;
+        document.getElementById('totalRevenue').innerText = (stats.totalRevenue || 0).toLocaleString() + " F";
+        document.getElementById('estCommissions').innerText = (stats.estCommissions || 0).toLocaleString() + " F";
+        document.getElementById('senePayMerchantBalance').innerText = (stats.senepayMerchantBalance || 0).toLocaleString() + " F";
+    } catch (e) {
+        console.error("Error fetching stats:", e);
+    }
 }
 
 function syncRecentActivity() {
@@ -169,7 +190,7 @@ function syncRecentActivity() {
                     <td><span class="badge blue">${t.type?.toUpperCase() || 'COURSE'}</span></td>
                     <td>${t.clientName || 'Inconnu'}</td>
                     <td>${t.price} F</td>
-                    <td style="color:var(--primary); font-weight:bold">${(t.price * 0.05).toFixed(0)} F</td>
+                    <td style="color:var(--primary); font-weight:bold">${(t.price * 0.01).toFixed(0)} F</td>
                     <td><span class="status-tag ${t.status}">${t.status.toUpperCase()}</span></td>
                 `;
                 tbody.appendChild(tr);
@@ -195,7 +216,7 @@ function syncLiveFeed() {
                     <td><div style="font-size:0.8rem"><b>DE:</b> ${t.departure?.substring(0,25)}...<br><b>À:</b> ${t.destination?.substring(0,25)}...</div></td>
                     <td>${t.driverName || '<span style="color:gray">En recherche...</span>'}</td>
                     <td><span class="badge gold">${t.paymentMethod?.toUpperCase() || 'CASH'}</span></td>
-                    <td><b>${t.price} F</b><br><small style="color:var(--primary)">Com: ${(t.price * 0.05).toFixed(0)} F</small></td>
+                    <td><b>${t.price} F</b><br><small style="color:var(--primary)">Com (1%): ${(t.price * 0.01).toFixed(0)} F</small></td>
                     <td><span class="status-tag ${t.status}">${t.status.toUpperCase()}</span></td>
                 `;
                 tbody.appendChild(tr);
@@ -232,6 +253,69 @@ function syncDrivers() {
     );
 }
 
+async function syncCompanies() {
+    console.log("Syncing Companies from REST API...");
+    try {
+        const res = await adminFetch('/api/admin/companies');
+        if (!res.ok) throw new Error("Impossible de charger les compagnies.");
+        const companies = await res.json();
+        
+        const tbody = document.getElementById('companiesTableBody');
+        tbody.innerHTML = "";
+        
+        let pendingCount = 0;
+        
+        companies.forEach(c => {
+            if (c.status === 'PENDING') pendingCount++;
+            
+            const tr = document.createElement('tr');
+            
+            let docsHtml = '';
+            if (c.rccmUrl || c.nineaUrl || c.managerFrontUrl || c.managerBackUrl || c.transportAuthUrl) {
+                docsHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-file-invoice"></i> Examiner Dossier</button>`;
+            } else {
+                docsHtml = `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
+            }
+            
+            let statusClass = 'pending';
+            if (c.status === 'APPROVED') statusClass = 'completed';
+            if (c.status === 'REJECTED') statusClass = 'failed';
+            
+            const statusTag = `<span class="status-tag ${statusClass}">${c.status}</span>`;
+            
+            let actionsHtml = '';
+            if (c.status === 'PENDING') {
+                actionsHtml = `<button class="icon-btn glass" style="color:var(--primary);" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-check-double"></i></button>`;
+            } else {
+                actionsHtml = `<button class="icon-btn glass" style="color:var(--text-dim);" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-eye"></i></button>`;
+            }
+            
+            tr.innerHTML = `
+                <td><b>${c.name}</b></td>
+                <td><span class="badge blue">${c.type}</span></td>
+                <td>
+                    <b>${c.managerName || 'Non lié'}</b><br>
+                    <small>${c.managerPhone || ''}</small>
+                </td>
+                <td><code style="background:rgba(255,255,255,0.05); padding:3px 6px; border-radius:5px;">${c.accessCode}</code></td>
+                <td>${docsHtml}</td>
+                <td>${statusTag}</td>
+                <td>${actionsHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        const badge = document.getElementById('pendingCompBadge');
+        if (badge) {
+            badge.innerText = pendingCount;
+            badge.style.display = pendingCount > 0 ? 'inline-block' : 'none';
+        }
+        
+    } catch (e) {
+        console.error("Error fetching companies:", e);
+    }
+}
+
 function syncUsers() {
     onSnapshot(query(collection(db, "users"), where("role", "==", "client"), limit(100)), 
         snap => {
@@ -255,6 +339,65 @@ function syncUsers() {
     );
 }
 
+async function syncAdmins() {
+    console.log("Syncing Administrators from REST API...");
+    try {
+        const res = await adminFetch('/api/admin/admins');
+        if (!res.ok) throw new Error("Impossible de charger les administrateurs.");
+        const admins = await res.json();
+        
+        const tbody = document.getElementById('adminsTableBody');
+        tbody.innerHTML = "";
+        
+        const loggedInUserStr = localStorage.getItem('adminUser');
+        const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
+        const isMainAdmin = loggedInUser && loggedInUser.email && loggedInUser.email.toLowerCase() === 'mouhamadoufadiloundiaye@transen.org';
+        
+        admins.forEach(a => {
+            const tr = document.createElement('tr');
+            const dateStr = a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '--';
+            
+            let actionHtml = '';
+            if (isMainAdmin && a.email.toLowerCase() !== 'mouhamadoufadiloundiaye@transen.org') {
+                actionHtml = `<button class="icon-btn glass" style="color:var(--red);" onclick="window.deleteAdmin('${a.id}')"><i class="fas fa-trash-alt"></i></button>`;
+            } else {
+                actionHtml = `<span style="color:gray; font-size:0.8rem;">--</span>`;
+            }
+            
+            tr.innerHTML = `
+                <td><b>${a.fullName}</b></td>
+                <td><span class="badge blue">${a.email}</span></td>
+                <td>${a.phone}</td>
+                <td>${dateStr}</td>
+                <td>${actionHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    } catch (e) {
+        console.error("Error fetching admins:", e);
+    }
+}
+
+window.deleteAdmin = async (id) => {
+    if (confirm("Voulez-vous vraiment révoquer les droits de cet administrateur ? Il sera rétrogradé au rôle CLIENT.")) {
+        try {
+            const res = await adminFetch(`/api/admin/admins/${id}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message || "Administrateur supprimé avec succès.");
+                syncAdmins();
+            } else {
+                alert("Erreur: " + (data.error || "Impossible de supprimer l'administrateur."));
+            }
+        } catch (err) {
+            alert("Erreur de connexion au serveur.");
+            console.error(err);
+        }
+    }
+};
+
 function formatServiceType(t) {
     if (t.isPool) return '<span class="badge blue">COVOITURAGE</span>';
     if (t.isYobante) return '<span class="badge gold">YOBANTÉ</span>';
@@ -274,5 +417,134 @@ window.openDoc = (userId, img) => {
     document.getElementById('rejectDocBtn').onclick = () => updateDoc(doc(db, "users", userId), { isVerified: false, status: 'rejected' }).then(() => modal.style.display="none");
 };
 
+window.openCompanyKyc = async (id) => {
+    try {
+        const res = await adminFetch('/api/admin/companies');
+        if (!res.ok) throw new Error("Impossible de charger les compagnies");
+        const companies = await res.json();
+        const c = companies.find(item => item.id === id);
+        if (!c) return;
+        
+        const modal = document.getElementById('companyKycModal');
+        document.getElementById('kycModalTitle').innerText = `Dossier KYC : ${c.name}`;
+        document.getElementById('companyRejectionReason').value = c.rejectionReason || '';
+        
+        const previewImg = document.getElementById('kycDocPreview');
+        previewImg.src = 'https://via.placeholder.com/400x500?text=Sélectionnez+un+document';
+        
+        const setupDocLink = (elemId, url) => {
+            const elem = document.getElementById(elemId);
+            if (url) {
+                elem.style.display = 'block';
+                elem.onclick = (e) => {
+                    e.preventDefault();
+                    previewImg.src = url;
+                };
+            } else {
+                elem.style.display = 'none';
+            }
+        };
+        
+        setupDocLink('viewRccm', c.rccmUrl);
+        setupDocLink('viewNinea', c.nineaUrl);
+        setupDocLink('viewIdFront', c.managerFrontUrl);
+        setupDocLink('viewIdBack', c.managerBackUrl);
+        setupDocLink('viewAuth', c.transportAuthUrl);
+        
+        modal.style.display = "block";
+        
+        document.getElementById('approveCompanyBtn').onclick = async () => {
+            if (confirm("Voulez-vous vraiment approuver et activer cette compagnie ?")) {
+                const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=APPROVED`, {
+                    method: 'POST'
+                });
+                if (actionRes.ok) {
+                    alert("Compagnie approuvée et activée avec succès !");
+                    modal.style.display = "none";
+                    syncCompanies();
+                } else {
+                    const errMsg = await actionRes.text();
+                    alert("Erreur: " + errMsg);
+                }
+            }
+        };
+        
+        document.getElementById('rejectCompanyBtn').onclick = async () => {
+            const reason = document.getElementById('companyRejectionReason').value.trim();
+            if (!reason) {
+                alert("La raison du rejet est obligatoire pour refuser un dossier.");
+                return;
+            }
+            if (confirm("Voulez-vous rejeter ce dossier ?")) {
+                const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=REJECTED&rejectionReason=${encodeURIComponent(reason)}`, {
+                    method: 'POST'
+                });
+                if (actionRes.ok) {
+                    alert("Dossier rejeté.");
+                    modal.style.display = "none";
+                    syncCompanies();
+                } else {
+                    const errMsg = await actionRes.text();
+                    alert("Erreur: " + errMsg);
+                }
+            }
+        };
+        
+    } catch (e) {
+        alert("Erreur: " + e.message);
+    }
+};
+
+// Admin creation modal triggers
+document.getElementById('addAdminBtn').onclick = () => {
+    document.getElementById('adminCreateModal').style.display = "block";
+};
+
+document.getElementById('closeAdminCreateModal').onclick = () => {
+    document.getElementById('adminCreateModal').style.display = "none";
+};
+
+document.getElementById('createAdminForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const fullName = document.getElementById('adminFullName').value.trim();
+    const email = document.getElementById('adminEmail').value.trim();
+    const phone = document.getElementById('adminPhone').value.trim();
+    const password = document.getElementById('adminPassword').value;
+
+    try {
+        const res = await adminFetch('/api/admin/create-admin', {
+            method: 'POST',
+            body: JSON.stringify({ fullName, email, phone, password })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            alert(data.message || "Administrateur enregistré avec succès !");
+            document.getElementById('adminCreateModal').style.display = "none";
+            document.getElementById('createAdminForm').reset();
+            syncAdmins();
+        } else {
+            alert("Erreur: " + (data.error || "Impossible d'enregistrer l'administrateur."));
+        }
+    } catch (err) {
+        alert("Erreur de connexion au serveur.");
+        console.error(err);
+    }
+};
+
+const closeCompanyKycModal = document.getElementById('closeCompanyKycModal');
+if (closeCompanyKycModal) {
+    closeCompanyKycModal.onclick = () => {
+        document.getElementById('companyKycModal').style.display = "none";
+    };
+}
+
 document.querySelector('.close-modal').onclick = () => document.getElementById('docModal').style.display = "none";
-document.getElementById('logoutBtn').onclick = () => signOut(auth);
+
+document.getElementById('logoutBtn').onclick = () => {
+    localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser');
+    signOut(auth).then(() => {
+        hideApp();
+    });
+};

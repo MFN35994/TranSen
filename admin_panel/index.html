@@ -9,31 +9,31 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 <body>
+    <!-- Animated background orbs -->
+    <div class="bg-orbs-container">
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+        <div class="bg-orb orb-3"></div>
+    </div>
+
     <!-- Login Section -->
     <div id="login-overlay" class="login-overlay">
         <div class="login-card glass">
             <div class="login-logo">
                 <img src="assets/images/logo.png" alt="TranSen Logo">
                 <h2>Admin Excellence</h2>
-                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 10px;">Authentification Sécurisée via OTP</p>
+                <p style="color: var(--text-dim); font-size: 0.8rem; margin-top: 10px;">Portail Administratif @transen.org</p>
             </div>
             <form id="loginForm">
-                <div id="phone-step">
-                    <div class="input-group">
-                        <i class="fas fa-phone"></i>
-                        <input type="tel" id="phoneNumber" placeholder="+221770000000" required>
-                    </div>
-                    <button type="button" id="sendCodeBtn">Confirmer <i class="fas fa-arrow-right"></i></button>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" id="loginEmail" placeholder="nom@transen.org" required>
                 </div>
-                <div id="otp-step" style="display: none;">
-                    <div class="input-group">
-                        <i class="fas fa-key"></i>
-                        <input type="text" id="otpCode" placeholder="Code à 6 chiffres">
-                    </div>
-                    <button type="submit" id="verifyCodeBtn">Vérifier & Entrer <i class="fas fa-check-circle"></i></button>
-                    <button type="button" class="btn-text" id="changePhoneBtn" style="margin-top: 10px; font-size: 0.8rem; color: var(--text-dim);">Changer de numéro</button>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" id="loginPassword" placeholder="Mot de passe" required>
                 </div>
-                <div id="recaptcha-container"></div>
+                <button type="submit" id="signInBtn" style="width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 15px; color: white; font-weight: 700; font-size: 1rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px;">Se connecter <i class="fas fa-sign-in-alt"></i></button>
                 <p id="loginError" class="error-msg"></p>
             </form>
         </div>
@@ -50,8 +50,10 @@
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu</a>
                 <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
                 <a href="#" data-section="drivers"><i class="fas fa-id-card"></i> Chauffeurs</a>
+                <a href="#" data-section="companies"><i class="fas fa-building"></i> Compagnies <span class="badge red" id="pendingCompBadge">0</span></a>
                 <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
                 <a href="#" data-section="users"><i class="fas fa-user-group"></i> Clients</a>
+                <a href="#" data-section="admins"><i class="fas fa-user-shield"></i> Admins</a>
             </nav>
             <div class="sidebar-footer">
                 <div class="admin-profile">
@@ -96,7 +98,11 @@
                     </div>
                     <div class="stat-card glass-card">
                         <div class="stat-icon red"><i class="fas fa-percent"></i></div>
-                        <div class="stat-info"><p>Commissions (5%)</p><h3 id="estCommissions">-- F</h3></div>
+                        <div class="stat-info"><p>Commissions (1%)</p><h3 id="estCommissions">-- F</h3></div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-shield-halved"></i></div>
+                        <div class="stat-info"><p>Solde Général SenePay</p><h3 id="senePayMerchantBalance">-- F</h3></div>
                     </div>
                 </section>
 
@@ -111,7 +117,7 @@
                                         <th>Service</th>
                                         <th>Client</th>
                                         <th>Prix</th>
-                                        <th>Com (5%)</th>
+                                        <th>Com (1%)</th>
                                         <th>Statut</th>
                                     </tr>
                                 </thead>
@@ -120,6 +126,28 @@
                         </div>
                     </section>
                 </div>
+            </div>
+
+            <!-- Companies -->
+            <div id="section-companies" class="admin-section" style="display: none;">
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Compagnie</th>
+                                    <th>Type</th>
+                                    <th>Gérant</th>
+                                    <th>Code d'accès</th>
+                                    <th>Documents KYC</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="companiesTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <!-- Live Feed -->
@@ -205,6 +233,31 @@
             <div id="section-documents" class="admin-section" style="display: none;">
                 <div class="doc-grid" id="docValidationList"></div>
             </div>
+
+            <!-- Admins -->
+            <div id="section-admins" class="admin-section" style="display: none;">
+                <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+                    <button id="addAdminBtn" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: var(--transition);">
+                        <i class="fas fa-plus"></i> Ajouter un Administrateur
+                    </button>
+                </div>
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nom Complet</th>
+                                    <th>E-mail Professionnel</th>
+                                    <th>Téléphone</th>
+                                    <th>Date d'ajout</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminsTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
         </main>
     </div>
 
@@ -220,6 +273,68 @@
                 <button class="btn-reject" id="rejectDocBtn">Rejeter</button>
                 <button class="btn-approve" id="approveDocBtn">Approuver</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Company KYC Modal -->
+    <div id="companyKycModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2 id="kycModalTitle">Validation Dossier Compagnie</h2>
+                <span class="close-modal" id="closeCompanyKycModal">&times;</span>
+            </div>
+            <div class="modal-body" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                    <h3>Fichiers Soumis</h3>
+                    <ul style="list-style: none; margin-top: 15px; display: flex; flex-direction: column; gap: 12px;">
+                        <li><a href="#" id="viewRccm" style="color:var(--primary); text-decoration:none;"><i class="fas fa-file-pdf"></i> Registre de Commerce (RCCM)</a></li>
+                        <li><a href="#" id="viewNinea" style="color:var(--primary); text-decoration:none;"><i class="fas fa-file-pdf"></i> NINEA</a></li>
+                        <li><a href="#" id="viewIdFront" style="color:var(--primary); text-decoration:none;"><i class="fas fa-id-card"></i> CNI Gérant (Recto)</a></li>
+                        <li><a href="#" id="viewIdBack" style="color:var(--primary); text-decoration:none;"><i class="fas fa-id-card"></i> CNI Gérant (Verso)</a></li>
+                        <li><a href="#" id="viewAuth" style="color:var(--primary); text-decoration:none;"><i class="fas fa-file-signature"></i> Autorisation de Transport</a></li>
+                    </ul>
+                    <div class="mt-20">
+                        <label for="companyRejectionReason" style="display: block; margin-bottom: 8px; color: var(--text-dim); font-size: 0.9rem;">Raison du rejet (obligatoire si refusé) :</label>
+                        <textarea id="companyRejectionReason" style="width: 100%; height: 90px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; padding: 12px; resize: none; outline:none; font-family:inherit;"></textarea>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 10px; border: 1px solid var(--glass-border);">
+                    <img id="kycDocPreview" src="https://via.placeholder.com/400x500?text=Sélectionnez+un+document" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 10px;">
+                </div>
+            </div>
+            <div class="modal-footer" style="margin-top: 25px;">
+                <button class="btn-reject" id="rejectCompanyBtn" style="padding: 12px 24px; background: var(--red); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition:var(--transition);">Rejeter le Dossier</button>
+                <button class="btn-approve" id="approveCompanyBtn" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition:var(--transition);">Approuver & Activer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Creation Modal -->
+    <div id="adminCreateModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Ajouter un Administrateur</h2>
+                <span class="close-modal" id="closeAdminCreateModal">&times;</span>
+            </div>
+            <form id="createAdminForm" style="margin-top: 15px;">
+                <div class="input-group mb-20">
+                    <i class="fas fa-user" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="text" id="adminFullName" placeholder="Nom Complet" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <div class="input-group mb-20">
+                    <i class="fas fa-envelope" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="email" id="adminEmail" placeholder="nom@transen.org" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <div class="input-group mb-20">
+                    <i class="fas fa-phone" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="tel" id="adminPhone" placeholder="Téléphone (ex: 770000000)" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <div class="input-group mb-20">
+                    <i class="fas fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="password" id="adminPassword" placeholder="Mot de passe temporaire" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <button type="submit" style="width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 15px; color: white; font-weight: 700; font-size: 1rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px;">Enregistrer l'Admin <i class="fas fa-shield-alt"></i></button>
+            </form>
         </div>
     </div>
 

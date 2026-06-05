@@ -525,3 +525,47 @@ footer {
         grid-template-columns: 1fr;
     }
 }
+
+/* Custom Road Marquee & Driving Animation */
+.driving-vehicle {
+    display: inline-block;
+    animation: bounceSuspension 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes bounceSuspension {
+    0% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-3px) rotate(1deg);
+    }
+    100% {
+        transform: translateY(1px) rotate(-1deg);
+    }
+}
+
+.region-pill {
+    background: rgba(0, 208, 132, 0.1);
+    color: var(--primary-green);
+    border: 1px solid rgba(0, 208, 132, 0.25);
+    padding: 8px 18px;
+    border-radius: 25px;
+    margin-right: 30px;
+    display: inline-block;
+    font-size: 0.95rem;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+.marquee-track {
+    display: inline-block;
+    animation: marquee-scroll 24s linear infinite;
+}
+
+@keyframes marquee-scroll {
+    0% {
+        transform: translate3d(0, 0, 0);
+    }
+    100% {
+        transform: translate3d(-50%, 0, 0);
+    }
+}
