@@ -608,6 +608,13 @@ if (changePasswordForm) {
         e.preventDefault();
         passwordErrorMsg.style.display = 'none';
         
+        const submitBtn = document.getElementById('submitPasswordBtn');
+        const originalHtml = submitBtn ? submitBtn.innerHTML : 'Enregistrer';
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Modification en cours...';
+            submitBtn.disabled = true;
+        }
+        
         const oldPassword = document.getElementById('oldPassword').value;
         const newPassword = document.getElementById('newPassword').value;
         const confirmNewPassword = document.getElementById('confirmNewPassword').value;
@@ -615,6 +622,10 @@ if (changePasswordForm) {
         if (newPassword !== confirmNewPassword) {
             passwordErrorMsg.innerText = "Les nouveaux mots de passe ne correspondent pas.";
             passwordErrorMsg.style.display = 'block';
+            if (submitBtn) {
+                submitBtn.innerHTML = originalHtml;
+                submitBtn.disabled = false;
+            }
             return;
         }
         
@@ -634,7 +645,7 @@ if (changePasswordForm) {
             }
 
             if (res.ok) {
-                alert("Votre mot de passe a été modifié avec succès !");
+                window.showNotificationDrawer("Succès", "Votre mot de passe a été modifié avec succès !", false);
                 pwdModal.style.display = 'none';
             } else {
                 passwordErrorMsg.innerText = data.error || "Une erreur est survenue.";
@@ -644,6 +655,11 @@ if (changePasswordForm) {
             passwordErrorMsg.innerText = "Erreur de connexion au serveur : " + err.message;
             passwordErrorMsg.style.display = 'block';
             console.error(err);
+        } finally {
+            if (submitBtn) {
+                submitBtn.innerHTML = originalHtml;
+                submitBtn.disabled = false;
+            }
         }
     };
 }
@@ -682,4 +698,38 @@ window.showConfirmDrawer = function(title, message, isDangerous, onConfirm) {
     cancelBtn.onclick = () => {
         drawer.classList.remove('show');
     };
+};
+
+// Custom Slide-in Notification/Alert Drawer Helper
+window.showNotificationDrawer = function(title, message, isError = false) {
+    const drawer = document.getElementById('notificationDrawer');
+    if (!drawer) return;
+    
+    const icon = document.getElementById('notificationIcon');
+    const okBtn = document.getElementById('notificationOkBtn');
+    
+    document.getElementById('notificationTitle').innerText = title;
+    document.getElementById('notificationMessage').innerText = message;
+    
+    if (isError) {
+        if (icon) {
+            icon.className = 'confirm-icon';
+            icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--red);"></i>';
+        }
+        if (okBtn) okBtn.style.background = 'var(--red)';
+    } else {
+        if (icon) {
+            icon.className = 'confirm-icon success-icon';
+            icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--green);"></i>';
+        }
+        if (okBtn) okBtn.style.background = 'var(--primary)';
+    }
+    
+    drawer.classList.add('show');
+    
+    if (okBtn) {
+        okBtn.onclick = () => {
+            drawer.classList.remove('show');
+        };
+    }
 };

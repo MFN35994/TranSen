@@ -812,6 +812,13 @@ document.getElementById('kycUploadForm').onsubmit = async (e) => {
     const idBack = document.getElementById('kycIdBack').files[0];
     const authFile = document.getElementById('kycAuth').files[0];
 
+    if (!rccmFile && !nineaFile && !idFront && !idBack && !authFile) {
+        window.showNotificationDrawer("Champs requis", "Veuillez sélectionner au moins un fichier à soumettre.", true);
+        btn.innerHTML = originalHtml;
+        btn.disabled = false;
+        return;
+    }
+
     if (rccmFile) formData.append('rccmFile', rccmFile);
     if (nineaFile) formData.append('nineaFile', nineaFile);
     if (idFront) formData.append('idCardFront', idFront);
@@ -828,7 +835,7 @@ document.getElementById('kycUploadForm').onsubmit = async (e) => {
         });
 
         if (response.ok) {
-            alert("Documents KYC soumis avec succès ! Notre équipe va procéder à la vérification.");
+            window.showNotificationDrawer("Succès", "Documents KYC soumis avec succès ! Notre équipe va procéder à la vérification.", false);
             // Reset files inputs
             document.getElementById('kycRccm').value = "";
             document.getElementById('kycNinea').value = "";
@@ -847,13 +854,13 @@ document.getElementById('kycUploadForm').onsubmit = async (e) => {
             } catch (e) {}
             
             if (errText.includes("MaxUploadSizeExceeded") || errText.includes("size exceeded") || response.status === 413) {
-                alert("Erreur : Un ou plusieurs fichiers sont trop volumineux. La taille maximale autorisée est de 50 Mo par fichier. Veuillez compresser vos documents PDF ou vos images avant de les envoyer.");
+                window.showNotificationDrawer("Erreur", "Un ou plusieurs fichiers sont trop volumineux. La taille maximale autorisée est de 50 Mo par fichier. Veuillez compresser vos documents PDF ou vos images avant de les envoyer.", true);
             } else {
-                alert("Erreur lors de la soumission : " + (errText.length > 250 ? errText.substring(0, 250) + "..." : errText));
+                window.showNotificationDrawer("Erreur lors de la soumission", (errText.length > 250 ? errText.substring(0, 250) + "..." : errText), true);
             }
         }
     } catch (err) {
-        alert("Erreur réseau ou fichier trop volumineux : " + err.message);
+        window.showNotificationDrawer("Erreur de connexion", "Erreur réseau ou fichier trop volumineux : " + err.message, true);
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;
@@ -906,5 +913,39 @@ window.loadProfileData = async function() {
 
     } catch (e) {
         console.error("Erreur lors du chargement du profil :", e);
+    }
+};
+
+// Custom Slide-in Notification/Alert Drawer Helper
+window.showNotificationDrawer = function(title, message, isError = false) {
+    const drawer = document.getElementById('notificationDrawer');
+    if (!drawer) return;
+    
+    const icon = document.getElementById('notificationIcon');
+    const okBtn = document.getElementById('notificationOkBtn');
+    
+    document.getElementById('notificationTitle').innerText = title;
+    document.getElementById('notificationMessage').innerText = message;
+    
+    if (isError) {
+        if (icon) {
+            icon.className = 'confirm-icon';
+            icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--red);"></i>';
+        }
+        if (okBtn) okBtn.style.background = 'var(--red)';
+    } else {
+        if (icon) {
+            icon.className = 'confirm-icon success-icon';
+            icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--green);"></i>';
+        }
+        if (okBtn) okBtn.style.background = 'var(--primary)';
+    }
+    
+    drawer.classList.add('show');
+    
+    if (okBtn) {
+        okBtn.onclick = () => {
+            drawer.classList.remove('show');
+        };
     }
 };
