@@ -59,8 +59,12 @@ window.onload = async () => {
     if (token && userStr) {
         try {
             const userData = JSON.parse(userStr);
-            // Sign in anonymously to Firebase to satisfy Firestore rules
-            await signInAnonymously(auth);
+            // Sign in anonymously to Firebase to satisfy Firestore rules (non-blocking)
+            try {
+                await signInAnonymously(auth);
+            } catch (fbErr) {
+                console.warn("Firebase anonymous sign-in failed/disabled:", fbErr);
+            }
             showApp(userData);
         } catch (e) {
             console.error("Auth initialization error:", e);
@@ -79,7 +83,14 @@ document.getElementById('loginForm').onsubmit = async (e) => {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const errorMsg = document.getElementById('loginError');
+    const signInBtn = document.getElementById('signInBtn');
+    
     errorMsg.innerText = "";
+    
+    // Set loading state
+    const originalBtnHtml = signInBtn.innerHTML;
+    signInBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion en cours...';
+    signInBtn.disabled = true;
 
     try {
         const res = await fetch('https://api.transen.org/api/auth/admin/login', {
@@ -93,16 +104,24 @@ document.getElementById('loginForm').onsubmit = async (e) => {
             localStorage.setItem('adminToken', data.token);
             localStorage.setItem('adminUser', JSON.stringify(data.user));
             
-            // Sign in anonymously to Firebase to satisfy Firestore rules
-            await signInAnonymously(auth);
+            // Sign in anonymously to Firebase to satisfy Firestore rules (non-blocking)
+            try {
+                await signInAnonymously(auth);
+            } catch (fbErr) {
+                console.warn("Firebase anonymous sign-in failed/disabled:", fbErr);
+            }
             
             showApp(data.user);
         } else {
             errorMsg.innerText = data.message || "Identifiants incorrects.";
         }
     } catch (err) {
-        errorMsg.innerText = "Erreur de connexion au serveur.";
+        errorMsg.innerText = "Erreur de connexion au serveur : " + err.message;
         console.error(err);
+    } finally {
+        // Reset button state
+        signInBtn.innerHTML = originalBtnHtml;
+        signInBtn.disabled = false;
     }
 };
 
@@ -170,7 +189,6 @@ async function syncGlobalStats() {
         document.getElementById('totalUsers').innerText = stats.totalUsers || 0;
         document.getElementById('totalRevenue').innerText = (stats.totalRevenue || 0).toLocaleString() + " F";
         document.getElementById('estCommissions').innerText = (stats.estCommissions || 0).toLocaleString() + " F";
-        document.getElementById('senePayMerchantBalance').innerText = (stats.senepayMerchantBalance || 0).toLocaleString() + " F";
     } catch (e) {
         console.error("Error fetching stats:", e);
     }
@@ -378,24 +396,29 @@ async function syncAdmins() {
     }
 }
 
-window.deleteAdmin = async (id) => {
-    if (confirm("Voulez-vous vraiment révoquer les droits de cet administrateur ? Il sera rétrogradé au rôle CLIENT.")) {
-        try {
-            const res = await adminFetch(`/api/admin/admins/${id}`, {
-                method: 'DELETE'
-            });
-            const data = await res.json();
-            if (res.ok) {
-                alert(data.message || "Administrateur supprimé avec succès.");
-                syncAdmins();
-            } else {
-                alert("Erreur: " + (data.error || "Impossible de supprimer l'administrateur."));
+window.deleteAdmin = (id) => {
+    window.showConfirmDrawer(
+        "Révoquer l'Administrateur",
+        "Voulez-vous vraiment révoquer les droits de cet administrateur ? Il sera rétrogradé au rôle CLIENT.",
+        true,
+        async () => {
+            try {
+                const res = await adminFetch(`/api/admin/admins/${id}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    alert(data.message || "Administrateur supprimé avec succès.");
+                    syncAdmins();
+                } else {
+                    alert("Erreur: " + (data.error || "Impossible de supprimer l'administrateur."));
+                }
+            } catch (err) {
+                alert("Erreur de connexion au serveur.");
+                console.error(err);
             }
-        } catch (err) {
-            alert("Erreur de connexion au serveur.");
-            console.error(err);
         }
-    }
+    );
 };
 
 function formatServiceType(t) {
@@ -453,41 +476,51 @@ window.openCompanyKyc = async (id) => {
         
         modal.style.display = "block";
         
-        document.getElementById('approveCompanyBtn').onclick = async () => {
-            if (confirm("Voulez-vous vraiment approuver et activer cette compagnie ?")) {
-                const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=APPROVED`, {
-                    method: 'POST'
-                });
-                if (actionRes.ok) {
-                    alert("Compagnie approuvée et activée avec succès !");
-                    modal.style.display = "none";
-                    syncCompanies();
-                } else {
-                    const errMsg = await actionRes.text();
-                    alert("Erreur: " + errMsg);
+        document.getElementById('approveCompanyBtn').onclick = () => {
+            window.showConfirmDrawer(
+                "Approuver la Compagnie",
+                "Voulez-vous vraiment approuver et activer cette compagnie ?",
+                false,
+                async () => {
+                    const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=APPROVED`, {
+                        method: 'POST'
+                    });
+                    if (actionRes.ok) {
+                        alert("Compagnie approuvée et activée avec succès !");
+                        modal.style.display = "none";
+                        syncCompanies();
+                    } else {
+                        const errMsg = await actionRes.text();
+                        alert("Erreur: " + errMsg);
+                    }
                 }
-            }
+            );
         };
         
-        document.getElementById('rejectCompanyBtn').onclick = async () => {
+        document.getElementById('rejectCompanyBtn').onclick = () => {
             const reason = document.getElementById('companyRejectionReason').value.trim();
             if (!reason) {
                 alert("La raison du rejet est obligatoire pour refuser un dossier.");
                 return;
             }
-            if (confirm("Voulez-vous rejeter ce dossier ?")) {
-                const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=REJECTED&rejectionReason=${encodeURIComponent(reason)}`, {
-                    method: 'POST'
-                });
-                if (actionRes.ok) {
-                    alert("Dossier rejeté.");
-                    modal.style.display = "none";
-                    syncCompanies();
-                } else {
-                    const errMsg = await actionRes.text();
-                    alert("Erreur: " + errMsg);
+            window.showConfirmDrawer(
+                "Rejeter le Dossier",
+                "Voulez-vous vraiment rejeter ce dossier ?",
+                true,
+                async () => {
+                    const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=REJECTED&rejectionReason=${encodeURIComponent(reason)}`, {
+                        method: 'POST'
+                    });
+                    if (actionRes.ok) {
+                        alert("Dossier rejeté.");
+                        modal.style.display = "none";
+                        syncCompanies();
+                    } else {
+                        const errMsg = await actionRes.text();
+                        alert("Erreur: " + errMsg);
+                    }
                 }
-            }
+            );
         };
         
     } catch (e) {
@@ -547,4 +580,106 @@ document.getElementById('logoutBtn').onclick = () => {
     signOut(auth).then(() => {
         hideApp();
     });
+};
+
+// Password Change Modal triggers
+const pwdModal = document.getElementById('passwordChangeModal');
+const settingsBtn = document.getElementById('settingsBtn');
+const closePasswordModal = document.getElementById('closePasswordModal');
+const changePasswordForm = document.getElementById('changePasswordForm');
+const passwordErrorMsg = document.getElementById('passwordErrorMsg');
+
+if (settingsBtn) {
+    settingsBtn.onclick = () => {
+        passwordErrorMsg.style.display = 'none';
+        changePasswordForm.reset();
+        pwdModal.style.display = 'block';
+    };
+}
+
+if (closePasswordModal) {
+    closePasswordModal.onclick = () => {
+        pwdModal.style.display = 'none';
+    };
+}
+
+if (changePasswordForm) {
+    changePasswordForm.onsubmit = async (e) => {
+        e.preventDefault();
+        passwordErrorMsg.style.display = 'none';
+        
+        const oldPassword = document.getElementById('oldPassword').value;
+        const newPassword = document.getElementById('newPassword').value;
+        const confirmNewPassword = document.getElementById('confirmNewPassword').value;
+        
+        if (newPassword !== confirmNewPassword) {
+            passwordErrorMsg.innerText = "Les nouveaux mots de passe ne correspondent pas.";
+            passwordErrorMsg.style.display = 'block';
+            return;
+        }
+        
+        try {
+            const res = await adminFetch('/api/admin/change-password', {
+                method: 'POST',
+                body: JSON.stringify({ oldPassword, newPassword })
+            });
+            
+            let data = {};
+            const contentType = res.headers.get("content-type");
+            if (contentType && contentType.includes("application/json")) {
+                data = await res.json();
+            } else {
+                const text = await res.text();
+                data = { error: text || `Erreur serveur (${res.status})` };
+            }
+
+            if (res.ok) {
+                alert("Votre mot de passe a été modifié avec succès !");
+                pwdModal.style.display = 'none';
+            } else {
+                passwordErrorMsg.innerText = data.error || "Une erreur est survenue.";
+                passwordErrorMsg.style.display = 'block';
+            }
+        } catch (err) {
+            passwordErrorMsg.innerText = "Erreur de connexion au serveur : " + err.message;
+            passwordErrorMsg.style.display = 'block';
+            console.error(err);
+        }
+    };
+}
+
+// Custom Slide-in Confirmation Drawer Helper
+window.showConfirmDrawer = function(title, message, isDangerous, onConfirm) {
+    const drawer = document.getElementById('confirmDrawer');
+    const icon = document.getElementById('confirmIcon');
+    const yesBtn = document.getElementById('confirmYesBtn');
+    const cancelBtn = document.getElementById('confirmCancelBtn');
+    
+    document.getElementById('confirmTitle').innerText = title;
+    document.getElementById('confirmMessage').innerText = message;
+    
+    if (isDangerous) {
+        icon.className = 'confirm-icon';
+        icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+        yesBtn.className = 'confirm-btn-yes';
+        yesBtn.innerText = 'Confirmer';
+    } else {
+        icon.className = 'confirm-icon success-icon';
+        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+        yesBtn.className = 'confirm-btn-yes primary-btn';
+        yesBtn.innerText = 'Approuver';
+    }
+    
+    // Show drawer
+    drawer.classList.add('show');
+    
+    // Set callbacks
+    yesBtn.onclick = () => {
+        drawer.classList.remove('show');
+        onConfirm();
+    };
+    
+    cancelBtn.onclick = () => {
+        drawer.classList.remove('show');
+    };
 };

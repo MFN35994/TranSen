@@ -840,10 +840,20 @@ document.getElementById('kycUploadForm').onsubmit = async (e) => {
             loadDashboardData();
         } else {
             const err = await response.text();
-            alert("Erreur lors de la soumission: " + err);
+            let errText = err;
+            try {
+                const errJson = JSON.parse(err);
+                errText = errJson.message || errJson.error || err;
+            } catch (e) {}
+            
+            if (errText.includes("MaxUploadSizeExceeded") || errText.includes("size exceeded") || response.status === 413) {
+                alert("Erreur : Un ou plusieurs fichiers sont trop volumineux. La taille maximale autorisée est de 50 Mo par fichier. Veuillez compresser vos documents PDF ou vos images avant de les envoyer.");
+            } else {
+                alert("Erreur lors de la soumission : " + (errText.length > 250 ? errText.substring(0, 250) + "..." : errText));
+            }
         }
     } catch (err) {
-        alert("Erreur réseau ou fichier trop volumineux.");
+        alert("Erreur réseau ou fichier trop volumineux : " + err.message);
     } finally {
         btn.innerHTML = originalHtml;
         btn.disabled = false;

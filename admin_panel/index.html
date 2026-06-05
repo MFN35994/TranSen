@@ -63,7 +63,10 @@
                         <small id="adminRole">Super Admin</small>
                     </div>
                 </div>
-                <button id="logoutBtn"><i class="fas fa-power-off"></i></button>
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <button id="settingsBtn" title="Modifier le mot de passe" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.1rem; transition: var(--transition);"><i class="fas fa-key"></i></button>
+                    <button id="logoutBtn" title="Déconnexion" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.15rem; transition: var(--transition);"><i class="fas fa-power-off"></i></button>
+                </div>
             </div>
         </aside>
 
@@ -99,10 +102,6 @@
                     <div class="stat-card glass-card">
                         <div class="stat-icon red"><i class="fas fa-percent"></i></div>
                         <div class="stat-info"><p>Commissions (1%)</p><h3 id="estCommissions">-- F</h3></div>
-                    </div>
-                    <div class="stat-card glass-card">
-                        <div class="stat-icon green"><i class="fas fa-shield-halved"></i></div>
-                        <div class="stat-info"><p>Solde Général SenePay</p><h3 id="senePayMerchantBalance">-- F</h3></div>
                     </div>
                 </section>
 
@@ -335,6 +334,47 @@
                 </div>
                 <button type="submit" style="width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 15px; color: white; font-weight: 700; font-size: 1rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px;">Enregistrer l'Admin <i class="fas fa-shield-alt"></i></button>
             </form>
+        </div>
+    </div>
+
+    <!-- Password Change Modal -->
+    <div id="passwordChangeModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 450px;">
+            <div class="modal-header">
+                <h2>Modifier mon Mot de passe</h2>
+                <span class="close-modal" id="closePasswordModal">&times;</span>
+            </div>
+            <form id="changePasswordForm" style="margin-top: 15px;">
+                <div class="input-group mb-20">
+                    <i class="fas fa-unlock-alt" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="password" id="oldPassword" placeholder="Mot de passe actuel" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <div class="input-group mb-20">
+                    <i class="fas fa-lock" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="password" id="newPassword" placeholder="Nouveau mot de passe" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <div class="input-group mb-20">
+                    <i class="fas fa-check-double" style="position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim);"></i>
+                    <input type="password" id="confirmNewPassword" placeholder="Confirmer le nouveau mot de passe" required style="width: 100%; padding: 12px 15px 12px 45px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit;">
+                </div>
+                <p id="passwordErrorMsg" class="error-msg" style="margin-bottom: 20px; display: none;"></p>
+                <button type="submit" style="width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 15px; color: white; font-weight: 700; font-size: 1rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px;">Enregistrer <i class="fas fa-save"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Slide-in Confirmation Drawer -->
+    <div id="confirmDrawer" class="confirm-drawer glass">
+        <div class="confirm-drawer-content">
+            <div id="confirmIcon" class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="confirm-text">
+                <h4 id="confirmTitle">Confirmation</h4>
+                <p id="confirmMessage">Voulez-vous vraiment effectuer cette action ?</p>
+            </div>
+            <div class="confirm-actions">
+                <button id="confirmCancelBtn" class="confirm-btn-cancel">Annuler</button>
+                <button id="confirmYesBtn" class="confirm-btn-yes">Confirmer</button>
+            </div>
         </div>
     </div>
 
