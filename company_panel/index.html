@@ -67,7 +67,10 @@
 
     <!-- App Container -->
     <div id="admin-app" class="admin-container" style="display: none;">
-        <aside class="sidebar glass">
+        <!-- Sidebar overlay for mobile/tablet -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+        
+        <aside class="sidebar glass" id="sidebar">
             <div class="logo" style="display: flex; align-items: center; gap: 10px; margin-bottom: 40px; padding: 0 10px;">
                 <img src="assets/transen-logo.png" alt="Logo" style="width: 35px; height: 35px; border-radius: 8px;" onerror="this.src='https://via.placeholder.com/40?text=Logo'">
                 <span style="font-weight: 700; font-size: 1.2rem; letter-spacing: 1px;">TRAN<span style="color: var(--primary);">SEN</span> B2B</span>
@@ -98,6 +101,9 @@
 
         <main class="content">
             <header>
+                <button class="mobile-toggle-btn" id="mobileMenuBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="header-left">
                     <h1 id="sectionTitle" style="display:none;">Vue d'ensemble</h1>
                     <div class="header-search">
@@ -338,7 +344,7 @@
                     </div>
 
                     <form id="kycUploadForm" style="display: flex; flex-direction: column; gap: 20px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="grid-2-col">
                             <div class="input-file-group">
                                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">Registre de Commerce (RCCM)</label>
                                 <input type="file" id="kycRccm" accept="image/*,application/pdf">
@@ -351,7 +357,7 @@
                             </div>
                         </div>
 
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="grid-2-col">
                             <div class="input-file-group">
                                 <label style="display: block; margin-bottom: 8px; font-weight: 600;">Pièce d'Identité du Gérant (Recto)</label>
                                 <input type="file" id="kycIdFront" accept="image/*,application/pdf">
@@ -381,7 +387,7 @@
 
             <!-- Profile Section -->
             <div id="section-profile" class="admin-section" style="display: none;">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 10px;">
+                <div class="grid-2-col" style="margin-top: 10px;">
                     <!-- Manager Info Card -->
                     <div class="glass-card" style="padding: 30px;">
                         <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 25px;">
@@ -519,7 +525,7 @@
                         <div>
                             <h5 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-dim); letter-spacing: 0.5px; margin-bottom: 15px;">Ajouter un Passager Manuellement</h5>
                             <form id="pmAddPassengerForm" style="display: flex; flex-direction: column; gap: 15px;">
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                <div class="grid-2-col" style="gap: 15px;">
                                     <div class="input-group" style="margin-bottom: 0;">
                                         <i class="fas fa-user" style="left: 15px;"></i>
                                         <input type="text" id="pmPassengerName" placeholder="Nom complet" style="padding-left: 40px;" required>
@@ -529,7 +535,7 @@
                                         <input type="tel" id="pmPassengerPhone" placeholder="Téléphone (ex: 771234567)" style="padding-left: 40px;" required>
                                     </div>
                                 </div>
-                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; align-items: center;">
+                                <div class="grid-2-col" style="gap: 15px; align-items: center;">
                                     <div class="input-group" style="margin-bottom: 0;">
                                         <i class="fas fa-chair" style="left: 15px;"></i>
                                         <input type="number" id="pmPassengerSeats" placeholder="Nombre de places" value="1" min="1" max="10" style="padding-left: 40px;" required>

@@ -155,9 +155,28 @@ document.getElementById('logoutBtn').onclick = () => {
 };
 
 function setupNavigation() {
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+        mobileMenuBtn.onclick = () => {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        };
+        sidebarOverlay.onclick = () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        };
+    }
+
     document.querySelectorAll('#mainNav a').forEach(link => {
         link.onclick = (e) => {
             e.preventDefault();
+            
+            if (sidebar) sidebar.classList.remove('active');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+
             const section = link.getAttribute('data-section');
             document.querySelectorAll('.admin-section').forEach(s => {
                 s.classList.remove('active-section');
