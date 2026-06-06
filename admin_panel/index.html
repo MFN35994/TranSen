@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </head>
 <body>
     <!-- Animated background orbs -->
@@ -49,10 +50,13 @@
             <nav id="mainNav">
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu</a>
                 <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
-                <a href="#" data-section="drivers"><i class="fas fa-id-card"></i> Chauffeurs</a>
+                <a href="#" data-section="markets"><i class="fas fa-network-wired"></i> Marchés</a>
                 <a href="#" data-section="companies"><i class="fas fa-building"></i> Compagnies <span class="badge red" id="pendingCompBadge">0</span></a>
-                <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
+                <a href="#" data-section="drivers"><i class="fas fa-id-card"></i> Chauffeurs</a>
                 <a href="#" data-section="users"><i class="fas fa-user-group"></i> Clients</a>
+                <a href="#" data-section="channels"><i class="fas fa-chart-pie"></i> Canaux & Services</a>
+                <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
+                <a href="#" data-section="finance"><i class="fas fa-wallet"></i> Finances</a>
                 <a href="#" data-section="admins"><i class="fas fa-user-shield"></i> Admins</a>
             </nav>
             <div class="sidebar-footer">
@@ -105,9 +109,9 @@
                     </div>
                 </section>
 
-                <div class="dashboard-grid">
-                    <section class="table-container glass-card">
-                        <div class="table-header"><h2>Activités Récentes</h2></div>
+                <div class="dashboard-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; align-items: start;">
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div class="table-header"><h2>Activités Récentes (Flux de Trajets)</h2></div>
                         <div class="custom-table-wrapper">
                             <table>
                                 <thead>
@@ -124,11 +128,137 @@
                             </table>
                         </div>
                     </section>
+
+                    <div style="display: flex; flex-direction: column; gap: 24px;">
+                        <!-- Compartiments & Marchés -->
+                        <div class="glass-card" style="padding: 24px; border-radius: 24px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03);">
+                            <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;"><i class="fas fa-chart-pie" style="color:var(--primary)"></i> Part de Marché</h3>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem;">
+                                <span>Marché Public</span>
+                                <b id="dashMarketPublicPct">--%</b>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 0.9rem;">
+                                <span>Chauffeurs Indépendants</span>
+                                <b id="dashMarketIndependentPct">--%</b>
+                            </div>
+                            <div style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; display: flex; margin-bottom: 20px;">
+                                <div id="dashMarketPublicBar" style="background: var(--primary); width: 50%; height: 100%; transition: width 0.5s ease;"></div>
+                                <div id="dashMarketIndependentBar" style="background: var(--accent); width: 50%; height: 100%; transition: width 0.5s ease;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Canaux & Services -->
+                        <div class="glass-card" style="padding: 24px; border-radius: 24px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03);">
+                            <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;"><i class="fas fa-exchange-alt" style="color:var(--primary)"></i> Répartition des Services</h3>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Allô Dakar</span>
+                                    <small id="dashChannelAlloDetail" style="color:var(--text-dim);">-- F</small>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashChannelAlloBar" style="background: var(--primary); width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Bus / Voyage</span>
+                                    <small id="dashChannelBusDetail" style="color:var(--text-dim);">-- F</small>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashChannelBusBar" style="background: #3b82f6; width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Yobanté (Colis)</span>
+                                    <small id="dashChannelYobanteDetail" style="color:var(--text-dim);">-- F</small>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashChannelYobanteBar" style="background: var(--accent); width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Répartition Financière par Réseau -->
+                        <div class="glass-card" style="padding: 24px; border-radius: 24px; border: 1px solid var(--glass-border); background: rgba(255, 255, 255, 0.03);">
+                            <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;"><i class="fas fa-wallet" style="color:var(--primary)"></i> Flux Mobile Money</h3>
+                            
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Wave</span>
+                                    <b id="dashWaveNetworkVal" style="color: #4facfe;">--%</b>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashWaveNetworkProgress" style="background: #4facfe; width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+
+                            <div style="margin-bottom: 15px;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Orange Money</span>
+                                    <b id="dashOrangeNetworkVal" style="color: #ffb199;">--%</b>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashOrangeNetworkProgress" style="background: #ffb199; width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 0.85rem;">
+                                    <span>Free Money</span>
+                                    <b id="dashFreeNetworkVal" style="color: var(--accent);">--%</b>
+                                </div>
+                                <div style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 3px; overflow: hidden;">
+                                    <div id="dashFreeNetworkProgress" style="background: var(--accent); width: 0%; height: 100%; transition: width 0.5s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- Companies -->
             <div id="section-companies" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-building"></i></div>
+                        <div class="stat-info">
+                            <p>Total Compagnies</p>
+                            <h3 id="metricsCompTotal">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p>Flux Financier Global</p>
+                            <h3 id="metricsCompVolume">0 F</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-id-card"></i></div>
+                        <div class="stat-info">
+                            <p>Chauffeurs sous contrat</p>
+                            <h3 id="metricsCompDrivers">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filters glass-card mb-20" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="companyTypeFilters">
+                        <button class="filter-chip active" data-comp-type="all">Toutes</button>
+                        <button class="filter-chip" data-comp-type="GARAGE">Garages</button>
+                        <button class="filter-chip" data-comp-type="ALLO_DAKAR">Allô Dakar</button>
+                        <button class="filter-chip" data-comp-type="MACHALLA">Machalla</button>
+                    </div>
+                    <div class="search-bar glass" style="margin: 0; min-width: 250px; padding: 8px 15px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="companySearchInput" placeholder="Rechercher une compagnie...">
+                    </div>
+                </div>
+
                 <section class="table-container glass-card">
                     <div class="custom-table-wrapper">
                         <table>
@@ -137,8 +267,9 @@
                                     <th>Compagnie</th>
                                     <th>Type</th>
                                     <th>Gérant</th>
-                                    <th>Code d'accès</th>
-                                    <th>Documents KYC</th>
+                                    <th>Chauffeurs</th>
+                                    <th>Volume Financier</th>
+                                    <th>Solde Portefeuille</th>
                                     <th>Statut</th>
                                     <th>Actions</th>
                                 </tr>
@@ -179,25 +310,54 @@
 
             <!-- Drivers -->
             <div id="section-drivers" class="admin-section" style="display: none;">
-                <div class="stats-grid mini">
-                    <div class="stat-card glass-card small">
-                        <div class="stat-info"><p>Actifs</p><h3 id="activeDriversCount">--</h3></div>
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-id-card"></i></div>
+                        <div class="stat-info">
+                            <p>Total Chauffeurs</p>
+                            <h3 id="metricsDriversTotal">0</h3>
+                        </div>
                     </div>
-                    <div class="stat-card glass-card small">
-                        <div class="stat-info"><p>Inactifs</p><h3 id="inactiveDriversCount">--</h3></div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-toggle-on"></i></div>
+                        <div class="stat-info">
+                            <p>Chauffeurs Actifs</p>
+                            <h3 id="metricsDriversActive">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p>Volume Chauffeurs</p>
+                            <h3 id="metricsDriversVolume">0 F</h3>
+                        </div>
                     </div>
                 </div>
+
+                <div class="filters glass-card mb-20" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="driverMarketFilters">
+                        <button class="filter-chip active" data-driver-market="all">Tous</button>
+                        <button class="filter-chip" data-driver-market="independent">Indépendants</button>
+                        <button class="filter-chip" data-driver-market="company">Compagnies</button>
+                    </div>
+                    <div class="search-bar glass" style="margin: 0; min-width: 250px; padding: 8px 15px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="driverSearchInput" placeholder="Rechercher un chauffeur...">
+                    </div>
+                </div>
+
                 <section class="table-container glass-card">
                     <div class="custom-table-wrapper">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Chauffeur</th>
-                                    <th>Véhicule</th>
-                                    <th>Note</th>
-                                    <th>Wallet</th>
+                                    <th>Marché / Type</th>
+                                    <th>Courses Terminées</th>
+                                    <th>Volume Généré</th>
+                                    <th>Solde Portefeuille</th>
                                     <th>Vérifié</th>
-                                    <th>Statut</th>
+                                    <th>Système</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -209,16 +369,74 @@
 
             <!-- Users (Clients) -->
             <div id="section-users" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-user-group"></i></div>
+                        <div class="stat-info">
+                            <p>Total Clients</p>
+                            <h3 id="metricsClientsTotal">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info">
+                            <p>Dépenses Totales Clients</p>
+                            <h3 id="metricsClientsVolume">0 F</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-chart-line"></i></div>
+                        <div class="stat-info">
+                            <p>Panier Moyen Client</p>
+                            <h3 id="metricsClientsAverage">0 F</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Téléchargements / Systèmes d'exploitation -->
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-top: 20px; margin-bottom: 25px; display: grid; gap: 20px;">
+                    <div class="stat-card glass-card" style="padding: 15px; border-color: rgba(59, 130, 246, 0.2);">
+                        <div class="stat-icon blue" style="background: rgba(59, 130, 246, 0.1); color: #3b82f6; width: 50px; height: 50px; font-size: 1.3rem;"><i class="fab fa-android"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Téléchargements Android</p>
+                            <h4 id="metricsAndroidDownloads" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px; border-color: rgba(236, 72, 153, 0.2);">
+                        <div class="stat-icon pink" style="background: rgba(236, 72, 153, 0.1); color: #ec4899; width: 50px; height: 50px; font-size: 1.3rem;"><i class="fab fa-apple"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Téléchargements iOS</p>
+                            <h4 id="metricsIosDownloads" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px; border-color: rgba(16, 185, 129, 0.2);">
+                        <div class="stat-icon green" style="background: rgba(16, 185, 129, 0.1); color: #10b981; width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-globe"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Utilisateurs Web</p>
+                            <h4 id="metricsWebDownloads" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filters glass-card mb-20" style="display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+                    <div class="search-bar glass" style="margin: 0; min-width: 250px; padding: 8px 15px;">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="clientSearchInput" placeholder="Rechercher un client...">
+                    </div>
+                </div>
+
                 <section class="table-container glass-card">
                     <div class="custom-table-wrapper">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Client</th>
-                                    <th>Téléphone</th>
                                     <th>Email</th>
-                                    <th>Parrainages</th>
-                                    <th>Points</th>
+                                    <th>Date d'Inscription</th>
+                                    <th>Nombre de Courses</th>
+                                    <th>Volume Dépensé</th>
+                                    <th>Service Favori</th>
+                                    <th>Système</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
@@ -228,9 +446,335 @@
                 </section>
             </div>
 
+            <!-- Marchés -->
+            <div id="section-markets" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-network-wired"></i></div>
+                        <div class="stat-info">
+                            <p>Volume Marché Public</p>
+                            <h3 id="marketPublicVolume">0 F</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-user-tie"></i></div>
+                        <div class="stat-info">
+                            <p>Volume Marché Indépendant</p>
+                            <h3 id="marketIndependentVolume">0 F</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px; margin-bottom: 30px;">
+                    <!-- Public Market Details -->
+                    <div class="glass-card" style="padding: 25px;">
+                        <h3 style="margin-bottom: 20px; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-building" style="color: var(--primary);"></i> Marché Public (Compagnies)
+                        </h3>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Volume Total</span>
+                                <span id="marketPublicVolDetail" style="font-weight: 600;">0 F</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Nombre de Courses</span>
+                                <span id="marketPublicTrips" style="font-weight: 600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Chauffeurs Rattachés</span>
+                                <span id="marketPublicDrivers" style="font-weight: 600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-dim);">Prix Moyen / Course</span>
+                                <span id="marketPublicAvgPrice" style="font-weight: 600;">0 F</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Independent Market Details -->
+                    <div class="glass-card" style="padding: 25px;">
+                        <h3 style="margin-bottom: 20px; font-size: 1.25rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-id-card" style="color: var(--gold);"></i> Marché Indépendant
+                        </h3>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Volume Total</span>
+                                <span id="marketIndependentVolDetail" style="font-weight: 600;">0 F</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Nombre de Courses</span>
+                                <span id="marketIndependentTrips" style="font-weight: 600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid var(--glass-border); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Chauffeurs Indépendants</span>
+                                <span id="marketIndependentDrivers" style="font-weight: 600;">0</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between;">
+                                <span style="color: var(--text-dim);">Prix Moyen / Course</span>
+                                <span id="marketIndependentAvgPrice" style="font-weight: 600;">0 F</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison bar -->
+                <div class="glass-card" style="padding: 25px;">
+                    <h3 style="margin-bottom: 15px; font-size: 1.1rem;">Répartition des volumes de marché</h3>
+                    <div style="height: 24px; border-radius: 12px; background: rgba(255,255,255,0.05); display: flex; overflow: hidden; margin-bottom: 10px;">
+                        <div id="marketPublicBar" style="background: var(--primary); width: 50%; transition: width 0.8s ease;"></div>
+                        <div id="marketIndependentBar" style="background: var(--gold); width: 50%; transition: width 0.8s ease;"></div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem;">
+                        <span style="color: var(--primary); font-weight: 600;"><i class="fas fa-circle"></i> Public: <span id="marketPublicPct">50%</span></span>
+                        <span style="color: var(--gold); font-weight: 600;"><i class="fas fa-circle"></i> Indépendant: <span id="marketIndependentPct">50%</span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canaux & Services -->
+            <div id="section-channels" class="admin-section" style="display: none;">
+                <div class="grid-2" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 30px;">
+                    <!-- Services distribution -->
+                    <div class="glass-card" style="padding: 25px;">
+                        <h3 style="margin-bottom: 20px; font-size: 1.25rem;"><i class="fas fa-taxi"></i> Canaux par Service</h3>
+                        
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+                                <span>Allô Dakar (Porte-à-porte)</span>
+                                <span id="channelAlloDetail" style="font-weight: 600;">0 F (0)</span>
+                            </div>
+                            <div style="height: 10px; border-radius: 5px; background: rgba(255,255,255,0.05); overflow: hidden;">
+                                <div id="channelAlloBar" style="background: var(--primary); width: 0%; height: 100%; transition: width 0.8s ease;"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+                                <span>Bus Company (Ticket Minibus/Bus)</span>
+                                <span id="channelBusDetail" style="font-weight: 600;">0 F (0)</span>
+                            </div>
+                            <div style="height: 10px; border-radius: 5px; background: rgba(255,255,255,0.05); overflow: hidden;">
+                                <div id="channelBusBar" style="background: var(--secondary); width: 0%; height: 100%; transition: width 0.8s ease;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+                                <span>Yobanté (Livraison de colis)</span>
+                                <span id="channelYobanteDetail" style="font-weight: 600;">0 F (0)</span>
+                            </div>
+                            <div style="height: 10px; border-radius: 5px; background: rgba(255,255,255,0.05); overflow: hidden;">
+                                <div id="channelYobanteBar" style="background: var(--gold); width: 0%; height: 100%; transition: width 0.8s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Booking Type distribution -->
+                    <div class="glass-card" style="padding: 25px;">
+                        <h3 style="margin-bottom: 20px; font-size: 1.25rem;"><i class="fas fa-business-time"></i> Type de Réservation</h3>
+                        
+                        <div style="margin-bottom: 30px;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+                                <span>Course à la Demande</span>
+                                <span id="channelOnDemandDetail" style="font-weight: 600;">0 F (0)</span>
+                            </div>
+                            <div style="height: 12px; border-radius: 6px; background: rgba(255,255,255,0.05); overflow: hidden;">
+                                <div id="channelOnDemandBar" style="background: #a855f7; width: 0%; height: 100%; transition: width 0.8s ease;"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 8px;">
+                                <span>Réservation Programmée</span>
+                                <span id="channelScheduledDetail" style="font-weight: 600;">0 F (0)</span>
+                            </div>
+                            <div style="height: 12px; border-radius: 6px; background: rgba(255,255,255,0.05); overflow: hidden;">
+                                <div id="channelScheduledBar" style="background: #ec4899; width: 0%; height: 100%; transition: width 0.8s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Documents -->
             <div id="section-documents" class="admin-section" style="display: none;">
                 <div class="doc-grid" id="docValidationList"></div>
+            </div>
+
+            <!-- Finance Section -->
+            <div id="section-finance" class="admin-section" style="display: none;">
+                <!-- Key Metrics row -->
+                <div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-bottom: 25px;">
+                    <div class="stat-card glass-card" style="padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg); display: flex; align-items: center; gap: 15px;">
+                        <div style="background: rgba(46, 204, 113, 0.15); color: #2ecc71; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i class="fas fa-coins"></i></div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">Chiffre d'Affaires Global</span>
+                            <h3 id="financeTotalVolume" style="margin: 5px 0 0 0; font-size: 1.4rem; color: white;">0 F CFA</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg); display: flex; align-items: center; gap: 15px;">
+                        <div style="background: rgba(52, 152, 219, 0.15); color: #3498db; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i class="fas fa-percentage"></i></div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">Commissions Platform (1%)</span>
+                            <h3 id="financeTotalCommissions" style="margin: 5px 0 0 0; font-size: 1.4rem; color: white;">0 F CFA</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg); display: flex; align-items: center; gap: 15px;">
+                        <div style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; border-radius: 12px; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem;"><i class="fas fa-wallet"></i></div>
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--text-dim);">Encours Portefeuilles TransPay</span>
+                            <h3 id="financeTotalWalletBalances" style="margin: 5px 0 0 0; font-size: 1.4rem; color: white;">0 F CFA</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PayIn & PayOut Operator Fee Splits -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <!-- PayIn (Dépôts / Flux Entrants) -->
+                    <div class="glass-card" style="padding: 25px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg);">
+                        <h4 style="margin: 0 0 20px 0; color: #2ecc71; display: flex; align-items: center; gap: 10px;"><i class="fas fa-arrow-down" style="color: #2ecc71;"></i> Flux Entrants (PayIn / Dépôts)</h4>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Débité Wave / Crédité Portefeuille (Brut)</span>
+                                <span id="financePayinGross" style="color: white; font-weight: bold; font-family: monospace;">0 F CFA</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Frais de Service SenePay (3.6%)</span>
+                                <span id="financePayinSenePayFee" style="color: #e74c3c; font-weight: bold; font-family: monospace;">-0 F CFA</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Frais Opérateurs Télécoms (1.8%)</span>
+                                <span id="financePayinFee" style="color: #e74c3c; font-weight: bold; font-family: monospace;">-0 F CFA</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 5px;">
+                                <span style="color: white; font-weight: bold;">Montant Net Reçu Compte Marchand</span>
+                                <span id="financePayinNet" style="color: #2ecc71; font-weight: bold; font-size: 1.15rem; font-family: monospace;">0 F CFA</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- PayOut (Retraits / Flux Sortants) -->
+                    <div class="glass-card" style="padding: 25px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg);">
+                        <h4 style="margin: 0 0 20px 0; color: #e74c3c; display: flex; align-items: center; gap: 10px;"><i class="fas fa-arrow-up" style="color: #e74c3c;"></i> Flux Sortants (PayOut / Retraits)</h4>
+                        <div style="display: flex; flex-direction: column; gap: 15px;">
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Débité Portefeuille TransPay (Brut)</span>
+                                <span id="financePayoutGross" style="color: white; font-weight: bold; font-family: monospace;">0 F CFA</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px;">
+                                <span style="color: var(--text-dim);">Frais Opérateur Transfert Déduits (1.6%)</span>
+                                <span id="financePayoutFee" style="color: #e74c3c; font-weight: bold; font-family: monospace;">-0 F CFA</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; padding-top: 5px;">
+                                <span style="color: white; font-weight: bold;">Montant Net Reçu Chauffeur (Wave)</span>
+                                <span id="financePayoutNet" style="color: #3498db; font-weight: bold; font-size: 1.15rem; font-family: monospace;">0 F CFA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Sectors & Split Networks -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <!-- Split Sectors -->
+                    <div class="glass-card" style="padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg);">
+                        <h4 style="margin: 0 0 20px 0; color: white; display: flex; align-items: center; gap: 10px;"><i class="fas fa-chart-pie" style="color: var(--primary);"></i> Chiffre d'Affaires par Secteur</h4>
+                        <div id="financeSectorsContainer" style="display: flex; flex-direction: column; gap: 15px;">
+                            <!-- Progress bar for Allo Dakar -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Allô Dakar (Co-voiturage / Taxi)</span>
+                                    <span id="alloDakarSectorVal" style="color: white; font-weight: bold;">0 F CFA</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="alloDakarSectorProgress" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- Progress bar for Bus & Companies -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Bus & Minibus interurbains</span>
+                                    <span id="busCompanySectorVal" style="color: white; font-weight: bold;">0 F CFA</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="busCompanySectorProgress" style="background: #3498db; height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- Progress bar for Yobante -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Yobanté Colis (Logistique)</span>
+                                    <span id="yobanteSectorVal" style="color: white; font-weight: bold;">0 F CFA</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="yobanteSectorProgress" style="background: #f1c40f; height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Split Networks -->
+                    <div class="glass-card" style="padding: 20px; border-radius: 16px; border: 1px solid var(--glass-border); background: var(--glass-bg);">
+                        <h4 style="margin: 0 0 20px 0; color: white; display: flex; align-items: center; gap: 10px;"><i class="fas fa-network-wired" style="color: var(--primary);"></i> Répartition par Réseau (Mobile Money)</h4>
+                        <div id="financeNetworksContainer" style="display: flex; flex-direction: column; gap: 15px;">
+                            <!-- Wave -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Wave Senegal</span>
+                                    <span style="color: white; font-weight: bold;" id="waveNetworkVal">65% (0 F)</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="waveNetworkProgress" style="background: #1e90ff; height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- Orange Money -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Orange Money</span>
+                                    <span style="color: white; font-weight: bold;" id="orangeNetworkVal">25% (0 F)</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="orangeNetworkProgress" style="background: #ff7f50; height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                            <!-- Free Money -->
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; color: var(--text-dim);">
+                                    <span>Free Money</span>
+                                    <span style="color: white; font-weight: bold;" id="freeNetworkVal">10% (0 F)</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 8px; border-radius: 4px; overflow: hidden;">
+                                    <div id="freeNetworkProgress" style="background: #ff1493; height: 100%; width: 0%; transition: width 0.8s ease;"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Transactions table -->
+                <section class="table-container glass-card">
+                    <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                        <h4 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;"><i class="fas fa-list-ul" style="color: var(--primary);"></i> Historique des Transactions Financières</h4>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <button id="btn-internal-op" onclick="window.openInternalOpModal()" class="btn-primary" style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;"><i class="fas fa-plus"></i> Opération Interne</button>
+                            <button onclick="window.syncFinanceSection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Détenteur</th>
+                                    <th>Type</th>
+                                    <th>Référence</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financeTransactionsTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <!-- Admins -->
@@ -297,11 +841,13 @@
                         <textarea id="companyRejectionReason" style="width: 100%; height: 90px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; padding: 12px; resize: none; outline:none; font-family:inherit;"></textarea>
                     </div>
                 </div>
-                <div style="display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 10px; border: 1px solid var(--glass-border);">
-                    <img id="kycDocPreview" src="https://via.placeholder.com/400x500?text=Sélectionnez+un+document" style="max-width: 100%; max-height: 400px; object-fit: contain; border-radius: 10px;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 15px; border: 1px solid var(--glass-border); width: 100%; min-height: 420px;">
+                    <img id="kycDocPreview" src="https://via.placeholder.com/400x500?text=Sélectionnez+un+document" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 10px;">
+                    <a id="kycOpenExternal" href="#" target="_blank" style="margin-top: 15px; color: var(--primary); text-decoration: none; font-size: 0.85rem; font-weight: 600; display: none;"><i class="fas fa-external-link-alt"></i> Ouvrir dans un nouvel onglet</a>
                 </div>
             </div>
-            <div class="modal-footer" style="margin-top: 25px;">
+            <div class="modal-footer" style="margin-top: 25px; display: flex; gap: 15px; justify-content: flex-end;">
+                <button id="deleteCompanyDocsBtn" style="padding: 12px 24px; background: #e74c3c; border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition:var(--transition); display: none; align-items: center; gap: 8px;"><i class="fas fa-trash-alt"></i> Supprimer les Documents</button>
                 <button class="btn-reject" id="rejectCompanyBtn" style="padding: 12px 24px; background: var(--red); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition:var(--transition);">Rejeter le Dossier</button>
                 <button class="btn-approve" id="approveCompanyBtn" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; transition:var(--transition);">Approuver & Activer</button>
             </div>
@@ -388,6 +934,390 @@
             </div>
             <div class="confirm-actions">
                 <button id="notificationOkBtn" class="confirm-btn-yes" style="padding: 10px 30px; border-radius: 12px; min-width: 120px;">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Internal Operation Modal -->
+    <div id="internalOpModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 480px;">
+            <div class="modal-header">
+                <h2>Enregistrer une Opération Interne</h2>
+                <span class="close-modal" id="closeInternalOpModal">&times;</span>
+            </div>
+            <form id="internalOpForm" style="margin-top: 15px;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Type d'opération</label>
+                    <select id="internalOpType" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                        <option value="TOP_UP" style="background:#202030; color:white;">Dépôt Réel (SenePay PayIn / USSD Push)</option>
+                        <option value="PAYOUT" style="background:#202030; color:white;">Retrait Réel (SenePay PayOut / Transfert direct)</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Montant (F CFA)</label>
+                    <input type="number" id="internalOpAmount" placeholder="Ex: 500" required min="100" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold; font-size:1.15rem;">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Numéro de téléphone (Débit/Crédit)</label>
+                    <input type="text" id="internalOpPhone" placeholder="Ex: 771234567" required style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                </div>
+                <div style="margin-bottom: 25px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Opérateur mobile</label>
+                    <select id="internalOpOperator" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                        <option value="wave" style="background:#202030; color:white;">Wave</option>
+                        <option value="orange_money" style="background:#202030; color:white;">Orange Money</option>
+                        <option value="free_money" style="background:#202030; color:white;">Free Money</option>
+                    </select>
+                </div>
+                <button type="submit" style="width: 100%; padding: 15px; background: var(--primary); border: none; border-radius: 15px; color: white; font-weight: 700; font-size: 1rem; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; gap: 10px;">Lancer la Transaction <i class="fas fa-paper-plane"></i></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Transaction Receipt Modal -->
+    <div id="receiptModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 450px; padding: 0; overflow: hidden; border: 1px solid var(--glass-border); border-radius: 20px;">
+            <!-- Receipt content wrapper to capture as PNG -->
+            <div id="receiptCaptureArea" style="padding: 30px; background: linear-gradient(135deg, #1e1e2f, #151522); color: white; position: relative; font-family: 'Outfit', sans-serif;">
+                <!-- Decorative top strip -->
+                <div style="position: absolute; top: 0; left: 0; right: 0; height: 6px; background: linear-gradient(90deg, #ff7f50, var(--primary));"></div>
+                
+                <!-- Receipt Header -->
+                <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
+                    <div style="background: rgba(255,127,80,0.15); display: inline-flex; width: 60px; height: 60px; border-radius: 50%; align-items: center; justify-content: center; margin-bottom: 10px; border: 1px solid rgba(255,127,80,0.3);">
+                        <img src="assets/images/logo.png" alt="Logo" style="width: 32px; height: 32px; object-fit: contain;">
+                    </div>
+                    <h2 style="margin: 0; font-size: 1.5rem; letter-spacing: 0.5px; font-weight: 700; color: white;">TranSen Financial</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 0.8rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px;">Reçu de Transaction Officiel</p>
+                </div>
+                
+                <!-- Barcode or success indicator -->
+                <div style="text-align: center; margin-bottom: 25px;">
+                    <div id="receiptStatusBadge" style="display: inline-block; padding: 6px 16px; border-radius: 30px; font-weight: 700; font-size: 0.85rem; letter-spacing: 0.5px; text-transform: uppercase;">
+                        Statut
+                    </div>
+                </div>
+
+                <!-- Transaction Amount -->
+                <div style="text-align: center; margin-bottom: 30px; border-bottom: 1px dashed rgba(255,255,255,0.15); padding-bottom: 25px;">
+                    <span style="font-size: 0.85rem; color: var(--text-dim); display: block; margin-bottom: 5px;">Montant de la transaction</span>
+                    <h1 id="receiptAmount" style="margin: 0; font-size: 2.2rem; font-weight: 700; color: white; font-family: monospace;">0 F CFA</h1>
+                </div>
+
+                <!-- Transaction Details List -->
+                <div style="display: flex; flex-direction: column; gap: 18px; font-size: 0.9rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-dim);">Détenteur</span>
+                        <span id="receiptHolder" style="font-weight: 600; color: white;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-dim);">Type d'Opération</span>
+                        <span id="receiptType" style="font-weight: 600; color: white;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-dim);">Date & Heure</span>
+                        <span id="receiptDate" style="font-weight: 600; color: white;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: var(--text-dim);">Référence Gateway</span>
+                        <span id="receiptReference" style="font-weight: 600; color: white; font-family: monospace; font-size: 0.85rem;">-</span>
+                    </div>
+                </div>
+
+                <!-- Decorative dotted line and footer inside capture area -->
+                <div style="margin-top: 30px; border-top: 1px dashed rgba(255,255,255,0.15); padding-top: 20px; text-align: center;">
+                    <div style="font-size: 0.65rem; color: var(--text-dim); font-family: monospace; letter-spacing: 0.5px;">
+                        DOCUMENT GÉNÉRÉ PAR TRANISEN COMMAND CENTER
+                    </div>
+                    <div style="margin-top: 8px; opacity: 0.25; display: inline-block;">
+                        <i class="fas fa-barcode" style="font-size: 2rem;"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal footer (NOT captured in PNG) -->
+            <div style="padding: 20px; background: rgba(255,255,255,0.02); display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid var(--glass-border);">
+                <button id="closeReceiptModalBtn" class="confirm-btn-cancel" style="padding: 12px 20px; border-radius: 12px; margin: 0;">Fermer</button>
+                <button id="downloadReceiptBtn" class="confirm-btn-yes" style="padding: 12px 25px; border-radius: 12px; margin: 0; display: flex; align-items: center; gap: 8px; background: var(--primary);">
+                    <i class="fas fa-download"></i> Télécharger PNG
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Company Details Modal -->
+    <div id="companyDetailsModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 850px;">
+            <div class="modal-header">
+                <div>
+                    <h2 id="compDetailName">Détails de la Compagnie</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px; margin-bottom: 0;">Identifiant unique : <span id="compDetailId" style="font-family: monospace; user-select: all; color: var(--primary);"></span></p>
+                </div>
+                <span class="close-modal" id="closeCompanyDetailsModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <!-- Stats grid -->
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 25px; display: grid; gap: 20px;">
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon green" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-users"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Chauffeurs</p>
+                            <h4 id="compDetailDrivers" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon blue" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Volume Financier</p>
+                            <h4 id="compDetailVolume" style="font-size: 1.3rem;">0 F</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon gold" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Solde Wallet</p>
+                            <h4 id="compDetailWallet" style="font-size: 1.3rem;">0 F</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations d'Identification -->
+                <div class="glass-card" style="padding: 20px; margin-bottom: 25px; border-radius: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border);">
+                    <h4 style="font-size: 1rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-id-card"></i> Informations d'Accès Web & Gérant (Compagnie.transen.org)
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; font-size: 0.9rem;">
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Nom Compagnie : <strong id="compDetailFullName" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Type : <strong id="compDetailType" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Code d'Accès Chauffeurs : <strong id="compDetailAccessCode" style="color: var(--primary); font-family: monospace; font-size: 1.1rem; letter-spacing: 1px;">-</strong></p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Nom du Gérant : <strong id="compDetailManagerName" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Téléphone Gérant : <strong id="compDetailManagerPhone" style="color: var(--text); font-family: monospace;">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Email Gérant : <strong id="compDetailManagerEmail" style="color: var(--text);">-</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabs/Tables -->
+                <div style="margin-bottom: 20px; border-bottom: 1px solid var(--glass-border); display: flex; gap: 15px;">
+                    <button class="filter-chip active" id="btnTabCompDrivers" style="padding: 8px 16px; border-radius: 10px; margin-bottom: 10px;">Chauffeurs</button>
+                    <button class="filter-chip" id="btnTabCompTxs" style="padding: 8px 16px; border-radius: 10px; margin-bottom: 10px;">Transactions Récentes</button>
+                </div>
+
+                <!-- Drivers list tab -->
+                <div id="tabCompDrivers" class="custom-table-wrapper">
+                    <table style="font-size: 0.85rem; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Chauffeur</th>
+                                <th>Courses</th>
+                                <th>Volume Généré</th>
+                                <th>Vérifié</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compDetailDriversBody"></tbody>
+                    </table>
+                </div>
+
+                <!-- Transactions list tab -->
+                <div id="tabCompTxs" class="custom-table-wrapper" style="display: none;">
+                    <table style="font-size: 0.85rem; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Montant</th>
+                                <th>Status</th>
+                                <th>Référence</th>
+                            </tr>
+                        </thead>
+                        <tbody id="compDetailTxsBody"></tbody>
+                    </table>
+                </div>
+                <!-- Actions Administratives -->
+                <div class="admin-actions-bar" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+                    <span id="companyDetailStatusText" style="margin-right: auto; font-size: 0.85rem; font-weight: bold; color: var(--text-dim);"></span>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); cursor: pointer;" id="btnToggleBlockCompany">
+                        <i class="fas fa-ban"></i> Bloquer
+                    </button>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); cursor: pointer;" id="btnDeleteCompany">
+                        <i class="fas fa-trash-alt"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Details Modal -->
+    <div id="driverDetailsModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 800px;">
+            <div class="modal-header">
+                <div>
+                    <h2 id="driverDetailName">Détails du Chauffeur</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px; margin-bottom: 0;">Identifiant unique : <span id="driverDetailId" style="font-family: monospace; user-select: all; color: var(--primary);"></span></p>
+                </div>
+                <span class="close-modal" id="closeDriverDetailsModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 25px; display: grid; gap: 20px;">
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon green" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-route"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Courses</p>
+                            <h4 id="driverDetailTrips" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon blue" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Gains Générés</p>
+                            <h4 id="driverDetailVolume" style="font-size: 1.3rem;">0 F</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon gold" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-wallet"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Solde Wallet</p>
+                            <h4 id="driverDetailWallet" style="font-size: 1.3rem;">0 F</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations d'Identification -->
+                <div class="glass-card" style="padding: 20px; margin-bottom: 25px; border-radius: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border);">
+                    <h4 style="font-size: 1rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-id-card"></i> Informations de Connexion et Contact
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; font-size: 0.9rem;">
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Nom complet : <strong id="driverDetailFullName" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Téléphone : <strong id="driverDetailPhone" style="color: var(--text); font-family: monospace;">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Email : <strong id="driverDetailEmail" style="color: var(--text);">-</strong></p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Compagnie : <strong id="driverDetailCompName" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Système / OS : <strong id="driverDetailOS" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Date inscription : <strong id="driverDetailCreated" style="color: var(--text);">-</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Trajets Récents</h3>
+                <div class="custom-table-wrapper">
+                    <table style="font-size: 0.85rem; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Départ</th>
+                                <th>Destination</th>
+                                <th>Tarif</th>
+                            </tr>
+                        </thead>
+                        <tbody id="driverDetailTripsBody"></tbody>
+                    </table>
+                </div>
+                <!-- Actions Administratives -->
+                <div class="admin-actions-bar" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+                    <span id="driverDetailStatusText" style="margin-right: auto; font-size: 0.85rem; font-weight: bold; color: var(--text-dim);"></span>
+                    <button class="btn glass-btn" style="color: var(--accent); border-color: rgba(245, 158, 11, 0.2); background: rgba(245, 158, 11, 0.05); cursor: pointer;" id="btnWarnDriver">
+                        <i class="fas fa-exclamation-triangle"></i> Avertir (<span id="driverDetailWarnCount">0</span>)
+                    </button>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); cursor: pointer;" id="btnToggleBlockDriver">
+                        <i class="fas fa-ban"></i> Bloquer
+                    </button>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); cursor: pointer;" id="btnDeleteDriver">
+                        <i class="fas fa-trash-alt"></i> Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Client Details Modal -->
+    <div id="clientDetailsModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 800px;">
+            <div class="modal-header">
+                <div>
+                    <h2 id="clientDetailName">Détails du Client</h2>
+                    <p style="font-size: 0.8rem; color: var(--text-dim); margin-top: 5px; margin-bottom: 0;">Identifiant unique : <span id="clientDetailId" style="font-family: monospace; user-select: all; color: var(--primary);"></span></p>
+                </div>
+                <span class="close-modal" id="closeClientDetailsModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 25px; display: grid; gap: 20px;">
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon green" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-shopping-bag"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Réservations</p>
+                            <h4 id="clientDetailTrips" style="font-size: 1.3rem;">0</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon blue" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Total Dépensé</p>
+                            <h4 id="clientDetailVolume" style="font-size: 1.3rem;">0 F</h4>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card" style="padding: 15px;">
+                        <div class="stat-icon gold" style="width: 50px; height: 50px; font-size: 1.3rem;"><i class="fas fa-heart"></i></div>
+                        <div class="stat-info">
+                            <p style="font-size: 0.75rem;">Service Favori</p>
+                            <h4 id="clientDetailFav" style="font-size: 1.3rem;">-</h4>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Informations d'Identification -->
+                <div class="glass-card" style="padding: 20px; margin-bottom: 25px; border-radius: 12px; background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border);">
+                    <h4 style="font-size: 1rem; margin-bottom: 15px; color: var(--primary); display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-id-card"></i> Informations de Connexion et Contact
+                    </h4>
+                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; font-size: 0.9rem;">
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Nom complet : <strong id="clientDetailFullName" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Téléphone : <strong id="clientDetailPhone" style="color: var(--text); font-family: monospace;">-</strong></p>
+                        </div>
+                        <div>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Email : <strong id="clientDetailEmail" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Système / OS : <strong id="clientDetailOS" style="color: var(--text);">-</strong></p>
+                            <p style="margin: 5px 0; color: var(--text-dim);">Date inscription : <strong id="clientDetailCreated" style="color: var(--text);">-</strong></p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="font-size: 1.1rem; margin-bottom: 15px;">Historique d'Utilisation</h3>
+                <div class="custom-table-wrapper">
+                    <table style="font-size: 0.85rem; width: 100%;">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Service</th>
+                                <th>Chauffeur</th>
+                                <th>Départ</th>
+                                <th>Destination</th>
+                                <th>Tarif</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientDetailTripsBody"></tbody>
+                    </table>
+                </div>
+                <!-- Actions Administratives -->
+                <div class="admin-actions-bar" style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--glass-border); display: flex; justify-content: flex-end; gap: 15px; align-items: center;">
+                    <span id="clientDetailStatusText" style="margin-right: auto; font-size: 0.85rem; font-weight: bold; color: var(--text-dim);"></span>
+                    <button class="btn glass-btn" style="color: var(--accent); border-color: rgba(245, 158, 11, 0.2); background: rgba(245, 158, 11, 0.05); cursor: pointer;" id="btnWarnClient">
+                        <i class="fas fa-exclamation-triangle"></i> Avertir (<span id="clientDetailWarnCount">0</span>)
+                    </button>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.2); background: rgba(239, 68, 68, 0.05); cursor: pointer;" id="btnToggleBlockClient">
+                        <i class="fas fa-ban"></i> Bloquer
+                    </button>
+                    <button class="btn glass-btn" style="color: var(--red); border-color: rgba(239, 68, 68, 0.3); background: rgba(239, 68, 68, 0.1); cursor: pointer;" id="btnDeleteClient">
+                        <i class="fas fa-trash-alt"></i> Supprimer
+                    </button>
+                </div>
             </div>
         </div>
     </div>

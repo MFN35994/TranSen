@@ -296,6 +296,18 @@ nav {
     display: flex;
     flex-direction: column;
     gap: 10px;
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+nav::-webkit-scrollbar {
+    width: 4px;
+}
+
+nav::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
 }
 
 nav a {
@@ -911,4 +923,61 @@ textarea:focus {
 .confirm-btn-yes:hover {
     transform: translateY(-1px);
 }
+
+/* Dashboard details modal & metrics styling */
+.modal-body .stats-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.modal-body .stat-card {
+    padding: 15px;
+    border-radius: 20px;
+}
+
+.modal-body .stat-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    font-size: 1.3rem;
+}
+
+.modal-body .stat-info h4 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 4px;
+}
+
+.modal-body th {
+    padding: 12px 10px;
+    font-size: 0.75rem;
+}
+
+.modal-body td {
+    padding: 14px 10px;
+    font-size: 0.85rem;
+}
+
+/* Custom interactive filtering on company/driver tables */
+.cursor-pointer {
+    cursor: pointer;
+}
+
+.tr-link:hover td {
+    color: var(--primary) !important;
+}
+
+/* Grid layout for detail pages */
+.grid-2 {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* Transitions for dynamic width bars */
+#marketPublicBar, #marketIndependentBar, #channelAlloBar, #channelBusBar, #channelYobanteBar, #channelOnDemandBar, #channelScheduledBar {
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 

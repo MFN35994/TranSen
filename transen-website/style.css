@@ -497,15 +497,83 @@ footer {
     opacity: 1;
     transform: translate(0, 0);
 }
+/* Economic & Workflow grids */
+.economic-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 40px;
+    align-items: stretch;
+    margin-top: 30px;
+}
+
+.workflow-steps {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 30px;
+}
+
+.workflow-arrow {
+    font-size: 2rem;
+    color: var(--primary-green);
+    transition: transform var(--transition-speed);
+}
 
 /* Responsive */
 @media (max-width: 900px) {
-    .nav-links, .nav-actions {
-        display: none; /* Mobile menu hidden by default */
+    /* Mobile Navigation side-drawer */
+    .nav-links {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: 280px;
+        height: 100vh;
+        background: rgba(5, 7, 10, 0.96);
+        backdrop-filter: blur(15px);
+        -webkit-backdrop-filter: blur(15px);
+        padding: 100px 30px 40px;
+        gap: 25px;
+        border-left: 1px solid var(--glass-border);
+        box-shadow: -15px 0 35px rgba(0, 0, 0, 0.6);
+        transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        z-index: 999;
+    }
+    
+    .nav-links.active {
+        right: 0;
+    }
+    
+    .nav-actions {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 380px;
+        right: -100%;
+        width: 280px;
+        padding: 0 30px;
+        gap: 15px;
+        z-index: 999;
+        transition: right 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    .nav-actions.active {
+        right: 0;
     }
     
     .hamburger {
         display: block;
+        z-index: 1001;
+        font-size: 1.6rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .hamburger.active {
+        transform: rotate(90deg);
+        color: var(--primary-green);
     }
     
     .hero-title {
@@ -514,18 +582,74 @@ footer {
     
     .hero-buttons {
         flex-direction: column;
+        gap: 15px;
     }
     
+    /* Split sections mobile stacking & full width */
     .split-section .container,
     .split-section.reverse .container {
         flex-direction: column;
+        gap: 40px;
+        text-align: center;
+    }
+    
+    .split-content {
+        max-width: 100%;
+        flex: 1 1 100%;
+    }
+    
+    .split-image {
+        max-width: 100%;
+        flex: 1 1 100%;
+        min-height: auto;
+        padding: 20px 0;
+    }
+    
+    .feature-list li {
+        justify-content: center;
+    }
+    
+    /* Economic Grid mobile */
+    .economic-grid {
+        grid-template-columns: 1fr;
+        gap: 25px;
+    }
+    
+    /* Workflow mobile stacking & arrow rotation */
+    .workflow-steps {
+        flex-direction: column;
+        gap: 15px;
+    }
+    
+    .workflow-arrow {
+        transform: rotate(90deg);
+        margin: 10px 0;
     }
     
     .footer-content {
         grid-template-columns: 1fr;
+        gap: 30px;
     }
 }
 
+@media (max-width: 600px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .section-header h2,
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .glass-card {
+        padding: 20px 15px;
+    }
+    
+    .workflow-card {
+        padding: 20px 10px;
+    }
+}
 /* Custom Road Marquee & Driving Animation */
 .driving-vehicle {
     display: inline-block;

@@ -25,35 +25,24 @@ function reveal() {
 window.addEventListener('scroll', reveal);
 reveal(); // Trigger on load
 
-// Mobile Menu (Simple toggle logic placeholder)
+// Mobile Menu Toggle logic using active CSS classes
 const hamburger = document.querySelector('.hamburger');
 const navLinks = document.querySelector('.nav-links');
 const navActions = document.querySelector('.nav-actions');
 
 hamburger.addEventListener('click', () => {
-    // Basic toggle for mobile
-    if (navLinks.style.display === 'flex') {
-        navLinks.style.display = 'none';
-        navActions.style.display = 'none';
-    } else {
-        navLinks.style.display = 'flex';
-        navLinks.style.flexDirection = 'column';
-        navLinks.style.position = 'absolute';
-        navLinks.style.top = '80px';
-        navLinks.style.left = '0';
-        navLinks.style.width = '100%';
-        navLinks.style.background = 'rgba(11, 14, 20, 0.95)';
-        navLinks.style.padding = '20px';
-        
-        navActions.style.display = 'flex';
-        navActions.style.flexDirection = 'column';
-        navActions.style.position = 'absolute';
-        navActions.style.top = '300px'; // Adjust based on navLinks height
-        navActions.style.left = '0';
-        navActions.style.width = '100%';
-        navActions.style.background = 'rgba(11, 14, 20, 0.95)';
-        navActions.style.padding = '20px';
-    }
+    hamburger.classList.toggle('active');
+    navLinks.classList.toggle('active');
+    navActions.classList.toggle('active');
+});
+
+// Close mobile menu when a link is clicked
+document.querySelectorAll('.nav-links a').forEach(link => {
+    link.addEventListener('click', () => {
+        hamburger.classList.remove('active');
+        navLinks.classList.remove('active');
+        navActions.classList.remove('active');
+    });
 });
 
 // Form Submission handling
