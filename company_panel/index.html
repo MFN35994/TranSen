@@ -576,9 +576,47 @@
 
             </div>
         </main>
+
+        <!-- ===== BOTTOM NAVIGATION (Mobile Only) ===== -->
+        <nav class="bottom-nav" id="bottomNav">
+            <div class="bottom-nav-inner">
+                <button class="bottom-nav-item active" data-section="dashboard">
+                    <i class="fas fa-th-large"></i>
+                    <span>Accueil</span>
+                </button>
+                <button class="bottom-nav-item" data-section="wallet">
+                    <i class="fas fa-wallet"></i>
+                    <span>Wallet</span>
+                </button>
+                <button class="bottom-nav-item" data-section="drivers">
+                    <i class="fas fa-users-viewfinder"></i>
+                    <span>Chauffeurs</span>
+                </button>
+                <button class="bottom-nav-item" data-section="trips">
+                    <i class="fas fa-route"></i>
+                    <span>Courses</span>
+                </button>
+                <button class="bottom-nav-item" data-section="profile">
+                    <i class="fas fa-user-gear"></i>
+                    <span>Profil</span>
+                </button>
+            </div>
+        </nav>
     </div>
 
     <script src="premium-notifications.js"></script>
     <script type="module" src="app.js"></script>
+    <script>
+        // Bottom nav sync with main navigation
+        document.querySelectorAll('.bottom-nav-item').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const section = this.dataset.section;
+                const sidebarLink = document.querySelector('#mainNav a[data-section="' + section + '"]');
+                if (sidebarLink) sidebarLink.click();
+                document.querySelectorAll('.bottom-nav-item').forEach(function(b) { b.classList.remove('active'); });
+                this.classList.add('active');
+            });
+        });
+    </script>
 </body>
 </html>

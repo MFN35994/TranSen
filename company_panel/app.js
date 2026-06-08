@@ -193,6 +193,11 @@ function setupNavigation() {
             link.classList.add('active');
             document.getElementById('sectionTitle').innerText = link.innerText;
 
+            // Sync bottom nav active state
+            document.querySelectorAll('.bottom-nav-item').forEach(b => {
+                b.classList.toggle('active', b.dataset.section === section);
+            });
+
             if (section === 'kyc') {
                 loadKycData();
             } else if (section === 'profile') {
