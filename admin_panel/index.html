@@ -57,6 +57,7 @@
                 <a href="#" data-section="channels"><i class="fas fa-chart-pie"></i> Canaux & Services</a>
                 <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
                 <a href="#" data-section="finance"><i class="fas fa-wallet"></i> Finances</a>
+                <a href="#" data-section="investments"><i class="fas fa-hand-holding-dollar"></i> Levée de fonds</a>
                 <a href="#" data-section="admins"><i class="fas fa-user-shield"></i> Admins</a>
             </nav>
             <div class="sidebar-footer">
@@ -801,7 +802,82 @@
                     </div>
                 </section>
             </div>
+
+            <!-- Investments / Fundraising -->
+            <div id="section-investments" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-hand-holding-dollar"></i></div>
+                        <div class="stat-info">
+                            <p>Total Promis (FCFA)</p>
+                            <h3 id="metricsInvestTotalAmount">0 F</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+                        <div class="stat-info">
+                            <p>Nombre d'Investisseurs</p>
+                            <h3 id="metricsInvestTotalInvestors">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-coins"></i></div>
+                        <div class="stat-info">
+                            <p>Actions Réservées</p>
+                            <h3 id="metricsInvestTotalShares">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="filters glass-card mb-20" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="investmentStatusFilters">
+                        <button class="filter-chip active" data-invest-status="all">Tous</button>
+                        <button class="filter-chip" data-invest-status="PENDING">En attente</button>
+                        <button class="filter-chip" data-invest-status="APPROVED">Approuvés</button>
+                        <button class="filter-chip" data-invest-status="CANCELLED">Annulés</button>
+                    </div>
+                    <div class="search-bar glass" style="margin: 0; min-width: 250px; padding: 8px 15px; display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 10px;">
+                        <i class="fas fa-search" style="color: var(--text-dim);"></i>
+                        <input type="text" id="investmentSearchInput" placeholder="Rechercher un investisseur..." style="background: transparent; border: none; color: white; outline: none; width: 100%; font-family: inherit;">
+                    </div>
+                </div>
+
+                <section class="table-container glass-card">
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Investisseur</th>
+                                    <th>Contact</th>
+                                    <th>Actions Réservées</th>
+                                    <th>Montant Promis</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>Pièce d'Identité</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="investmentsTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
         </main>
+    </div>
+
+    <!-- Investment KYC Modal -->
+    <div id="investmentKycModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Pièce d'Identité de l'Investisseur</h2>
+                <span class="close-modal" id="closeInvestmentKycModal">&times;</span>
+            </div>
+            <div class="modal-body" style="display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,0.3); border-radius: 15px; padding: 20px; border: 1px solid var(--glass-border); min-height: 400px; margin-top: 15px;">
+                <img id="investorKycPreview" src="" style="max-width: 100%; max-height: 380px; object-fit: contain; border-radius: 10px;">
+                <iframe id="investorKycIframe" style="width: 100%; height: 380px; border: none; border-radius: 10px; display: none;"></iframe>
+                <a id="investorKycExternalLink" href="#" target="_blank" style="margin-top: 15px; color: var(--primary); text-decoration: none; font-size: 0.9rem; font-weight: 600; display: none;"><i class="fas fa-external-link-alt"></i> Ouvrir dans un nouvel onglet</a>
+            </div>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -909,34 +985,6 @@
         </div>
     </div>
 
-    <!-- Slide-in Confirmation Drawer -->
-    <div id="confirmDrawer" class="confirm-drawer glass">
-        <div class="confirm-drawer-content">
-            <div id="confirmIcon" class="confirm-icon"><i class="fas fa-exclamation-triangle"></i></div>
-            <div class="confirm-text">
-                <h4 id="confirmTitle">Confirmation</h4>
-                <p id="confirmMessage">Voulez-vous vraiment effectuer cette action ?</p>
-            </div>
-            <div class="confirm-actions">
-                <button id="confirmCancelBtn" class="confirm-btn-cancel">Annuler</button>
-                <button id="confirmYesBtn" class="confirm-btn-yes">Confirmer</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Slide-in Notification Drawer -->
-    <div id="notificationDrawer" class="confirm-drawer glass">
-        <div class="confirm-drawer-content">
-            <div id="notificationIcon" class="confirm-icon"><i class="fas fa-info-circle"></i></div>
-            <div class="confirm-text">
-                <h4 id="notificationTitle">Notification</h4>
-                <p id="notificationMessage">Message...</p>
-            </div>
-            <div class="confirm-actions">
-                <button id="notificationOkBtn" class="confirm-btn-yes" style="padding: 10px 30px; border-radius: 12px; min-width: 120px;">OK</button>
-            </div>
-        </div>
-    </div>
 
     <!-- Internal Operation Modal -->
     <div id="internalOpModal" class="modal">
@@ -1322,6 +1370,7 @@
         </div>
     </div>
 
+    <script src="js/premium-notifications.js"></script>
     <script type="module" src="js/app.js"></script>
 </body>
 </html>

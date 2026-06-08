@@ -391,6 +391,48 @@ async function loadDashboardData() {
             console.error("Erreur lors de la récupération du statut KYC :", kycErr);
         }
 
+        // 0b. Check Email Verification Status
+        try {
+            const userInfo = await fetchWithAuth(`${API_BASE_URL}/api/users/me`);
+            const emailBanner = document.getElementById('emailVerifyBanner');
+            if (emailBanner) {
+                if (userInfo.isVerified === false) {
+                    emailBanner.style.display = 'block';
+                    const resendBtn = document.getElementById('resendVerificationBtn');
+                    if (resendBtn) {
+                        resendBtn.onclick = async () => {
+                            resendBtn.disabled = true;
+                            resendBtn.innerText = 'Envoi en cours...';
+                            try {
+                                const res = await fetch(`${API_BASE_URL}/api/auth/company/resend-verification`, {
+                                    method: 'POST',
+                                    headers: {
+                                        'Authorization': `Bearer ${currentToken}`,
+                                        'Content-Type': 'application/json'
+                                    },
+                                    body: JSON.stringify({ email: userInfo.email })
+                                });
+                                if (res.ok) {
+                                    window.showNotificationDrawer("E-mail envoyé", "Un nouvel e-mail de vérification vous a été envoyé. Vérifiez votre boîte de réception.", false);
+                                } else {
+                                    window.showNotificationDrawer("Erreur", "Impossible de renvoyer l'e-mail. Réessayez plus tard.", true);
+                                }
+                            } catch (e) {
+                                window.showNotificationDrawer("Erreur", "Erreur de connexion au serveur.", true);
+                            } finally {
+                                resendBtn.disabled = false;
+                                resendBtn.innerText = "Renvoyer l'e-mail";
+                            }
+                        };
+                    }
+                } else {
+                    emailBanner.style.display = 'none';
+                }
+            }
+        } catch (emailErr) {
+            console.error("Erreur lors de la vérification du statut email :", emailErr);
+        }
+
         // 1. Load Stats
         const stats = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/stats?companyId=${currentCompanyId}`);
         document.getElementById('activeDriversCount').innerText = `${stats.activeDrivers} / ${stats.totalDrivers}`;
@@ -650,47 +692,52 @@ async function loadTripBookings() {
 }
 
 window.revokePassenger = async function(bookingId, passengerId) {
-    if (!confirm("Voulez-vous vraiment révoquer ce passager de ce trajet ?")) return;
-    
-    try {
-        const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/cancel`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${currentToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        
-        if (response.ok) {
-            // Tenter la désinscription sur Firestore en temps réel
+    window.showConfirmDrawer(
+        "Révoquer ce passager",
+        "Voulez-vous vraiment révoquer ce passager de ce trajet ? Cette action est irréversible.",
+        true,
+        async () => {
             try {
-                const tripRef = doc(db, "pools", currentPassengerTripId);
-                await updateDoc(tripRef, {
-                    passengerIds: arrayRemove(passengerId),
-                    [`passengerDetails.${passengerId}`]: deleteField()
+                const response = await fetch(`${API_BASE_URL}/api/bookings/${bookingId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${currentToken}`,
+                        'Content-Type': 'application/json'
+                    }
                 });
-            } catch(e) {
-                try {
-                    const tripRef = doc(db, "trips", currentPassengerTripId);
-                    await updateDoc(tripRef, {
-                        passengerIds: arrayRemove(passengerId),
-                        [`passengerDetails.${passengerId}`]: deleteField()
-                    });
-                } catch(err) {
-                    console.log("Désinscription Firestore ignorée :", err);
-                }
-            }
+                
+                if (response.ok) {
+                    // Tenter la désinscription sur Firestore en temps réel
+                    try {
+                        const tripRef = doc(db, "pools", currentPassengerTripId);
+                        await updateDoc(tripRef, {
+                            passengerIds: arrayRemove(passengerId),
+                            [`passengerDetails.${passengerId}`]: deleteField()
+                        });
+                    } catch(e) {
+                        try {
+                            const tripRef = doc(db, "trips", currentPassengerTripId);
+                            await updateDoc(tripRef, {
+                                passengerIds: arrayRemove(passengerId),
+                                [`passengerDetails.${passengerId}`]: deleteField()
+                            });
+                        } catch(err) {
+                            console.log("Désinscription Firestore ignorée :", err);
+                        }
+                    }
 
-            alert("Passager révoqué avec succès !");
-            await loadTripBookings();
-            loadDashboardData(); // Refresh seats / stats
-        } else {
-            const err = await response.text();
-            alert("Erreur: " + err);
+                    window.showNotificationDrawer("Succès", "Passager révoqué avec succès !", false);
+                    await loadTripBookings();
+                    loadDashboardData(); // Refresh seats / stats
+                } else {
+                    const err = await response.text();
+                    window.showNotificationDrawer("Erreur", "Erreur: " + err, true);
+                }
+            } catch (error) {
+                window.showNotificationDrawer("Erreur", "Erreur de connexion lors de la révocation.", true);
+            }
         }
-    } catch (error) {
-        alert("Erreur de connexion lors de la révocation.");
-    }
+    );
 };
 
 document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {

@@ -193,6 +193,7 @@ function setupNavigation() {
             if (section === 'users') syncUsers();
             if (section === 'documents') syncDocumentsSection();
             if (section === 'finance') syncFinanceSection();
+            if (section === 'investments') syncInvestments();
             if (section === 'markets') syncMarketsSection();
             if (section === 'channels') syncChannelsSection();
         };
@@ -980,75 +981,6 @@ if (changePasswordForm) {
     };
 }
 
-// Custom Slide-in Confirmation Drawer Helper
-window.showConfirmDrawer = function(title, message, isDangerous, onConfirm) {
-    const drawer = document.getElementById('confirmDrawer');
-    const icon = document.getElementById('confirmIcon');
-    const yesBtn = document.getElementById('confirmYesBtn');
-    const cancelBtn = document.getElementById('confirmCancelBtn');
-    
-    document.getElementById('confirmTitle').innerText = title;
-    document.getElementById('confirmMessage').innerText = message;
-    
-    if (isDangerous) {
-        icon.className = 'confirm-icon';
-        icon.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
-        yesBtn.className = 'confirm-btn-yes';
-        yesBtn.innerText = 'Confirmer';
-    } else {
-        icon.className = 'confirm-icon success-icon';
-        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
-        yesBtn.className = 'confirm-btn-yes primary-btn';
-        yesBtn.innerText = 'Approuver';
-    }
-    
-    // Show drawer
-    drawer.classList.add('show');
-    
-    // Set callbacks
-    yesBtn.onclick = () => {
-        drawer.classList.remove('show');
-        onConfirm();
-    };
-    
-    cancelBtn.onclick = () => {
-        drawer.classList.remove('show');
-    };
-};
-
-// Custom Slide-in Notification/Alert Drawer Helper
-window.showNotificationDrawer = function(title, message, isError = false) {
-    const drawer = document.getElementById('notificationDrawer');
-    if (!drawer) return;
-    
-    const icon = document.getElementById('notificationIcon');
-    const okBtn = document.getElementById('notificationOkBtn');
-    
-    document.getElementById('notificationTitle').innerText = title;
-    document.getElementById('notificationMessage').innerText = message;
-    
-    if (isError) {
-        if (icon) {
-            icon.className = 'confirm-icon';
-            icon.innerHTML = '<i class="fas fa-exclamation-circle" style="color: var(--red);"></i>';
-        }
-        if (okBtn) okBtn.style.background = 'var(--red)';
-    } else {
-        if (icon) {
-            icon.className = 'confirm-icon success-icon';
-            icon.innerHTML = '<i class="fas fa-check-circle" style="color: var(--green);"></i>';
-        }
-        if (okBtn) okBtn.style.background = 'var(--primary)';
-    }
-    
-    drawer.classList.add('show');
-    
-    if (okBtn) {
-        okBtn.onclick = () => {
-            drawer.classList.remove('show');
-        };
-    }
-};
 
 let pendingDriversList = [];
 let pendingCompaniesList = [];
@@ -1488,6 +1420,19 @@ function setupFiltersAndSearch() {
     // Clients search
     document.getElementById('clientSearchInput')?.addEventListener('input', () => {
         renderClientsList();
+    });
+
+    // Investments filters
+    document.querySelectorAll('#investmentStatusFilters .filter-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+            document.querySelectorAll('#investmentStatusFilters .filter-chip').forEach(c => c.classList.remove('active'));
+            chip.classList.add('active');
+            renderInvestmentsList();
+        });
+    });
+    
+    document.getElementById('investmentSearchInput')?.addEventListener('input', () => {
+        renderInvestmentsList();
     });
 }
 
@@ -2010,4 +1955,167 @@ document.getElementById('closeDriverDetailsModal').onclick = () => {
 document.getElementById('closeClientDetailsModal').onclick = () => {
     document.getElementById('clientDetailsModal').style.display = "none";
 };
+
+// Investment Management
+window.allInvestments = [];
+
+window.syncInvestments = async () => {
+    console.log("Syncing Investments from REST API...");
+    try {
+        const res = await adminFetch('/api/admin/investments');
+        if (!res.ok) throw new Error("Impossible de charger les investissements.");
+        const list = await res.json();
+        window.allInvestments = list;
+
+        // Calculate metrics from active/approved/pending investments
+        const activeInvestments = list.filter(i => i.status !== 'CANCELLED');
+        const totalAmount = activeInvestments.reduce((sum, item) => sum + (item.amount || 0), 0);
+        const totalShares = activeInvestments.reduce((sum, item) => sum + (item.sharesCount || 0), 0);
+        
+        // Count unique investors based on phone number
+        const uniqueInvestors = new Set(activeInvestments.map(i => i.phone)).size;
+
+        document.getElementById('metricsInvestTotalAmount').innerText = formatCurrency(totalAmount);
+        document.getElementById('metricsInvestTotalInvestors').innerText = uniqueInvestors;
+        document.getElementById('metricsInvestTotalShares').innerText = totalShares.toLocaleString('fr-FR');
+
+        renderInvestmentsList();
+    } catch (e) {
+        console.error("Error syncing investments:", e);
+    }
+};
+
+window.renderInvestmentsList = () => {
+    const tbody = document.getElementById('investmentsTableBody');
+    tbody.innerHTML = "";
+
+    const filterStatus = document.querySelector('#investmentStatusFilters .filter-chip.active')?.getAttribute('data-invest-status') || 'all';
+    const searchQuery = document.getElementById('investmentSearchInput')?.value.toLowerCase() || '';
+
+    const filtered = window.allInvestments.filter(item => {
+        const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
+        const matchesSearch = item.fullName.toLowerCase().includes(searchQuery) ||
+                              (item.email && item.email.toLowerCase().includes(searchQuery)) ||
+                              item.phone.includes(searchQuery);
+        return matchesStatus && matchesSearch;
+    });
+
+    filtered.forEach(item => {
+        const tr = document.createElement('tr');
+        
+        const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        }) : '--';
+
+        let statusClass = 'pending';
+        let statusLabel = 'EN ATTENTE';
+        if (item.status === 'APPROVED') {
+            statusClass = 'completed';
+            statusLabel = 'APPROUVÉ';
+        } else if (item.status === 'CANCELLED') {
+            statusClass = 'failed';
+            statusLabel = 'ANNULÉ';
+        }
+
+        const statusTag = `<span class="status-tag ${statusClass}">${statusLabel}</span>`;
+
+        let docHtml = '';
+        if (item.kycDocUrl) {
+            docHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="window.openInvestmentKyc('${item.id}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`;
+        } else {
+            docHtml = `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
+        }
+
+        let actionsHtml = '--';
+        if (item.status === 'PENDING') {
+            actionsHtml = `
+                <div style="display: flex; gap: 8px;">
+                    <button class="icon-btn glass" style="color:var(--primary);" title="Approuver l'investissement" onclick="window.updateInvestmentStatus('${item.id}', 'APPROVED')"><i class="fas fa-check"></i></button>
+                    <button class="icon-btn glass" style="color:var(--red);" title="Annuler l'investissement" onclick="window.updateInvestmentStatus('${item.id}', 'CANCELLED')"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+        }
+
+        tr.innerHTML = `
+            <td><b>${item.fullName}</b></td>
+            <td>
+                <b>${item.phone}</b><br>
+                <small style="color:var(--text-dim);">${item.email || 'Pas d\'email'}</small>
+            </td>
+            <td><b>${item.sharesCount.toLocaleString('fr-FR')}</b></td>
+            <td><b>${formatCurrency(item.amount)}</b></td>
+            <td>${dateStr}</td>
+            <td>${statusTag}</td>
+            <td>${docHtml}</td>
+            <td>${actionsHtml}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+};
+
+window.openInvestmentKyc = (id) => {
+    const item = window.allInvestments.find(i => i.id === id);
+    if (!item || !item.kycDocUrl) return;
+
+    const modal = document.getElementById('investmentKycModal');
+    const previewImg = document.getElementById('investorKycPreview');
+    const iframe = document.getElementById('investorKycIframe');
+    const externalLink = document.getElementById('investorKycExternalLink');
+
+    const lowerUrl = item.kycDocUrl.toLowerCase();
+    const isPdf = lowerUrl.includes('.pdf');
+
+    if (isPdf) {
+        previewImg.style.display = 'none';
+        iframe.src = item.kycDocUrl;
+        iframe.style.display = 'block';
+    } else {
+        iframe.style.display = 'none';
+        previewImg.src = item.kycDocUrl;
+        previewImg.style.display = 'block';
+    }
+
+    externalLink.href = item.kycDocUrl;
+    externalLink.style.display = 'inline-block';
+
+    modal.style.display = 'block';
+};
+
+window.updateInvestmentStatus = (id, newStatus) => {
+    const actionLabel = newStatus === 'APPROVED' ? 'APPROUVER' : 'ANNULER';
+    const msg = `Voulez-vous vraiment ${actionLabel} cette promesse d'investissement ?`;
+    
+    window.showConfirmDrawer(
+        `${actionLabel} l'Investissement`,
+        msg,
+        newStatus === 'CANCELLED',
+        async () => {
+            try {
+                const res = await adminFetch(`/api/admin/investments/${id}/status?status=${newStatus}`, {
+                    method: 'PUT'
+                });
+                if (res.ok) {
+                    window.showNotificationDrawer("Succès", `Investissement mis à jour avec succès.`, false);
+                    window.syncInvestments();
+                } else {
+                    const data = await res.json();
+                    window.showNotificationDrawer("Erreur", data.error || "Impossible de mettre à jour.", true);
+                }
+            } catch (err) {
+                window.showNotificationDrawer("Erreur", "Erreur de connexion au serveur.", true);
+                console.error(err);
+            }
+        }
+    );
+};
+
+// Hook up close buttons
+document.getElementById('closeInvestmentKycModal').onclick = () => {
+    document.getElementById('investmentKycModal').style.display = "none";
+};
+
 

@@ -1,9 +1,21 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-GBC6RRB4M3"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-GBC6RRB4M3');
+    </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Espace Compagnie - TranSen</title>
+    <meta name="description" content="Espace Compagnie TranSen - Portail d'administration et de gestion pour les partenaires B2B. Gérez votre flotte de chauffeurs, suivez vos courses en temps réel et optimisez vos opérations de transport au Sénégal.">
+    <meta name="keywords" content="transen, espace compagnie, gestion de flotte, chauffeurs, transport, logistique, B2B, Sénégal, Dakar">
+    <meta name="robots" content="index, follow">
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -131,6 +143,21 @@
                             <h4 style="color: var(--red); font-weight: bold; margin-bottom: 4px;">Compte non vérifié réglementairement</h4>
                             <p style="font-size: 0.85rem; color: var(--text-dim);">Votre compagnie n'est pas encore visible sur les applications mobiles TranSen. Veuillez soumettre vos documents de vérification ou corriger votre dossier.</p>
                         </div>
+                    </div>
+                </div>
+                <!-- Email Verification Banner -->
+                <div id="emailVerifyBanner" class="glass-card" style="display: none; margin-bottom: 20px; background: rgba(243, 156, 18, 0.15); border-color: var(--gold);">
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px; width: 100%; flex-wrap: wrap;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <i class="fas fa-envelope-open-text" style="color: var(--gold); font-size: 1.5rem;"></i>
+                            <div>
+                                <h4 style="color: var(--gold); font-weight: bold; margin-bottom: 4px;">Veuillez vérifier votre adresse e-mail</h4>
+                                <p style="font-size: 0.85rem; color: var(--text-dim);">Un e-mail de confirmation vous a été envoyé. Veuillez cliquer sur le lien pour valider votre compte.</p>
+                            </div>
+                        </div>
+                        <button id="resendVerificationBtn" class="btn-primary" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 8px; background: var(--gold); border-color: var(--gold); color: #000; font-weight: bold;">
+                            Renvoyer l'e-mail
+                        </button>
                     </div>
                 </div>
                 <!-- TOP CARDS -->
@@ -551,20 +578,7 @@
         </main>
     </div>
 
-    <!-- Slide-in Notification Drawer -->
-    <div id="notificationDrawer" class="confirm-drawer glass">
-        <div class="confirm-drawer-content">
-            <div id="notificationIcon" class="confirm-icon"><i class="fas fa-info-circle"></i></div>
-            <div class="confirm-text">
-                <h4 id="notificationTitle">Notification</h4>
-                <p id="notificationMessage">Message...</p>
-            </div>
-            <div class="confirm-actions">
-                <button id="notificationOkBtn" class="confirm-btn-yes" style="padding: 10px 30px; border-radius: 12px; min-width: 120px;">OK</button>
-            </div>
-        </div>
-    </div>
-
+    <script src="premium-notifications.js"></script>
     <script type="module" src="app.js"></script>
 </body>
 </html>
