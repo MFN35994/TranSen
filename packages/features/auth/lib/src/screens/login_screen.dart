@@ -114,7 +114,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
       if (finalPhone.length < 9) {
         _showError("Session expirée : numéro de téléphone introuvable. Veuillez recommencer.");
-        await ref.read(authProvider.notifier).signOut();
+        await ref.read(authProvider.notifier).logout();
         setState(() {
           _step = AuthStep.phone;
           _validatedPhone = "";
@@ -324,7 +324,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 5),
                 TextButton.icon(
                     onPressed: () async {
-                      await ref.read(authProvider.notifier).signOut();
+                      await ref.read(authProvider.notifier).logout();
                       setState(() {
                         _step = AuthStep.phone;
                         _validatedPhone = "";
