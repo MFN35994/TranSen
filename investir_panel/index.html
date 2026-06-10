@@ -20,10 +20,13 @@
         <!-- Header -->
         <header class="header glass">
             <div class="logo">
-                <img src="assets/images/logo.png" alt="TranSen Logo" onerror="this.src='https://transen.org/assets/images/logo.png'">
+                <img src="assets/transen-logo.png" alt="TranSen Logo" onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
                 <span>TranSen Invest</span>
             </div>
-            <a href="https://transen.org" class="btn-back"><i class="fas fa-arrow-left"></i> Retour au site</a>
+            <div class="header-actions">
+                <button class="btn-portfolio" id="openLoginBtn"><i class="fas fa-wallet"></i> Mon Portefeuille</button>
+                <a href="https://transen.org" class="btn-back"><i class="fas fa-arrow-left"></i> Retour au site</a>
+            </div>
         </header>
 
         <!-- Main Content Grid -->
@@ -166,6 +169,37 @@
             <p class="modal-note">Nos équipes vont analyser votre pièce d'identité. Vous recevrez un SMS de confirmation dès validation de votre dossier pour passer au paiement.</p>
             
             <button class="btn-close" id="closeModalBtn">Fermer</button>
+        </div>
+    </div>
+
+    <!-- Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal-card glass">
+            <div class="login-icon">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <h2>Espace Portefeuille</h2>
+            <p>Connectez-vous avec les identifiants utilisés lors de votre souscription pour accéder au suivi de votre investissement.</p>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail"><i class="fas fa-envelope"></i> E-mail</label>
+                    <input type="email" id="loginEmail" placeholder="Ex: seydou@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="loginPhone"><i class="fas fa-phone"></i> Téléphone</label>
+                    <div class="phone-input-wrapper">
+                        <span class="country-code">+221</span>
+                        <input type="tel" id="loginPhone" placeholder="77 123 45 67">
+                    </div>
+                </div>
+                <p class="login-hint">Renseignez au moins l'un des deux champs.</p>
+                <button type="submit" class="btn-submit" id="loginSubmitBtn">
+                    <span>Accéder à mon portefeuille</span>
+                    <i class="fas fa-arrow-right"></i>
+                </button>
+            </form>
+            <button class="btn-close" id="closeLoginModalBtn">Annuler</button>
         </div>
     </div>
 

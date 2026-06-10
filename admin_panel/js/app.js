@@ -172,9 +172,29 @@ function initDashboard() {
 }
 
 function setupNavigation() {
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+
+    if (mobileMenuBtn && sidebar && sidebarOverlay) {
+        mobileMenuBtn.onclick = () => {
+            sidebar.classList.toggle('active');
+            sidebarOverlay.classList.toggle('active');
+        };
+        sidebarOverlay.onclick = () => {
+            sidebar.classList.remove('active');
+            sidebarOverlay.classList.remove('active');
+        };
+    }
+
     document.querySelectorAll('#mainNav a').forEach(link => {
         link.onclick = (e) => {
             e.preventDefault();
+            
+            // Auto close drawer on mobile navigation
+            if (sidebar) sidebar.classList.remove('active');
+            if (sidebarOverlay) sidebarOverlay.classList.remove('active');
+
             const section = link.getAttribute('data-section');
             document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
             document.getElementById(`section-${section}`).style.display = 'block';
@@ -1187,10 +1207,11 @@ window.syncFinanceSection = async function() {
             else if (t.type === 'COMMISSION_FEE') typeBadge = '<span class="status-tag pending" style="background:rgba(52,152,219,0.1); color:#3498db; border:1px solid rgba(52,152,219,0.2);">COMMISSION (1%)</span>';
             else if (t.type === 'PAYOUT') typeBadge = '<span class="status-tag failed" style="background:rgba(231,76,60,0.1); color:#e74c3c; border:1px solid rgba(231,76,60,0.2);">RETRAIT</span>';
             else if (t.type === 'TICKET_REVENUE') typeBadge = '<span class="status-tag completed" style="background:rgba(241,196,15,0.1); color:#f1c40f; border:1px solid rgba(241,196,15,0.2);">TICKET REVENUE</span>';
+            else if (t.type === 'INVESTMENT') typeBadge = '<span class="status-tag completed" style="background:rgba(155,89,182,0.1); color:#9b59b6; border:1px solid rgba(155,89,182,0.2);">INVESTISSEMENT</span>';
             else typeBadge = `<span class="badge gray">${t.type}</span>`;
 
             // Format Amount
-            const isPositive = t.type === 'TOP_UP' || t.type === 'TICKET_REVENUE';
+            const isPositive = t.type === 'TOP_UP' || t.type === 'TICKET_REVENUE' || t.type === 'INVESTMENT';
             const amountColor = isPositive ? '#2ecc71' : '#e74c3c';
             const amountPrefix = isPositive ? '+' : '-';
             const amountHtml = `<span style="color:${amountColor}; font-weight:bold; font-family:monospace;">${amountPrefix} ${formatCurrency(Math.abs(t.amount))}</span>`;
@@ -1975,9 +1996,12 @@ window.syncInvestments = async () => {
         // Count unique investors based on phone number
         const uniqueInvestors = new Set(activeInvestments.map(i => i.phone)).size;
 
+        const totalPaid = list.filter(i => i.status === 'PAID').reduce((sum, item) => sum + (item.amount || 0), 0);
+
         document.getElementById('metricsInvestTotalAmount').innerText = formatCurrency(totalAmount);
         document.getElementById('metricsInvestTotalInvestors').innerText = uniqueInvestors;
         document.getElementById('metricsInvestTotalShares').innerText = totalShares.toLocaleString('fr-FR');
+        document.getElementById('metricsInvestTotalPaid').innerText = formatCurrency(totalPaid);
 
         renderInvestmentsList();
     } catch (e) {
@@ -2016,6 +2040,9 @@ window.renderInvestmentsList = () => {
         if (item.status === 'APPROVED') {
             statusClass = 'completed';
             statusLabel = 'APPROUVÉ';
+        } else if (item.status === 'PAID') {
+            statusClass = 'completed';
+            statusLabel = 'PAYÉ';
         } else if (item.status === 'CANCELLED') {
             statusClass = 'failed';
             statusLabel = 'ANNULÉ';
@@ -2025,7 +2052,7 @@ window.renderInvestmentsList = () => {
 
         let docHtml = '';
         if (item.kycDocUrl) {
-            docHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="window.openInvestmentKyc('${item.id}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`;
+            docHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="event.stopPropagation(); window.openInvestmentKyc('${item.id}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`;
         } else {
             docHtml = `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
         }
@@ -2034,12 +2061,14 @@ window.renderInvestmentsList = () => {
         if (item.status === 'PENDING') {
             actionsHtml = `
                 <div style="display: flex; gap: 8px;">
-                    <button class="icon-btn glass" style="color:var(--primary);" title="Approuver l'investissement" onclick="window.updateInvestmentStatus('${item.id}', 'APPROVED')"><i class="fas fa-check"></i></button>
-                    <button class="icon-btn glass" style="color:var(--red);" title="Annuler l'investissement" onclick="window.updateInvestmentStatus('${item.id}', 'CANCELLED')"><i class="fas fa-times"></i></button>
+                    <button class="icon-btn glass" style="color:var(--primary);" title="Approuver l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${item.id}', 'APPROVED')"><i class="fas fa-check"></i></button>
+                    <button class="icon-btn glass" style="color:var(--red);" title="Annuler l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${item.id}', 'CANCELLED')"><i class="fas fa-times"></i></button>
                 </div>
             `;
         }
 
+        tr.style.cursor = 'pointer';
+        tr.title = 'Cliquez pour voir les détails de cette souscription';
         tr.innerHTML = `
             <td><b>${item.fullName}</b></td>
             <td>
@@ -2053,6 +2082,7 @@ window.renderInvestmentsList = () => {
             <td>${docHtml}</td>
             <td>${actionsHtml}</td>
         `;
+        tr.onclick = () => window.openInvestmentDetails(item);
         tbody.appendChild(tr);
     });
 };
@@ -2111,6 +2141,66 @@ window.updateInvestmentStatus = (id, newStatus) => {
             }
         }
     );
+};
+
+// --- Investment Details Modal ---
+window.openInvestmentDetails = (item) => {
+    document.getElementById('detailInvestFullName').innerText = item.fullName;
+    document.getElementById('detailInvestPhone').innerText = item.phone;
+    document.getElementById('detailInvestEmail').innerText = item.email || 'Non renseigné';
+    document.getElementById('detailInvestShares').innerText = item.sharesCount.toLocaleString('fr-FR') + ' actions';
+    document.getElementById('detailInvestAmount').innerText = formatCurrency(item.amount);
+    document.getElementById('detailInvestDate').innerText = item.createdAt ? new Date(item.createdAt).toLocaleString('fr-FR', { dateStyle: 'full', timeStyle: 'short' }) : '--';
+
+    // Status badge
+    let statusClass = 'pending', statusLabel = 'EN ATTENTE';
+    if (item.status === 'APPROVED') { statusClass = 'completed'; statusLabel = 'APPROUVÉ'; }
+    else if (item.status === 'PAID') { statusClass = 'completed'; statusLabel = 'PAYÉ ✓'; }
+    else if (item.status === 'CANCELLED') { statusClass = 'failed'; statusLabel = 'ANNULÉ'; }
+    document.getElementById('detailInvestStatusBadge').innerHTML = `<span class="status-tag ${statusClass}">${statusLabel}</span>`;
+
+    // KYC section
+    const kycSection = document.getElementById('detailInvestKycSection');
+    if (item.kycDocUrl) {
+        kycSection.style.display = 'block';
+        const fileName = item.kycDocUrl.split('/').pop() || 'Document KYC';
+        document.getElementById('detailInvestKycName').innerText = fileName;
+        document.getElementById('btnDetailViewKyc').onclick = () => {
+            window.openInvestmentKyc(item.id);
+        };
+    } else {
+        kycSection.style.display = 'none';
+    }
+
+    // Payment link section (show only for APPROVED investments)
+    const paymentLinkSection = document.getElementById('detailInvestPaymentLinkSection');
+    if (item.status === 'APPROVED') {
+        paymentLinkSection.style.display = 'block';
+        const paymentLink = `https://investir.transen.org/payment.html?id=${item.id}`;
+        document.getElementById('detailInvestPaymentLink').value = paymentLink;
+        document.getElementById('btnCopyPaymentLink').onclick = () => {
+            navigator.clipboard.writeText(paymentLink);
+            window.showNotificationDrawer('Copié !', 'Lien de paiement copié dans le presse-papiers.', false);
+        };
+    } else {
+        paymentLinkSection.style.display = 'none';
+    }
+
+    // Actions footer
+    const actionsFooter = document.getElementById('detailInvestActions');
+    actionsFooter.innerHTML = '';
+    if (item.status === 'PENDING') {
+        actionsFooter.innerHTML = `
+            <button class="btn-approve" onclick="document.getElementById('investmentDetailsModal').style.display='none'; window.updateInvestmentStatus('${item.id}', 'APPROVED')" style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fas fa-check"></i> Approuver</button>
+            <button class="btn-reject" onclick="document.getElementById('investmentDetailsModal').style.display='none'; window.updateInvestmentStatus('${item.id}', 'CANCELLED')" style="padding: 10px 20px; background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); border-radius: 10px; color: #e74c3c; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fas fa-times"></i> Annuler</button>
+        `;
+    } else if (item.status === 'APPROVED') {
+        actionsFooter.innerHTML = `
+            <button onclick="document.getElementById('investmentDetailsModal').style.display='none'; window.updateInvestmentStatus('${item.id}', 'CANCELLED')" style="padding: 10px 20px; background: rgba(231,76,60,0.15); border: 1px solid rgba(231,76,60,0.3); border-radius: 10px; color: #e74c3c; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px;"><i class="fas fa-times"></i> Annuler</button>
+        `;
+    }
+
+    document.getElementById('investmentDetailsModal').style.display = 'block';
 };
 
 // Hook up close buttons

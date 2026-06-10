@@ -151,7 +151,7 @@
         <!-- Header -->
         <header class="header glass">
             <div class="logo">
-                <img src="assets/images/logo.png" alt="TranSen Logo" onerror="this.src='https://transen.org/assets/transen-logo.png'">
+                <img src="assets/transen-logo.png" alt="TranSen Logo" onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
                 <span>TranSen Invest</span>
             </div>
             <a href="https://investir.transen.org" class="btn-back"><i class="fas fa-arrow-left"></i> Retour</a>
@@ -275,7 +275,10 @@
 
                 investmentData = await response.json();
 
-                if (investmentData.status === 'APPROVED') {
+                if (investmentData.status === 'PAID') {
+                    showWrongStatus("Ce dossier a déjà été payé avec succès. Consultez votre portefeuille pour le suivi.");
+                    document.getElementById('wrongStatusState').innerHTML += '<div style="margin-top:20px;"><a href="dashboard.html" style="background:linear-gradient(135deg,var(--primary-gold),var(--primary-gold-hover));color:#000;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;display:inline-block;"><i class="fas fa-wallet"></i> Accéder à mon portefeuille</a></div>';
+                } else if (investmentData.status === 'APPROVED') {
                     showPaymentForm();
                 } else if (investmentData.status === 'PENDING') {
                     showWrongStatus("Votre dossier est encore en cours de vérification KYC. Vous recevrez un e-mail dès qu'il sera approuvé.");
@@ -327,7 +330,8 @@
             try {
                 const phone = investmentData.phone.startsWith('221') ? investmentData.phone : '221' + investmentData.phone.replace(/\s/g, '');
                 
-                const orderRef = 'INVEST-' + investmentData.id.substring(0, 8).toUpperCase();
+                // Envoyer l'UUID complet pour un rapprochement 100% fiable dans le webhook
+                const orderRef = 'INVEST-' + investmentData.id;
 
                 const response = await fetch(`${API_BASE_URL}/api/payments/create-session`, {
                     method: 'POST',
@@ -377,18 +381,70 @@
             }
         }
 
+        // Logic for handling status returned from SenePay
+        async function checkPaymentStatusAndRedirect(id) {
+            // Afficher le chargement avec un message personnalisé
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('loadingText').innerText = "Validation de votre paiement sécurisé... Veuillez patienter quelques instants.";
+            document.getElementById('paymentContent').style.display = 'none';
+            document.getElementById('wrongStatusState').style.display = 'none';
+            document.getElementById('errorState').style.display = 'none';
+
+            let attempts = 0;
+            const maxAttempts = 5; // Polling pendant 10 secondes (5 * 2s)
+            let isPaid = false;
+
+            while (attempts < maxAttempts) {
+                try {
+                    const response = await fetch(`${API_BASE_URL}/api/investments/${id}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        if (data.status === 'PAID') {
+                            isPaid = true;
+                            break;
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Erreur lors du polling du statut :", e);
+                }
+                attempts++;
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+
+            // Rafraîchir les données locales et rediriger
+            const email = localStorage.getItem('transenInvestorEmail');
+            const phone = localStorage.getItem('transenInvestorPhone');
+            if (email || phone) {
+                try {
+                    const loginRes = await fetch(`${API_BASE_URL}/api/investments/login`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email: email || null, phone: phone || null })
+                    });
+                    if (loginRes.ok) {
+                        const data = await loginRes.json();
+                        if (Array.isArray(data) && data.length > 0) {
+                            localStorage.setItem('transenInvestor', JSON.stringify(data));
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur de rafraîchissement session investisseur :", e);
+                }
+            }
+            window.location.href = 'dashboard.html';
+        }
+
         // Check for return status from SenePay
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('status') === 'success') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => {
-                    window.showNotificationDrawer(
-                        "Paiement réussi !",
-                        "Votre paiement a été traité avec succès. Vous recevrez un e-mail de confirmation sous peu. Merci pour votre investissement dans TranSen !",
-                        false
-                    );
-                }, 500);
-            });
+            const id = urlParams.get('id');
+            if (id) {
+                document.addEventListener('DOMContentLoaded', () => {
+                    checkPaymentStatusAndRedirect(id);
+                });
+            } else {
+                window.location.href = 'dashboard.html';
+            }
         } else if (urlParams.get('status') === 'cancel') {
             document.addEventListener('DOMContentLoaded', () => {
                 setTimeout(() => {

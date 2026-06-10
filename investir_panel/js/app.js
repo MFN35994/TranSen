@@ -168,10 +168,71 @@ document.addEventListener('DOMContentLoaded', () => {
         successModal.classList.remove('active');
     });
 
-    // Close on click outside card
     successModal.addEventListener('click', (e) => {
         if (e.target === successModal) {
             successModal.classList.remove('active');
+        }
+    });
+
+    // 5. Login Modal Logic
+    const loginModal = document.getElementById('loginModal');
+    const openLoginBtn = document.getElementById('openLoginBtn');
+    const closeLoginModalBtn = document.getElementById('closeLoginModalBtn');
+    const loginForm = document.getElementById('loginForm');
+    const loginSubmitBtn = document.getElementById('loginSubmitBtn');
+
+    openLoginBtn.addEventListener('click', () => {
+        loginModal.classList.add('active');
+    });
+
+    closeLoginModalBtn.addEventListener('click', () => {
+        loginModal.classList.remove('active');
+    });
+
+    loginModal.addEventListener('click', (e) => {
+        if (e.target === loginModal) {
+            loginModal.classList.remove('active');
+        }
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const email = document.getElementById('loginEmail').value.trim();
+        const phone = document.getElementById('loginPhone').value.trim();
+
+        if (!email && !phone) {
+            alert("Veuillez renseigner votre e-mail ou votre numéro de téléphone.");
+            return;
+        }
+
+        const originalBtnHtml = loginSubmitBtn.innerHTML;
+        loginSubmitBtn.disabled = true;
+        loginSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
+
+        try {
+            const response = await fetch(`${API_HOST}/api/investments/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email || null, phone: phone || null })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && Array.isArray(data) && data.length > 0) {
+                localStorage.setItem('transenInvestor', JSON.stringify(data));
+                if (email) localStorage.setItem('transenInvestorEmail', email);
+                if (phone) localStorage.setItem('transenInvestorPhone', phone);
+                window.location.href = 'dashboard.html';
+            } else {
+                alert(data.error || "Aucun investissement trouvé avec ces identifiants.");
+            }
+        } catch (error) {
+            console.error("Login error:", error);
+            alert("Erreur de connexion. Veuillez réessayer.");
+        } finally {
+            loginSubmitBtn.disabled = false;
+            loginSubmitBtn.innerHTML = originalBtnHtml;
         }
     });
 });

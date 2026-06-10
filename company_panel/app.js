@@ -141,6 +141,16 @@ function showApp(companyData) {
     document.getElementById('currentDate').innerText = new Date().toLocaleDateString('fr-FR', options);
 
     setupNavigation();
+
+    // Activer la section dashboard par défaut au chargement
+    const dashboardSection = document.getElementById('section-dashboard');
+    if (dashboardSection) {
+        dashboardSection.style.display = 'block';
+        dashboardSection.classList.add('active-section');
+    }
+    const homeLink = document.querySelector('#mainNav a[data-section="dashboard"]');
+    if (homeLink) homeLink.classList.add('active');
+
     loadDashboardData();
 }
 
@@ -163,10 +173,13 @@ function setupNavigation() {
         mobileMenuBtn.onclick = () => {
             sidebar.classList.toggle('active');
             sidebarOverlay.classList.toggle('active');
+            // Force Mapbox resize in case the layout shifted
+            if (map) setTimeout(() => map.resize(), 350);
         };
         sidebarOverlay.onclick = () => {
             sidebar.classList.remove('active');
             sidebarOverlay.classList.remove('active');
+            if (map) setTimeout(() => map.resize(), 350);
         };
     }
 
@@ -197,6 +210,11 @@ function setupNavigation() {
             document.querySelectorAll('.bottom-nav-item').forEach(b => {
                 b.classList.toggle('active', b.dataset.section === section);
             });
+
+            // KEY FIX: Resize Mapbox when navigating to dashboard
+            if (section === 'dashboard' && map) {
+                setTimeout(() => map.resize(), 300);
+            }
 
             if (section === 'kyc') {
                 loadKycData();
@@ -461,13 +479,13 @@ async function loadDashboardData() {
             drivers.forEach((d, index) => {
                 driversTbody.innerHTML += `
                     <tr>
-                        <td><b>${d.name}</b></td>
-                        <td>${d.phone}</td>
-                        <td>Véhicule Enregistré</td>
-                        <td>${d.totalTrips}</td>
-                        <td><b>${d.totalRevenue.toLocaleString()} F</b></td>
-                        <td><span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${d.status}</span></td>
-                        <td><button class="icon-btn glass" style="color:var(--text-dim)"><i class="fas fa-ban"></i></button></td>
+                        <td data-label="Chauffeur"><b>${d.name}</b></td>
+                        <td data-label="Téléphone">${d.phone}</td>
+                        <td data-label="Véhicule">Véhicule Enregistré</td>
+                        <td data-label="Courses (Total)">${d.totalTrips}</td>
+                        <td data-label="Revenus Générés"><b>${d.totalRevenue.toLocaleString()} F</b></td>
+                        <td data-label="Statut"><span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${d.status}</span></td>
+                        <td data-label="Actions"><button class="icon-btn glass" style="color:var(--text-dim)"><i class="fas fa-ban"></i></button></td>
                     </tr>`;
                 
                 if (dashboardDriverList && index < 6) {
@@ -502,13 +520,13 @@ async function loadDashboardData() {
                 const dateStr = new Date(t.createdAt).toLocaleString('fr-FR');
                 liveTbody.innerHTML += `
                     <tr>
-                        <td><small>${t.id.substring(0,6)}</small><br>${dateStr}</td>
-                        <td><b>${t.driverName}</b></td>
-                        <td>${t.clientName}</td>
-                        <td><small><b>De:</b> ${t.departure}<br><b>À:</b> ${t.destination}</small></td>
-                        <td><b>${t.price} F</b></td>
-                        <td><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
-                        <td>
+                        <td data-label="ID / Date"><small>${t.id.substring(0,6)}</small><br>${dateStr}</td>
+                        <td data-label="Chauffeur"><b>${t.driverName}</b></td>
+                        <td data-label="Client (Nom)">${t.clientName}</td>
+                        <td data-label="Trajet"><small><b>De:</b> ${t.departure}<br><b>À:</b> ${t.destination}</small></td>
+                        <td data-label="Prix"><b>${t.price} F</b></td>
+                        <td data-label="Statut"><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
+                        <td data-label="Actions">
                             <button class="btn-primary" onclick="window.openPassengerManager('${t.id}', '${t.departure} ➔ ${t.destination}')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
                                 <i class="fas fa-users"></i> Gérer
                             </button>
@@ -518,11 +536,11 @@ async function loadDashboardData() {
                 if (index < 8) {
                     dashTbody.innerHTML += `
                     <tr>
-                        <td>${dateStr}</td>
-                        <td>${t.driverName}</td>
-                        <td>Classique</td>
-                        <td><b>${t.price} F</b></td>
-                        <td><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
+                        <td data-label="Date">${dateStr}</td>
+                        <td data-label="Chauffeur">${t.driverName}</td>
+                        <td data-label="Service">Classique</td>
+                        <td data-label="Prix"><b>${t.price} F</b></td>
+                        <td data-label="Statut"><span class="status-tag ${t.status.toLowerCase()}">${t.status}</span></td>
                     </tr>`;
                 }
             });
@@ -552,10 +570,10 @@ async function loadDashboardData() {
                 
                 txTbody.innerHTML += `
                     <tr style="cursor: pointer;" onclick="openReceipt('${ref}', '${dateStr}', '${tx.type}', '${tx.status}', '${amountStr}')" title="Cliquez pour voir le reçu">
-                        <td>${dateStr}</td>
-                        <td><b>${tx.type}</b></td>
-                        <td style="color: ${color}; font-weight: bold;">${amountStr}</td>
-                        <td><span class="status-tag ${tx.status.toLowerCase()}">${statusFr}</span></td>
+                        <td data-label="Date">${dateStr}</td>
+                        <td data-label="Type"><b>${tx.type}</b></td>
+                        <td data-label="Montant" style="color: ${color}; font-weight: bold;">${amountStr}</td>
+                        <td data-label="Statut"><span class="status-tag ${tx.status.toLowerCase()}">${statusFr}</span></td>
                     </tr>`;
             });
         }
@@ -583,6 +601,19 @@ function setupMapbox(drivers) {
             zoom: 12
         });
         map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+        
+        // KEY FIX: Force resize after map initialization to handle mobile layout
+        map.on('load', () => {
+            setTimeout(() => map.resize(), 200);
+        });
+
+        // KEY FIX: Listen to window resize and orientation change
+        window.addEventListener('resize', () => {
+            if (map) setTimeout(() => map.resize(), 300);
+        });
+        window.addEventListener('orientationchange', () => {
+            if (map) setTimeout(() => map.resize(), 500);
+        });
     }
 
     // Subscribe to Firestore for real-time driver locations

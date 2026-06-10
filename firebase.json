@@ -35,6 +35,33 @@
           "destination": "/index.html"
         }
       ]
+    },
+    {
+      "target": "company",
+      "public": "company_panel",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "target": "investir",
+      "public": "investir_panel",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
+    },
+    {
+      "target": "website",
+      "public": "transen-website",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ]
     }
   ],
   "flutter": {

@@ -793,7 +793,37 @@ textarea:focus {
 .mb-20 { margin-bottom: 20px; }
 .mt-20 { margin-top: 20px; }
 
-/* Responsive tweaks */
+/* Mobile Toggle Button */
+.mobile-toggle-btn {
+    display: none;
+    background: rgba(16, 185, 129, 0.06);
+    border: 1px solid var(--glass-border);
+    color: var(--text-main);
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 10px 12px;
+    border-radius: 14px;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.mobile-toggle-btn:active, .mobile-toggle-btn:hover {
+    color: var(--primary);
+    background: rgba(16, 185, 129, 0.12);
+}
+
+/* Sidebar Overlay (mobile) */
+.sidebar-overlay {
+    position: fixed; inset: 0;
+    background: rgba(11, 15, 25, 0.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    z-index: 999; opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+}
+.sidebar-overlay.active { opacity: 1; pointer-events: auto; }
+
+/* ========== TABLET (1024px) ========== */
 @media (max-width: 1024px) {
     .sidebar {
         width: 80px;
@@ -806,23 +836,94 @@ textarea:focus {
         justify-content: center;
         margin-bottom: 30px;
     }
-    nav a span {
-        display: none;
+    nav a span { display: none; }
+    nav a { justify-content: center; padding: 16px; }
+    .content { margin-left: 80px; padding: 30px; }
+    header h1 { font-size: 1.8rem; }
+    .search-bar { min-width: 200px; }
+}
+
+/* ========== MOBILE (768px) ========== */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        left: -300px;
+        width: 270px;
+        padding: 30px 18px;
+        z-index: 1000;
+        transition: left 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        box-shadow: none;
     }
-    nav a {
-        justify-content: center;
-        padding: 16px;
+    .sidebar.active {
+        left: 0;
+        box-shadow: 10px 0 40px rgba(0,0,0,0.6);
     }
-    .content {
-        margin-left: 80px;
-        padding: 30px;
+    .sidebar .logo span, .admin-details, .sidebar-footer { display: flex; }
+    .sidebar-footer { display: flex; }
+    nav a span { display: inline; }
+    nav a { justify-content: flex-start; padding: 14px 18px; font-size: 0.9rem; }
+    .content { margin-left: 0; padding: 16px 14px; }
+    .mobile-toggle-btn { display: flex; align-items: center; justify-content: center; }
+    header { flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+    header h1 { font-size: 1.4rem; flex: 1; min-width: 0; }
+    #currentDate { font-size: 0.8rem; }
+    .header-actions { width: 100%; }
+    .search-bar { min-width: 0; width: 100%; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 25px; }
+    .glass-card { padding: 18px; border-radius: 20px; }
+    .stat-icon { width: 48px; height: 48px; font-size: 1.2rem; border-radius: 16px; }
+    .stat-info h3 { font-size: 1.5rem; }
+    .stat-info p { font-size: 0.72rem; }
+    .custom-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { min-width: 550px; }
+    th { padding: 12px 10px; font-size: 0.72rem; }
+    td { padding: 14px 10px; font-size: 0.85rem; }
+    .login-overlay { padding: 12px; align-items: flex-end; }
+    .login-card {
+        max-width: none; width: 100%;
+        padding: 35px 24px;
+        border-radius: 30px 30px 0 0;
     }
+    .login-logo img { height: 60px; }
+    .login-logo h2 { font-size: 1.5rem; }
+    .input-group input { padding: 15px 18px 15px 48px; font-size: 0.9rem; }
+    #signInBtn { padding: 15px; }
+    .modal { padding: 10px; }
+    .modal-content { width: 100%; max-width: none; margin: 10px auto; padding: 22px; border-radius: 20px; }
+    .modal-header h2 { font-size: 1.3rem; }
+    .modal-body .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .modal-footer { flex-direction: column; gap: 10px; }
+    .btn-reject, .btn-approve { width: 100%; text-align: center; padding: 12px; }
+    .filter-chip { margin-right: 8px; padding: 8px 16px; font-size: 0.8rem; }
+    .grid-2 { grid-template-columns: 1fr; }
+    .confirm-drawer { width: 96%; }
+    .confirm-drawer-content { flex-direction: column; align-items: flex-start; }
+    .confirm-actions { width: 100%; justify-content: flex-end; }
+}
+
+/* ========== SMALL MOBILE (480px) ========== */
+@media (max-width: 480px) {
+    .content { padding: 12px 10px; }
+    .stats-grid { gap: 10px; }
+    .glass-card { padding: 14px; border-radius: 16px; }
+    .stat-icon { width: 40px; height: 40px; font-size: 1rem; }
+    .stat-info h3 { font-size: 1.3rem; }
+    header h1 { font-size: 1.2rem; }
+    table { min-width: 460px; }
+    th { padding: 10px 8px; }
+    td { padding: 12px 8px; font-size: 0.8rem; }
+}
+
+/* ========== VERY SMALL (360px) ========== */
+@media (max-width: 360px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .stat-info h3 { font-size: 1.5rem; }
 }
 
 /* Slide-in Confirmation Drawer */
 .confirm-drawer {
     position: fixed;
-    top: -150px; /* Hidden above screen */
+    top: -150px;
     left: 50%;
     transform: translateX(-50%);
     width: 90%;
@@ -834,150 +935,60 @@ textarea:focus {
     transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 0;
 }
+.confirm-drawer.show { top: 30px; opacity: 1; }
 
-.confirm-drawer.show {
-    top: 30px; /* Slides down */
-    opacity: 1;
-}
-
-.confirm-drawer-content {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-}
+.confirm-drawer-content { display: flex; align-items: center; gap: 20px; }
 
 .confirm-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
-    background: rgba(239, 68, 68, 0.12);
-    color: var(--red);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3rem;
-    flex-shrink: 0;
+    width: 48px; height: 48px; border-radius: 14px;
+    background: rgba(239, 68, 68, 0.12); color: var(--red);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.3rem; flex-shrink: 0;
 }
+.confirm-icon.success-icon { background: rgba(16, 185, 129, 0.12); color: var(--primary); }
 
-.confirm-icon.success-icon {
-    background: rgba(16, 185, 129, 0.12);
-    color: var(--primary);
-}
-
-.confirm-text {
-    flex: 1;
-}
-
-.confirm-text h4 {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: white;
-    margin-bottom: 3px;
-}
-
-.confirm-text p {
-    font-size: 0.88rem;
-    color: var(--text-dim);
-}
-
-.confirm-actions {
-    display: flex;
-    gap: 12px;
-}
+.confirm-text { flex: 1; }
+.confirm-text h4 { font-size: 1.1rem; font-weight: 700; color: white; margin-bottom: 3px; }
+.confirm-text p { font-size: 0.88rem; color: var(--text-dim); }
+.confirm-actions { display: flex; gap: 12px; }
 
 .confirm-btn-cancel {
-    padding: 10px 18px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--glass-border);
-    border-radius: 12px;
-    color: var(--text-dim);
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
+    padding: 10px 18px; background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--glass-border); border-radius: 12px;
+    color: var(--text-dim); font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: var(--transition);
 }
-
-.confirm-btn-cancel:hover {
-    background: rgba(255, 255, 255, 0.08);
-    color: white;
-}
+.confirm-btn-cancel:hover { background: rgba(255, 255, 255, 0.08); color: white; }
 
 .confirm-btn-yes {
-    padding: 10px 18px;
-    background: var(--red);
-    border: none;
-    border-radius: 12px;
-    color: white;
-    font-size: 0.85rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: var(--transition);
+    padding: 10px 18px; background: var(--red);
+    border: none; border-radius: 12px; color: white;
+    font-size: 0.85rem; font-weight: 600;
+    cursor: pointer; transition: var(--transition);
     box-shadow: 0 4px 10px rgba(239, 68, 68, 0.25);
 }
-
-.confirm-btn-yes.primary-btn {
-    background: var(--primary);
-    box-shadow: 0 4px 10px var(--primary-glow);
-}
-
-.confirm-btn-yes:hover {
-    transform: translateY(-1px);
-}
+.confirm-btn-yes.primary-btn { background: var(--primary); box-shadow: 0 4px 10px var(--primary-glow); }
+.confirm-btn-yes:hover { transform: translateY(-1px); }
 
 /* Dashboard details modal & metrics styling */
-.modal-body .stats-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    margin-bottom: 20px;
-}
+.modal-body .stat-card { padding: 15px; border-radius: 20px; }
+.modal-body .stat-icon { width: 48px; height: 48px; border-radius: 16px; font-size: 1.3rem; }
+.modal-body .stat-info h4 { font-size: 1.25rem; font-weight: 700; margin-top: 4px; }
+.modal-body th { padding: 12px 10px; font-size: 0.75rem; }
+.modal-body td { padding: 14px 10px; font-size: 0.85rem; }
 
-.modal-body .stat-card {
-    padding: 15px;
-    border-radius: 20px;
-}
+.cursor-pointer { cursor: pointer; }
+.tr-link:hover td { color: var(--primary) !important; }
 
-.modal-body .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 16px;
-    font-size: 1.3rem;
-}
-
-.modal-body .stat-info h4 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin-top: 4px;
-}
-
-.modal-body th {
-    padding: 12px 10px;
-    font-size: 0.75rem;
-}
-
-.modal-body td {
-    padding: 14px 10px;
-    font-size: 0.85rem;
-}
-
-/* Custom interactive filtering on company/driver tables */
-.cursor-pointer {
-    cursor: pointer;
-}
-
-.tr-link:hover td {
-    color: var(--primary) !important;
-}
-
-/* Grid layout for detail pages */
 .grid-2 {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
     gap: 20px;
 }
 
-/* Transitions for dynamic width bars */
 #marketPublicBar, #marketIndependentBar, #channelAlloBar, #channelBusBar, #channelYobanteBar, #channelOnDemandBar, #channelScheduledBar {
     transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
 
 

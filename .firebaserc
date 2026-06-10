@@ -10,6 +10,15 @@
         ],
         "app": [
           "transen-pro"
+        ],
+        "company": [
+          "transen-company-pro"
+        ],
+        "investir": [
+          "transen-investir-pro"
+        ],
+        "website": [
+          "transen-website-pro"
         ]
       }
     }

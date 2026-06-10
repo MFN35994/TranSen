@@ -687,3 +687,71 @@ body {
         padding: 25px 20px;
     }
 }
+
+/* Header Actions */
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-portfolio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #000;
+    font-family: inherit;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 10px 20px;
+    border-radius: 12px;
+    border: none;
+    background: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-gold-hover) 100%);
+    cursor: pointer;
+    transition: var(--transition);
+    box-shadow: 0 4px 15px rgba(241, 196, 15, 0.25);
+}
+
+.btn-portfolio:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(241, 196, 15, 0.4);
+}
+
+/* Login Modal Extras */
+.login-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(241, 196, 15, 0.12);
+    border: 2px solid var(--primary-gold);
+    color: var(--primary-gold);
+    font-size: 2.2rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+}
+
+.login-hint {
+    font-size: 0.8rem !important;
+    color: var(--text-dim) !important;
+    text-align: center;
+    margin-bottom: 15px !important;
+    font-style: italic;
+}
+
+.modal-card .btn-close {
+    margin-top: 12px;
+}
+
+@media (max-width: 600px) {
+    .header-actions {
+        gap: 8px;
+    }
+    .btn-portfolio span {
+        display: none;
+    }
+    .btn-portfolio {
+        padding: 10px 14px;
+    }
+}

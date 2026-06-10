@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mon Portefeuille - TranSen Invest</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-dark: #0a0b0d; --bg-card: rgba(20, 22, 28, 0.6);
+            --primary-gold: #f1c40f; --primary-gold-hover: #f39c12;
+            --glass-border: rgba(255, 255, 255, 0.08); --text-main: #f5f6f8; --text-dim: #9ca3af;
+            --green: #2ecc71; --red: #e74c3c; --blue: #3498db;
+            --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.4);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; min-height: 100vh; min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+
+        .glow-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; pointer-events: none; }
+        .glow-orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.12; animation: pulse 8s infinite alternate ease-in-out; }
+        .orb-gold { width: 350px; height: 350px; background: var(--primary-gold); top: -80px; right: -80px; }
+        .orb-purple { width: 400px; height: 400px; background: #8e44ad; bottom: -120px; left: -120px; animation-delay: 2s; }
+        @keyframes pulse { 0% { transform: scale(1); opacity: 0.10; } 100% { transform: scale(1.15); opacity: 0.18; } }
+
+        .glass { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 18px; }
+        .app-container { max-width: 900px; margin: 0 auto; padding: 16px; padding-bottom: calc(80px + var(--safe-bottom)); min-height: 100vh; }
+
+        /* Header - compact mobile */
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 12px 18px; margin-bottom: 20px; }
+        .logo { display: flex; align-items: center; gap: 10px; }
+        .logo img { height: 34px; width: auto; }
+        .logo span { font-size: 1.1rem; font-weight: 700; background: linear-gradient(135deg, #fff, var(--text-dim)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header-actions { display: flex; align-items: center; gap: 8px; }
+        .btn-icon { width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--glass-border); background: rgba(255,255,255,0.03); color: var(--text-main); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: var(--transition); font-size: 1rem; }
+        .btn-icon:hover { background: rgba(255,255,255,0.08); }
+        .btn-icon.danger { border-color: rgba(231,76,60,0.3); color: var(--red); }
+
+        /* Welcome */
+        .welcome { padding: 22px; margin-bottom: 18px; position: relative; overflow: hidden; }
+        .welcome::before { content: ''; position: absolute; top: -30px; right: -30px; width: 140px; height: 140px; background: radial-gradient(circle, rgba(241,196,15,0.1), transparent 70%); border-radius: 50%; }
+        .welcome h1 { font-size: 1.35rem; font-weight: 800; margin-bottom: 4px; }
+        .welcome h1 span { color: var(--primary-gold); }
+        .welcome p { color: var(--text-dim); font-size: 0.85rem; }
+
+        /* Stats - 2x2 grid always */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+        .stat-card { padding: 16px; transition: var(--transition); }
+        .stat-card:active { transform: scale(0.97); }
+        .stat-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1rem; margin-bottom: 10px; }
+        .stat-icon.gold { background: rgba(241,196,15,0.12); color: var(--primary-gold); }
+        .stat-icon.green { background: rgba(46,204,113,0.12); color: var(--green); }
+        .stat-icon.blue { background: rgba(52,152,219,0.12); color: var(--blue); }
+        .stat-icon.purple { background: rgba(142,68,173,0.12); color: #8e44ad; }
+        .stat-label { font-size: 0.7rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+        .stat-value { font-size: 1.3rem; font-weight: 800; }
+        .stat-value.gold { color: var(--primary-gold); }
+
+        /* Section Cards */
+        .section-card { padding: 22px; margin-bottom: 18px; }
+        .section-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .section-card h3 i { color: var(--primary-gold); font-size: 0.95rem; }
+
+        /* Investment Items */
+        .investment-item { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 14px; padding: 16px; margin-bottom: 12px; transition: var(--transition); }
+        .investment-item:last-child { margin-bottom: 0; }
+        .investment-item:active { transform: scale(0.98); }
+        .inv-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .inv-id { font-size: 0.72rem; color: var(--text-dim); font-family: monospace; }
+        .inv-detail { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .inv-detail span { font-size: 0.82rem; color: var(--text-dim); }
+        .inv-detail strong { font-size: 0.85rem; }
+        .btn-pay-link { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 12px; padding: 10px; background: rgba(241,196,15,0.08); border: 1px solid rgba(241,196,15,0.25); border-radius: 10px; color: var(--primary-gold); text-decoration: none; font-weight: 700; font-size: 0.82rem; transition: var(--transition); }
+        .btn-pay-link:active { transform: scale(0.97); }
+
+        /* Badges */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .badge-pending { background: rgba(241,196,15,0.12); color: var(--primary-gold); }
+        .badge-approved { background: rgba(52,152,219,0.12); color: var(--blue); }
+        .badge-paid { background: rgba(46,204,113,0.12); color: var(--green); }
+        .badge-cancelled { background: rgba(231,76,60,0.12); color: var(--red); }
+
+        /* Progress */
+        .progress-section { margin-bottom: 18px; }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.82rem; }
+        .progress-label span:last-child { color: var(--primary-gold); font-weight: 700; }
+        .progress-bar-bg { width: 100%; height: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; border-radius: 8px; background: linear-gradient(90deg, var(--primary-gold), var(--primary-gold-hover)); transition: width 1.5s cubic-bezier(0.4,0,0.2,1); position: relative; }
+        .progress-bar-fill::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: shimmer 2s infinite; }
+        @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+
+        /* Timeline */
+        .timeline { position: relative; padding-left: 28px; }
+        .timeline::before { content: ''; position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: rgba(255,255,255,0.06); }
+        .timeline-item { position: relative; margin-bottom: 18px; }
+        .timeline-item:last-child { margin-bottom: 0; }
+        .timeline-dot { position: absolute; left: -24px; top: 3px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--glass-border); background: var(--bg-dark); transition: var(--transition); }
+        .timeline-dot.active { border-color: var(--primary-gold); background: var(--primary-gold); box-shadow: 0 0 10px rgba(241,196,15,0.4); }
+        .timeline-dot.completed { border-color: var(--green); background: var(--green); }
+        .timeline-title { font-size: 0.85rem; font-weight: 600; margin-bottom: 2px; }
+        .timeline-desc { font-size: 0.72rem; color: var(--text-dim); }
+
+        /* Certificate */
+        .certificate-card { text-align: center; padding: 24px 16px; border: 1px dashed rgba(241,196,15,0.25); border-radius: 14px; background: rgba(241,196,15,0.02); margin-top: 18px; }
+        .certificate-card i { font-size: 2rem; color: var(--primary-gold); margin-bottom: 10px; }
+        .certificate-card h4 { font-size: 0.95rem; margin-bottom: 5px; }
+        .certificate-card p { font-size: 0.78rem; color: var(--text-dim); margin-bottom: 14px; }
+        .btn-certificate { display: inline-flex; align-items: center; gap: 8px; padding: 11px 22px; background: linear-gradient(135deg, var(--primary-gold), var(--primary-gold-hover)); color: #000; border: none; border-radius: 10px; font-family: inherit; font-size: 0.85rem; font-weight: 700; cursor: pointer; transition: var(--transition); }
+        .btn-certificate:active { transform: scale(0.96); }
+
+        /* Bottom Navigation Bar - mobile app style */
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,11,13,0.95); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-top: 1px solid var(--glass-border); display: flex; justify-content: space-around; align-items: center; padding: 10px 0; padding-bottom: calc(10px + var(--safe-bottom)); z-index: 50; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--text-dim); text-decoration: none; font-size: 0.65rem; font-weight: 600; transition: var(--transition); cursor: pointer; padding: 4px 12px; border: none; background: none; font-family: inherit; }
+        .nav-item i { font-size: 1.15rem; }
+        .nav-item.active { color: var(--primary-gold); }
+        .nav-item:active { transform: scale(0.9); }
+
+        /* Footer hidden on mobile (nav bar replaces it) */
+        .footer { text-align: center; padding: 16px 0; color: var(--text-dim); font-size: 0.8rem; margin-top: auto; }
+
+        .loading-spinner { display: flex; justify-content: center; padding: 40px; }
+        .spinner { width: 36px; height: 36px; border: 3px solid var(--glass-border); border-top-color: var(--primary-gold); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Desktop enhancements */
+        @media (min-width: 768px) {
+            .app-container { padding: 20px; padding-bottom: 20px; }
+            .content-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+            .bottom-nav { display: none; }
+            .header { padding: 15px 24px; }
+            .welcome h1 { font-size: 1.6rem; }
+            .stat-value { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="glow-container">
+        <div class="glow-orb orb-gold"></div>
+        <div class="glow-orb orb-purple"></div>
+    </div>
+
+    <div class="app-container">
+        <header class="header glass">
+            <div class="logo">
+                <img src="assets/transen-logo.png" alt="TranSen" onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
+                <span>TranSen Invest</span>
+            </div>
+            <div class="header-actions">
+                <a href="index.html" class="btn-icon" title="Accueil"><i class="fas fa-home"></i></a>
+                <button class="btn-icon danger" id="logoutBtn" title="Déconnexion"><i class="fas fa-sign-out-alt"></i></button>
+            </div>
+        </header>
+
+        <div class="welcome glass" id="welcomeBanner">
+            <h1>Bienvenue, <span id="investorName">Investisseur</span></h1>
+            <p>Votre portefeuille d'investissement TranSen.</p>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card glass"><div class="stat-icon gold"><i class="fas fa-coins"></i></div><div class="stat-label">Total Actions</div><div class="stat-value gold" id="totalShares">0</div></div>
+            <div class="stat-card glass"><div class="stat-icon green"><i class="fas fa-money-bill-wave"></i></div><div class="stat-label">Montant Investi</div><div class="stat-value" id="totalAmount">0</div></div>
+            <div class="stat-card glass"><div class="stat-icon blue"><i class="fas fa-file-signature"></i></div><div class="stat-label">Souscriptions</div><div class="stat-value" id="totalSubscriptions">0</div></div>
+            <div class="stat-card glass"><div class="stat-icon purple"><i class="fas fa-check-circle"></i></div><div class="stat-label">Statut</div><div class="stat-value" id="globalStatus" style="font-size:0.9rem;">—</div></div>
+        </div>
+
+        <div class="content-grid">
+            <div class="section-card glass">
+                <h3><i class="fas fa-list-ul"></i> Mes Souscriptions</h3>
+                <div id="investmentsList"><div class="loading-spinner"><div class="spinner"></div></div></div>
+            </div>
+
+            <div class="section-card glass">
+                <h3><i class="fas fa-route"></i> Progression</h3>
+                <div class="progress-section">
+                    <div class="progress-label"><span>Avancement</span><span id="progressPercent">0%</span></div>
+                    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar" style="width:0%;"></div></div>
+                </div>
+                <div class="timeline">
+                    <div class="timeline-item"><div class="timeline-dot" id="dotSubmit"></div><div class="timeline-title">Promesse enregistrée</div><div class="timeline-desc">Intention de souscription soumise.</div></div>
+                    <div class="timeline-item"><div class="timeline-dot" id="dotKyc"></div><div class="timeline-title">Validation KYC</div><div class="timeline-desc">Vérification pièce d'identité.</div></div>
+                    <div class="timeline-item"><div class="timeline-dot" id="dotApproved"></div><div class="timeline-title">Dossier approuvé</div><div class="timeline-desc">Validé par nos équipes.</div></div>
+                    <div class="timeline-item"><div class="timeline-dot" id="dotPaid"></div><div class="timeline-title">Paiement finalisé</div><div class="timeline-desc">Actionnaire officiel TranSen.</div></div>
+                </div>
+                <div class="certificate-card" id="certificateSection" style="display:none;">
+                    <i class="fas fa-award"></i>
+                    <h4>Certificat d'Actionnaire</h4>
+                    <p>Votre certificat numérique est disponible.</p>
+                    <button class="btn-certificate" id="downloadCertBtn"><i class="fas fa-download"></i> Télécharger</button>
+                </div>
+            </div>
+        </div>
+
+        <footer class="footer"><p>&copy; 2026 TranSen. Tous droits réservés.</p></footer>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item active"><i class="fas fa-wallet"></i>Portefeuille</button>
+        <a href="index.html" class="nav-item"><i class="fas fa-plus-circle"></i>Souscrire</a>
+        <button class="nav-item" id="navRefresh"><i class="fas fa-sync-alt"></i>Actualiser</button>
+        <button class="nav-item" id="navLogout"><i class="fas fa-sign-out-alt"></i>Quitter</button>
+    </nav>
+
+    <script>
+    const API_HOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8081' : 'https://api.transen.org';
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const investorData = localStorage.getItem('transenInvestor');
+        if (!investorData) { window.location.href = 'index.html'; return; }
+        renderDashboard(JSON.parse(investorData));
+    });
+
+    // Logout
+    function doLogout() {
+        localStorage.removeItem('transenInvestor');
+        localStorage.removeItem('transenInvestorEmail');
+        localStorage.removeItem('transenInvestorPhone');
+        window.location.href = 'index.html';
+    }
+    document.getElementById('logoutBtn').addEventListener('click', doLogout);
+    document.getElementById('navLogout').addEventListener('click', doLogout);
+
+    // Refresh data from API
+    document.getElementById('navRefresh').addEventListener('click', async () => {
+        const email = localStorage.getItem('transenInvestorEmail');
+        const phone = localStorage.getItem('transenInvestorPhone');
+        if (!email && !phone) return;
+        try {
+            const r = await fetch(`${API_HOST}/api/investments/login`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email || null, phone: phone || null })
+            });
+            const data = await r.json();
+            if (Array.isArray(data) && data.length > 0) {
+                localStorage.setItem('transenInvestor', JSON.stringify(data));
+                renderDashboard(data);
+            }
+        } catch(e) { console.error(e); }
+    });
+
+    function renderDashboard(investments) {
+        if (!investments || !investments.length) {
+            document.getElementById('investmentsList').innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-dim);"><i class="fas fa-folder-open" style="font-size:2rem;opacity:.3;margin-bottom:10px;display:block;"></i>Aucune souscription.</div>';
+            return;
+        }
+
+        document.getElementById('investorName').textContent = investments[0].fullName || 'Investisseur';
+
+        let totalShares = 0, totalAmount = 0, paidCount = 0;
+        investments.forEach(inv => {
+            totalShares += inv.sharesCount || 0;
+            totalAmount += inv.amount || 0;
+            if (inv.status === 'PAID') paidCount++;
+        });
+
+        document.getElementById('totalShares').textContent = totalShares.toLocaleString('fr-FR');
+        document.getElementById('totalAmount').textContent = totalAmount.toLocaleString('fr-FR') + ' F';
+        document.getElementById('totalSubscriptions').textContent = investments.length;
+
+        const gs = document.getElementById('globalStatus');
+        if (paidCount === investments.length) gs.innerHTML = '<span style="color:var(--green);">✅ Actionnaire</span>';
+        else if (paidCount > 0) gs.innerHTML = '<span style="color:var(--blue);">🔵 Partiel</span>';
+        else if (investments.some(i => i.status === 'APPROVED')) gs.innerHTML = '<span style="color:var(--blue);">🔵 En cours</span>';
+        else gs.innerHTML = '<span style="color:var(--primary-gold);">🟡 En attente</span>';
+
+        const listEl = document.getElementById('investmentsList');
+        listEl.innerHTML = '';
+        investments.forEach(inv => {
+            const bc = inv.status === 'PAID' ? 'badge-paid' : inv.status === 'APPROVED' ? 'badge-approved' : inv.status === 'CANCELLED' ? 'badge-cancelled' : 'badge-pending';
+            const sl = inv.status === 'PAID' ? 'Payé' : inv.status === 'APPROVED' ? 'Approuvé' : inv.status === 'CANCELLED' ? 'Annulé' : 'En attente';
+            const ds = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+            const el = document.createElement('div'); el.className = 'investment-item';
+            el.innerHTML = `<div class="inv-header"><span class="inv-id">#${(inv.id||'').substring(0,8).toUpperCase()}</span><span class="badge ${bc}">${sl}</span></div>
+                <div class="inv-detail"><span>Actions</span><strong>${inv.sharesCount}</strong></div>
+                <div class="inv-detail"><span>Montant</span><strong>${(inv.amount||0).toLocaleString('fr-FR')} FCFA</strong></div>
+                <div class="inv-detail"><span>Date</span><strong>${ds}</strong></div>
+                ${inv.status === 'APPROVED' ? '<a href="payment.html?id='+inv.id+'" class="btn-pay-link"><i class="fas fa-credit-card"></i> Procéder au paiement</a>' : ''}`;
+            listEl.appendChild(el);
+        });
+
+        const best = paidCount > 0 ? 'PAID' : investments.some(i => i.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
+        updateTimeline(best);
+    }
+
+    function updateTimeline(status) {
+        const dots = { submit: document.getElementById('dotSubmit'), kyc: document.getElementById('dotKyc'), approved: document.getElementById('dotApproved'), paid: document.getElementById('dotPaid') };
+        Object.values(dots).forEach(d => d.className = 'timeline-dot');
+        let p = 0;
+        if (status === 'PENDING') { dots.submit.classList.add('completed'); dots.kyc.classList.add('active'); p = 25; }
+        else if (status === 'APPROVED') { dots.submit.classList.add('completed'); dots.kyc.classList.add('completed'); dots.approved.classList.add('completed'); dots.paid.classList.add('active'); p = 75; }
+        else if (status === 'PAID') { Object.values(dots).forEach(d => d.classList.add('completed')); p = 100; document.getElementById('certificateSection').style.display = 'block'; }
+        setTimeout(() => { document.getElementById('progressBar').style.width = p + '%'; document.getElementById('progressPercent').textContent = p + '%'; }, 300);
+    }
+
+    document.getElementById('downloadCertBtn').addEventListener('click', () => {
+        const data = JSON.parse(localStorage.getItem('transenInvestor') || '[]');
+        if (!data.length) return;
+        const inv = data[0];
+        const ts = data.reduce((s, i) => s + (i.sharesCount || 0), 0);
+        const ta = data.reduce((s, i) => s + (i.amount || 0), 0);
+        const c = `\n═══════════════════════════════════════\n       CERTIFICAT D'ACTIONNAIRE\n           TranSen S.A.S.\n═══════════════════════════════════════\n\n  Nom : ${inv.fullName}\n  Email : ${inv.email || '—'}\n  Tél : +221 ${inv.phone}\n\n  ${ts} action(s) - ${ta.toLocaleString('fr-FR')} FCFA\n  Date : ${new Date(inv.createdAt).toLocaleDateString('fr-FR')}\n  Réf : ${(inv.id||'').toUpperCase()}\n\n═══════════════════════════════════════\n  https://investir.transen.org\n═══════════════════════════════════════\n`;
+        const b = new Blob([c], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
+        a.download = `Certificat_TranSen_${inv.fullName.replace(/\s/g,'_')}.txt`; a.click();
+    });
+    </script>
+</body>
+</html>
