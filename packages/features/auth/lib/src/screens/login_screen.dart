@@ -92,7 +92,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       // 1. Essayer de récupérer le numéro mémorisé localement
       String finalPhone = _validatedPhone;
 
-      // 2. Si perdu (remount), essayer de relire le controller
+      // 2. Si perdu (remount), essayer de lire depuis l'état global authProvider
+      if (finalPhone.length < 9) {
+        final auth = ref.read(authProvider);
+        if (auth != null && auth.phone != null) {
+          finalPhone = auth.phone!.replaceAll(RegExp(r'\D'), '');
+          if (finalPhone.startsWith('221') && finalPhone.length >= 12) {
+            finalPhone = finalPhone.substring(3);
+          }
+        }
+      }
+
+      // 3. Si perdu (remount), essayer de relire le controller
       if (finalPhone.length < 9) {
         String rawPhone = _phoneController.text.trim().replaceAll(' ', '');
         finalPhone = rawPhone.replaceAll(RegExp(r'\D'), '');
@@ -102,8 +113,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       }
 
       if (finalPhone.length < 9) {
-        _showError("Session expirée : numéro de téléphone introuvable. Veuillez recommencer l'étape 1.");
-        setState(() => _step = AuthStep.phone);
+        _showError("Session expirée : numéro de téléphone introuvable. Veuillez recommencer.");
+        await ref.read(authProvider.notifier).signOut();
+        setState(() {
+          _step = AuthStep.phone;
+          _validatedPhone = "";
+        });
         return;
       }
 
@@ -306,6 +321,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     );
                   }
                 ),
+                const SizedBox(height: 5),
+                TextButton.icon(
+                    onPressed: () async {
+                      await ref.read(authProvider.notifier).signOut();
+                      setState(() {
+                        _step = AuthStep.phone;
+                        _validatedPhone = "";
+                      });
+                    },
+                    icon: Icon(Icons.arrow_back, size: 14, color: isDarkMode ? Colors.white70 : TranSenColors.primaryGreen),
+                    label: Text("Changer de numéro / Recommencer",
+                        style: TextStyle(color: isDarkMode ? Colors.white70 : TranSenColors.primaryGreen, fontSize: 12))),
               ],
 
               if (step == AuthStep.phone)
@@ -323,6 +350,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     label: "Code OTP",
                     icon: Icons.vibration,
                     keyboardType: TextInputType.number,
+                    autofillHints: const [AutofillHints.oneTimeCode],
                     isDarkMode: isDarkMode),
                 const SizedBox(height: 15),
                 _buildTextField(
@@ -523,6 +551,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
     List<TextInputFormatter>? inputFormatters,
+    Iterable<String>? autofillHints,
     required bool isDarkMode,
   }) {
     return TextField(
@@ -530,6 +559,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
+      autofillHints: autofillHints,
       style: TextStyle(color: isDarkMode ? Colors.white : TranSenColors.primaryGreen),
       decoration: InputDecoration(
         labelText: label,
