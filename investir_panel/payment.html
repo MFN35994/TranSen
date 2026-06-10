@@ -457,8 +457,10 @@
             });
         }
 
-        // Load investment data on page load
-        loadInvestment();
+        // Load investment data on page load only if not validating a successful payment
+        if (urlParams.get('status') !== 'success') {
+            loadInvestment();
+        }
     </script>
 </body>
 </html>
