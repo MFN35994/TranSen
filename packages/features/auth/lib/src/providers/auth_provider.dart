@@ -91,7 +91,7 @@ class AuthNotifier extends Notifier<AuthState?> {
         final data = doc.data()!;
         final role = data['role'] ?? 'none';
         final name = data['name'] ?? data['firstName'];
-        final phone = data['phone'];
+        final phone = data['phone'] ?? state?.phone;
         final points = data['loyaltyPoints'] ?? 0;
         state = state?.copyWith(role: role, name: name, phone: phone, loyaltyPoints: points, isLoading: false);
         NotificationService().init(uid);
@@ -205,7 +205,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       await prefs.setString('user_id', userId);
       await prefs.setString('user_role', role);
 
-      state = AuthState(userId: userId, role: role, isLoading: true); // isLoading true pendant qu'on fetch le reste
+      state = AuthState(userId: userId, role: role, phone: _phoneNumberBeingVerified, isLoading: true); // isLoading true pendant qu'on fetch le reste
       
       // On peut continuer à utiliser Firestore pour les autres infos de l'utilisateur (points, etc)
       // Ou appeler un endpoint Spring Boot /api/users/me (à l'avenir).
