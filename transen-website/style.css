@@ -178,8 +178,8 @@ a {
 
 .hamburger {
     display: none;
-    font-size: 1.5rem;
     cursor: pointer;
+    z-index: 1001;
 }
 
 /* Hero Section */
@@ -565,15 +565,73 @@ footer {
     }
     
     .hamburger {
-        display: block;
-        z-index: 1001;
-        font-size: 1.6rem;
-        transition: transform 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        width: 48px;
+        height: 48px;
+        padding: 14px 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 50%;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
     
+    .hamburger span {
+        display: block;
+        height: 2px;
+        background-color: var(--text-light);
+        border-radius: 2px;
+        transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    /* Asymétrie premium : les barres sortent un tout petit peu */
+    .hamburger span:nth-child(1) {
+        width: 100%;
+    }
+    .hamburger span:nth-child(2) {
+        width: 70%;
+        margin-left: auto;
+    }
+    .hamburger span:nth-child(3) {
+        width: 85%;
+        margin-left: auto;
+    }
+    
+    .hamburger:hover {
+        background: rgba(255, 255, 255, 0.08);
+        border-color: var(--primary-green);
+        box-shadow: 0 4px 20px rgba(0, 208, 132, 0.15);
+    }
+    
+    .hamburger:hover span {
+        background-color: var(--primary-green);
+    }
+
     .hamburger.active {
-        transform: rotate(90deg);
-        color: var(--primary-green);
+        padding: 13px;
+        border-color: var(--primary-green);
+        background: rgba(0, 208, 132, 0.05);
+    }
+    
+    .hamburger.active span:nth-child(1) {
+        transform: translateY(9px) rotate(45deg);
+        width: 100%;
+        background-color: var(--primary-green);
+    }
+    
+    .hamburger.active span:nth-child(2) {
+        opacity: 0;
+        transform: translateX(10px);
+    }
+    
+    .hamburger.active span:nth-child(3) {
+        transform: translateY(-9px) rotate(-45deg);
+        width: 100%;
+        background-color: var(--primary-green);
     }
     
     .hero-title {

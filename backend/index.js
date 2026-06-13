@@ -919,7 +919,49 @@ app.get('/share/:tripId', (req, res) => {
     res.send(html);
 });
 
+// Endpoint interne de synchronisation de solde Firestore (appelé par Spring Boot)
+app.post('/api/internal/sync-wallet', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { userId, amountDelta, description, type } = req.body;
+    if (!userId || amountDelta === undefined) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        const userRef = db.collection('users').doc(userId);
+        const transactionRef = userRef.collection('transactions');
+
+        await db.runTransaction(async (t) => {
+            const userDoc = await t.get(userRef);
+            if (!userDoc.exists) throw new Error("Utilisateur introuvable");
+
+            const currentBalance = userDoc.data().walletBalance || 0;
+            t.update(userRef, { walletBalance: currentBalance + Number(amountDelta) });
+            
+            t.set(transactionRef.doc(), {
+                amount: Number(amountDelta),
+                description: description || (Number(amountDelta) < 0 ? "Débit portefeuille" : "Crédit portefeuille"),
+                date: admin.firestore.FieldValue.serverTimestamp(),
+                type: type || (Number(amountDelta) < 0 ? 'withdrawal' : 'deposit'),
+                status: 'completed'
+            });
+        });
+
+        console.log(`[Internal Sync] Solde Firestore synchronisé pour ${userId}: ${amountDelta} FCFA`);
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erreur lors de la synchronisation interne du portefeuille:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Serveur Webhook TranSen lancé sur le port ${PORT}`);
 });
+
