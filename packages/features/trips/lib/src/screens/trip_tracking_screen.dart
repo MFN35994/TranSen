@@ -366,6 +366,8 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     if (confirm == true) {
       final userId = ref.read(authProvider)?.userId ?? '';
       await ref.read(tripRepositoryProvider).cancelTrip(trip.id, userId);
+      ref.invalidate(activeTripProvider);
+      ref.invalidate(activePoolProvider);
       if (mounted) {
         Navigator.of(context).popUntil((route) => route.isFirst);
         ScaffoldMessenger.of(context).showSnackBar(

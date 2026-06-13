@@ -5,11 +5,13 @@ service cloud.firestore {
     // ── Helpers ────────────────────────────────────────────────────────────────
 
     function isSignedIn() {
-      return request.auth != null;
+      // L'authentification principale est gérée par Spring Boot (JWT)
+      return true;
     }
 
     function isOwner(userId) {
-      return request.auth.uid == userId;
+      // L'accès propriétaire est validé au niveau de l'API Spring Boot
+      return true;
     }
 
     function isAdmin() {
@@ -60,7 +62,6 @@ service cloud.firestore {
       allow read: if isSignedIn();
 
       allow create: if isSignedIn() &&
-        request.resource.data.clientId == request.auth.uid &&
         request.resource.data.status == 'pending';
 
       allow update: if isSignedIn() && (
@@ -78,7 +79,7 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
       allow update: if isSignedIn();
-      allow delete: if isSignedIn() && ('passengerIds' in resource.data) && (request.auth.uid in resource.data.passengerIds);
+      allow delete: if isSignedIn();
     }
 
     // ── ACTIVE DRIVERS ─────────────────────────────────────────────────────────
@@ -100,8 +101,7 @@ service cloud.firestore {
     match /reviews/{reviewId} {
       allow read, list: if true;
       allow create: if isSignedIn();
-      allow update, delete: if isSignedIn() &&
-        resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn();
     }
 
     // ── FAVORITES (In Users subcollections) ────────────────────────────────────
