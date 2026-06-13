@@ -2,12 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:image_picker/image_picker.dart';
 
-class ProfileScreen extends ConsumerWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
+  int _refreshCounter = 0;
+
+  void _triggerRefresh() {
+    setState(() {
+      _refreshCounter++;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final userId = auth?.userId ?? '';
 
@@ -20,6 +34,7 @@ class ProfileScreen extends ConsumerWidget {
       body: userId.isEmpty 
         ? const Center(child: CircularProgressIndicator())
         : FutureBuilder<Map<String, dynamic>?>(
+            key: ValueKey(_refreshCounter),
             future: ref.read(userRepositoryProvider).getUserData(),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
@@ -47,6 +62,7 @@ class ProfileScreen extends ConsumerWidget {
               }
               final bool isVerified = userData?['isVerified'] ?? false;
               final int points = (userData?['loyaltyPoints'] ?? 0) as int;
+              final String? avatarUrl = userData?['avatarUrl'] as String?;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(20),
@@ -54,33 +70,39 @@ class ProfileScreen extends ConsumerWidget {
                   children: [
                     const SizedBox(height: 20),
                     Center(
-                      child: Stack(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(4),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).brightness == Brightness.light ? Colors.grey[200] : Colors.grey[800],
-                              shape: BoxShape.circle,
-                            ),
-                            child: CircleAvatar(
-                              radius: 60,
-                              backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey[900],
-                              child: const Icon(Icons.person, size: 70, color: Colors.grey),
-                            ),
-                          ),
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
+                      child: GestureDetector(
+                        onTap: () => _pickAndUploadAvatar(context),
+                        child: Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: auth?.role == 'driver' ? Colors.black : TranSenColors.primaryGreen,
+                                color: Theme.of(context).brightness == Brightness.light ? Colors.grey[200] : Colors.grey[800],
                                 shape: BoxShape.circle,
                               ),
-                              child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                              child: CircleAvatar(
+                                radius: 60,
+                                backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey[900],
+                                backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                                child: avatarUrl != null && avatarUrl.isNotEmpty 
+                                  ? null 
+                                  : const Icon(Icons.person, size: 70, color: Colors.grey),
+                              ),
                             ),
-                          ),
-                        ],
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: auth?.role == 'driver' ? Colors.black : TranSenColors.primaryGreen,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: 30),
@@ -262,5 +284,85 @@ class ProfileScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _pickAndUploadAvatar(BuildContext context) async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Wrap(
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galerie'),
+              onTap: () => Navigator.pop(context, ImageSource.gallery),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Appareil photo'),
+              onTap: () => Navigator.pop(context, ImageSource.camera),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    final pickedFile = await picker.pickImage(
+      source: source,
+      maxWidth: 800,
+      maxHeight: 800,
+      imageQuality: 85,
+    );
+
+    if (pickedFile != null) {
+      try {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Row(
+                children: [
+                  CircularProgressIndicator(color: Colors.white),
+                  SizedBox(width: 15),
+                  Text("Mise à jour de la photo de profil..."),
+                ],
+              ),
+              duration: Duration(minutes: 1),
+              backgroundColor: TranSenColors.primaryGreen,
+            ),
+          );
+        }
+
+        final url = await ref.read(userRepositoryProvider).uploadAvatar(pickedFile.path);
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+        }
+
+        if (url != null) {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Photo de profil mise à jour !"), backgroundColor: Colors.green),
+            );
+          }
+          _triggerRefresh();
+        } else {
+          if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Échec de l'upload"), backgroundColor: Colors.red),
+            );
+          }
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).clearSnackBars();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Erreur : ${e.toString()}"), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 }

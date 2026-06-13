@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart' as dio_lib;
 import '../../api/api_client.dart';
 
 class UserRepository {
@@ -33,6 +34,22 @@ class UserRepository {
     } catch (e) {
       debugPrint("Erreur update profil: $e");
     }
+  }
+
+  Future<String?> uploadAvatar(String filePath) async {
+    try {
+      final fileName = filePath.split('/').last;
+      final formData = dio_lib.FormData.fromMap({
+        'file': await dio_lib.MultipartFile.fromFile(filePath, filename: fileName),
+      });
+      final response = await _apiClient.dio.post('/api/users/me/avatar', data: formData);
+      if (response.statusCode == 200) {
+        return response.data['avatarUrl'] as String?;
+      }
+    } catch (e) {
+      debugPrint("Erreur upload avatar: $e");
+    }
+    return null;
   }
 }
 

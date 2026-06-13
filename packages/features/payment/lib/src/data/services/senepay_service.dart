@@ -16,8 +16,8 @@ class SenePayService {
   }) async {
     try {
       const String apiBase = "https://api.transen.org";
-      final returnUrl = kIsWeb ? "https://transen-pro.web.app/payment/success" : "$apiBase/payment/success";
-      final failUrl = kIsWeb ? "https://transen-pro.web.app/payment/cancel" : "$apiBase/payment/cancel";
+      final returnUrl = kIsWeb ? "https://app.transen.org/payment/success" : "$apiBase/payment/success";
+      final failUrl = kIsWeb ? "https://app.transen.org/payment/cancel" : "$apiBase/payment/cancel";
 
       final bodyMap = {
         "amount": amount.toInt(),
@@ -29,7 +29,8 @@ class SenePayService {
         "webhookUrl": "https://api.transen.org/api/payments/webhook/senepay",
         "metadata": {
           "order_id": orderId,
-          "platform": kIsWeb ? "web_app" : "mobile_app"
+          "platform": kIsWeb ? "web_app" : "mobile_app",
+          if (customerPhone != null && customerPhone.isNotEmpty) "phone": customerPhone,
         },
         "expiresInMinutes": 60
       };
