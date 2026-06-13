@@ -1052,7 +1052,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
       double lng = _preciseDepartureLng ?? -17.4677;
 
       if (_selectedRoutingType == 'COMPANY_ONLY') {
-        final orderId = "TKT-${DateTime.now().millisecondsSinceEpoch}-${userId.substring(0, 4)}";
+        final orderId = "YOB-${DateTime.now().millisecondsSinceEpoch}-${userId.substring(0, 4)}";
 
         // Generate checkout url
         final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
@@ -1085,6 +1085,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             departureLng: lng,
             routingType: 'COMPANY_ONLY',
             targetCompanyId: _selectedCompany?['id'],
+            paymentReference: orderId,
           ));
 
           setState(() => _isProcessing = false);

@@ -92,6 +92,7 @@
                 <a href="#" data-section="wallet"><i class="fas fa-wallet"></i> Mon Portefeuille</a>
                 <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
                 <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses de la Flotte</a>
+                <a href="#" data-section="schedule"><i class="fas fa-calendar-days"></i> Planification</a>
                 <a href="#" data-section="kyc"><i class="fas fa-id-card-clip"></i> Dossier KYC</a>
                 <a href="#" data-section="profile"><i class="fas fa-user-gear"></i> Mon Profil</a>
             </nav>
@@ -576,6 +577,84 @@
                     </div>
                 </div>
 
+            </div>
+
+            <!-- Schedule Section -->
+            <div id="section-schedule" class="admin-section" style="display: none;">
+                <div class="glass-card" style="padding: 30px;">
+                    <div class="panel-header" style="margin-bottom: 25px; flex-direction: column; align-items: flex-start; gap: 8px;">
+                        <h2>Planifier un nouveau Trajet régulier</h2>
+                        <p style="font-size: 0.85rem; color: var(--text-dim);">Configurez les axes de voyages, les horaires et assignez les chauffeurs de votre flotte.</p>
+                    </div>
+
+                    <form id="scheduleTripForm" style="display: flex; flex-direction: column; gap: 20px;">
+                        <div class="grid-2-col" style="gap: 20px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Ville / Localité de départ</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-location-dot" style="position: absolute; left: 15px; top: 15px; color: var(--primary);"></i>
+                                    <input type="text" id="schDeparture" placeholder="Ex: Dakar" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Ville / Localité de destination</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-map-pin" style="position: absolute; left: 15px; top: 15px; color: var(--red);"></i>
+                                    <input type="text" id="schDestination" placeholder="Ex: Touba" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid-2-col" style="gap: 20px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Assigner un Chauffeur</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-user-tie" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                    <select id="schDriver" style="padding-left: 40px; width: 100%;" required>
+                                        <option value="">-- Sélectionner un chauffeur --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Date & Heure de départ</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-clock" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                    <input type="datetime-local" id="schScheduledTime" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid-3-col" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 20px;">
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Prix de la place (FCFA)</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-wallet" style="position: absolute; left: 15px; top: 15px; color: var(--gold);"></i>
+                                    <input type="number" id="schPrice" placeholder="Ex: 5000" min="500" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nombre de places (Capacité)</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-chair" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                    <input type="number" id="schTotalSeats" placeholder="Ex: 15 ou 45" min="2" max="100" value="15" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                            <div class="input-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 8px; font-weight: 600;">Récurrence (Jours consécutifs)</label>
+                                <div style="position: relative;">
+                                    <i class="fas fa-arrows-spin" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                    <input type="number" id="schRecurrenceDays" placeholder="Ex: 1" min="1" max="14" value="1" style="padding-left: 40px; width: 100%;" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 20px;">
+                            <button type="submit" id="submitScheduleBtn" class="btn-primary" style="padding: 15px 30px; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-calendar-plus"></i> Créer et Publier les Trajets
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
         </main>
 

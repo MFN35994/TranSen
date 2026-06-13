@@ -331,14 +331,18 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
   Future<void> _loadBookings() async {
     setState(() => _isLoading = true);
     try {
+      // 1. Charger le trajet pour avoir totalSeats à jour
+      final tripResponse = await ApiClient().dio.get('/api/trips/${widget.tripId}');
+      if (tripResponse.statusCode == 200) {
+        final tripData = tripResponse.data as Map<String, dynamic>;
+        _totalSeats = (tripData['totalSeats'] as num?)?.toInt() ?? 15;
+      }
+
+      // 2. Charger les bookings
       final response = await ApiClient().dio.get('/api/bookings/trip/${widget.tripId}');
       if (response.statusCode == 200) {
         final list = response.data as List<dynamic>;
         final bookings = list.map((e) => e as Map<String, dynamic>).toList();
-
-        // Récupérer le nombre de places total de la course (de préférence 15, 30 ou plus)
-        // Pour la démo, on utilise 15 places si non spécifié
-        _totalSeats = 15;
         
         // Initialiser tous les sièges comme libres
         final List<SeatInfo> seatList = List.generate(
@@ -346,9 +350,9 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
           (index) => SeatInfo(index: index + 1, status: SeatStatus.free),
         );
 
-        int currentSeatIndex = 0;
         int boarded = 0;
         int reserved = 0;
+        int nextFallbackSeatIndex = 0;
 
         for (var b in bookings) {
           final String status = b['status'] ?? 'PENDING';
@@ -360,14 +364,34 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
           if (sStatus == SeatStatus.boarded) boarded += seatsCount;
           if (sStatus == SeatStatus.reserved) reserved += seatsCount;
 
-          for (int i = 0; i < seatsCount; i++) {
-            if (currentSeatIndex < _totalSeats) {
-              seatList[currentSeatIndex] = SeatInfo(
-                index: currentSeatIndex + 1,
-                status: sStatus,
-                booking: b,
-              );
-              currentSeatIndex++;
+          final String? seatNumbersStr = b['seatNumbers'];
+          if (seatNumbersStr != null && seatNumbersStr.trim().isNotEmpty) {
+            final seatNums = seatNumbersStr.split(',')
+                .map((s) => int.tryParse(s.trim()))
+                .whereType<int>()
+                .toList();
+
+            for (var seatNum in seatNums) {
+              if (seatNum >= 1 && seatNum <= _totalSeats) {
+                seatList[seatNum - 1] = SeatInfo(
+                  index: seatNum,
+                  status: sStatus,
+                  booking: b,
+                );
+              }
+            }
+          } else {
+            int allocated = 0;
+            while (allocated < seatsCount && nextFallbackSeatIndex < _totalSeats) {
+              if (seatList[nextFallbackSeatIndex].status == SeatStatus.free) {
+                seatList[nextFallbackSeatIndex] = SeatInfo(
+                  index: nextFallbackSeatIndex + 1,
+                  status: sStatus,
+                  booking: b,
+                );
+                allocated++;
+              }
+              nextFallbackSeatIndex++;
             }
           }
         }
@@ -499,10 +523,30 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
   }
 
   Widget _buildBusLayout(bool isDark) {
-    // Modélisation 3 colonnes : Siège gauche, Allée, Siège droite (Layout standard bus 2-1 ou Minibus)
+    int crossAxisCount = 4;
+    int aisleColumnIndex = 2; // Allée à la 3ème colonne (0-indexed) par défaut
+    
+    if (_totalSeats <= 4) {
+      crossAxisCount = 3;
+      aisleColumnIndex = -1; // Pas d'allée (berline)
+    } else if (_totalSeats <= 9) {
+      crossAxisCount = 3;
+      aisleColumnIndex = -1; // Pas d'allée (minivan)
+    } else if (_totalSeats <= 22) {
+      crossAxisCount = 4;
+      aisleColumnIndex = 2; // Minibus 2-1 (2 sièges, allée, 1 siège)
+    } else {
+      crossAxisCount = 5;
+      aisleColumnIndex = 2; // Grand bus 2-2 (2 sièges, allée centrale, 2 sièges)
+    }
+
+    final int seatsPerRow = crossAxisCount - (aisleColumnIndex != -1 ? 1 : 0);
+    final int rowCount = (_totalSeats / seatsPerRow).ceil();
+    final int totalGridItems = rowCount * crossAxisCount;
+
     return Center(
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 280),
+        constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1E293B) : Colors.white,
@@ -538,28 +582,30 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
             GridView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: 20, // 5 rangées de 4 éléments (2 sièges, allée vide, 1 siège)
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 4,
-                mainAxisSpacing: 16,
-                crossAxisSpacing: 16,
+              itemCount: totalGridItems,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
                 childAspectRatio: 1,
               ),
               itemBuilder: (context, gridIndex) {
-                final int row = gridIndex ~/ 4;
-                final int col = gridIndex % 4;
+                final int row = gridIndex ~/ crossAxisCount;
+                final int col = gridIndex % crossAxisCount;
 
-                // Allée centrale à l'index col = 2 (colonne 3)
-                if (col == 2) {
+                if (aisleColumnIndex != -1 && col == aisleColumnIndex) {
                   return const SizedBox.shrink();
                 }
 
-                // Calculer l'index du siège dans _seats
-                int seatIndex = row * 3;
-                if (col < 2) {
-                  seatIndex += col;
+                int seatIndex = row * seatsPerRow;
+                if (aisleColumnIndex != -1) {
+                  if (col < aisleColumnIndex) {
+                    seatIndex += col;
+                  } else {
+                    seatIndex += (col - 1);
+                  }
                 } else {
-                  seatIndex += (col - 1);
+                  seatIndex += col;
                 }
 
                 if (seatIndex >= _totalSeats) {

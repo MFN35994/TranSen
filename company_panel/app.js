@@ -220,6 +220,8 @@ function setupNavigation() {
                 loadKycData();
             } else if (section === 'profile') {
                 loadProfileData();
+            } else if (section === 'schedule') {
+                loadSchedulePageData();
             }
         };
     });
@@ -1049,5 +1051,85 @@ window.showNotificationDrawer = function(title, message, isError = false) {
         okBtn.onclick = () => {
             drawer.classList.remove('show');
         };
+    }
+};
+
+// ==========================================
+// Schedule Trip Logic
+// ==========================================
+window.loadSchedulePageData = async function() {
+    if (!currentCompanyId) return;
+    const select = document.getElementById('schDriver');
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Chargement des chauffeurs... --</option>';
+    
+    try {
+        const drivers = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/drivers?companyId=${currentCompanyId}`);
+        select.innerHTML = '<option value="">-- Sélectionner un chauffeur --</option>';
+        if (drivers.length === 0) {
+            select.innerHTML = '<option value="">-- Aucun chauffeur disponible --</option>';
+        } else {
+            drivers.forEach(d => {
+                select.innerHTML += `<option value="${d.id}">${d.name} (${d.phone})</option>`;
+            });
+        }
+    } catch (error) {
+        select.innerHTML = '<option value="">-- Erreur lors du chargement --</option>';
+    }
+};
+
+document.getElementById('scheduleTripForm').onsubmit = async (e) => {
+    e.preventDefault();
+    if (!currentCompanyId) return;
+
+    const departure = document.getElementById('schDeparture').value;
+    const destination = document.getElementById('schDestination').value;
+    const driverId = document.getElementById('schDriver').value;
+    const scheduledTime = document.getElementById('schScheduledTime').value; // AAAA-MM-JJTHH:MM
+    const price = document.getElementById('schPrice').value;
+    const totalSeats = document.getElementById('schTotalSeats').value;
+    const recurrenceDays = document.getElementById('schRecurrenceDays').value;
+
+    const btn = document.getElementById('submitScheduleBtn');
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publication en cours...';
+    btn.disabled = true;
+
+    try {
+        const isoTime = scheduledTime + ":00";
+        const response = await fetch(`${API_BASE_URL}/api/company/dashboard/trips/schedule?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                departure: departure,
+                destination: destination,
+                driverId: driverId,
+                scheduledTime: isoTime,
+                price: parseFloat(price),
+                totalSeats: parseInt(totalSeats),
+                recurrenceDays: parseInt(recurrenceDays)
+            })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert("Trajet(s) planifié(s) avec succès !");
+            document.getElementById('scheduleTripForm').reset();
+            loadDashboardData();
+            const tripsLink = document.querySelector('#mainNav a[data-section="trips"]');
+            if (tripsLink) tripsLink.click();
+        } else {
+            alert("Erreur : " + (result.error || "Action impossible"));
+        }
+    } catch (error) {
+        alert("Erreur de connexion lors de la planification.");
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
     }
 };

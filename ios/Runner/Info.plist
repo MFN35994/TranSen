@@ -56,7 +56,7 @@
 		<true/>
 	</dict>
 
-	<!-- URL Schemes pour les liens de retour Firebase Auth (ex: connexion Google) -->
+	<!-- URL Schemes pour les liens de retour Firebase Auth et SenePay -->
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
@@ -66,6 +66,16 @@
 			<array>
 				<!-- REVERSED_CLIENT_ID pour Google Sign-In -->
 				<string>com.googleusercontent.apps.552529206563-ffsuo62udnf9nmr6r0usha2lr4aitqgj</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.transen.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>transen</string>
 			</array>
 		</dict>
 	</array>

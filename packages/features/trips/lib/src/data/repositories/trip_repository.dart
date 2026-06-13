@@ -192,9 +192,19 @@ class TripRepository {
           'senderPhone': trip.senderPhone,
           'receiverPhone': trip.receiverPhone,
           'baggageDescription': trip.baggageDescription,
+          'paymentReference': trip.paymentReference,
         },
       );
-      return response.data['id']?.toString() ?? '';
+      final tripId = response.data['id']?.toString() ?? '';
+      if (tripId.isNotEmpty) {
+        // Sauvegarde sur Firestore pour ne pas casser l'écoute temps réel existante sur l'app.
+        await _firestore.collection('trips').doc(tripId).set({
+          ...trip.toMap(),
+          'id': tripId,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+      }
+      return tripId;
     } catch (e) {
       debugPrint("Erreur createTrip: $e");
       // On log mais on sauvegarde aussi sur Firestore pour ne pas casser
@@ -321,6 +331,18 @@ class TripRepository {
           'locationVerified': locationVerified,
         });
 
+        try {
+          await ApiClient().dio.post(
+            '/api/trips/save',
+            data: {
+              'tripId': tripId,
+              'status': 'COMPLETED',
+            },
+          );
+        } catch (e) {
+          debugPrint("Erreur lors de la mise à jour REST completeTrip: $e");
+        }
+
         if (driverId != null) await _incrementCompletedTripsAndReward(driverId);
         if (clientId != null) await _incrementCompletedTripsAndReward(clientId);
 
@@ -354,6 +376,18 @@ class TripRepository {
         } else {
           await _firestore.collection('trips').doc(tripId).update({'status': 'cancelled'});
           debugPrint(">>> cancelTrip: successfully marked trip as cancelled in 'trips'");
+        }
+
+        try {
+          await ApiClient().dio.post(
+            '/api/trips/save',
+            data: {
+              'tripId': tripId,
+              'status': 'CANCELLED',
+            },
+          );
+        } catch (e) {
+          debugPrint("Erreur lors de la mise à jour REST cancelTrip: $e");
         }
       }
     } catch (e) {

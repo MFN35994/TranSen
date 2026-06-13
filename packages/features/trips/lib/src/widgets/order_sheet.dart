@@ -87,6 +87,11 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   bool _isLoadingCompanies = false;
   Map<String, dynamic>? _selectedCompany;
   String? _selectedFixedTime;
+  List<Map<String, dynamic>> _scheduledTrips = [];
+  bool _isLoadingScheduledTrips = false;
+  Map<String, dynamic>? _selectedScheduledTrip;
+  List<int> _selectedSeatIndexes = []; // Sièges sélectionnés (ex: [3, 4])
+  List<String> _occupiedSeats = []; // Sièges déjà occupés (ex: ["5", "6"])
 
   // Step 3 variables
   String _paymentMethod = 'Espèces';
@@ -153,6 +158,73 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
     } catch (e) {
       debugPrint("Error fetching companies: $e");
       setState(() => _isLoadingCompanies = false);
+    }
+  }
+
+  Future<void> _loadScheduledTrips() async {
+    if (_selectedCompany == null) return;
+    setState(() {
+      _isLoadingScheduledTrips = true;
+      _scheduledTrips = [];
+      _selectedScheduledTrip = null;
+      _selectedSeatIndexes = [];
+      _occupiedSeats = [];
+    });
+
+    try {
+      final dateStr = "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}";
+      final departure = _selectedDeparture == 'Autre (Saisir manuellement)...' ? _customDepartureController.text.trim() : _selectedDeparture!;
+      final destination = _selectedDestination == 'Autre (Saisir manuellement)...' ? _customDestinationController.text.trim() : _selectedDestination!;
+
+      final response = await ApiClient().dio.get(
+        '/api/trips/search',
+        queryParameters: {
+          'departure': departure,
+          'destination': destination,
+          'date': dateStr,
+          'companyId': _selectedCompany!['id'],
+        },
+      );
+
+      if (response.statusCode == 200 && mounted) {
+        final list = response.data as List<dynamic>;
+        setState(() {
+          _scheduledTrips = list.map((e) => e as Map<String, dynamic>).toList();
+        });
+      }
+    } catch (e) {
+      debugPrint("Error searching scheduled trips: $e");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingScheduledTrips = false);
+      }
+    }
+  }
+
+  Future<void> _loadOccupiedSeats(String tripId) async {
+    try {
+      final response = await ApiClient().dio.get('/api/bookings/trip/$tripId');
+      if (response.statusCode == 200 && mounted) {
+        final list = response.data as List<dynamic>;
+        final bookings = list.map((e) => e as Map<String, dynamic>).toList();
+        final List<String> occupied = [];
+
+        for (var b in bookings) {
+          final String status = b['status'] ?? 'PENDING';
+          if (status == 'CANCELLED') continue;
+
+          final String? seatNumbersStr = b['seatNumbers'];
+          if (seatNumbersStr != null && seatNumbersStr.trim().isNotEmpty) {
+            occupied.addAll(seatNumbersStr.split(',').map((s) => s.trim()));
+          }
+        }
+
+        setState(() {
+          _occupiedSeats = occupied;
+        });
+      }
+    } catch (e) {
+      debugPrint("Error loading bookings for seats: $e");
     }
   }
 
@@ -874,9 +946,12 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
           const SizedBox(height: 10),
           _buildDepartureTimesGrid(isDark),
         ],
+        if (_selectedScheduledTrip != null) ...[
+          _buildClientSeatMap(isDark),
+        ],
         const SizedBox(height: 25),
         ElevatedButton(
-          onPressed: (_selectedCompany != null && _selectedFixedTime != null)
+          onPressed: (_selectedCompany != null && _selectedFixedTime != null && _selectedSeatIndexes.length == _selectedSeats)
               ? () => setState(() => _currentStep = 3)
               : null,
           style: ElevatedButton.styleFrom(
@@ -898,7 +973,11 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         setState(() {
           _selectedCompany = comp;
           _selectedFixedTime = null; // reset fixed time on company switch
+          _selectedScheduledTrip = null;
+          _selectedSeatIndexes = [];
+          _occupiedSeats = [];
         });
+        _loadScheduledTrips();
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -939,18 +1018,46 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   }
 
   Widget _buildDepartureTimesGrid(bool isDark) {
-    // Stubs for fixed departure times
-    final times = ["08:00", "12:00", "16:00", "20:00"];
+    if (_isLoadingScheduledTrips) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen)),
+      );
+    }
+
+    if (_scheduledTrips.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: Colors.amber.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(15),
+          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+        ),
+        child: const Text(
+          "Aucun départ disponible à cette date pour cette compagnie.",
+          textAlign: TextAlign.center,
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.orange),
+        ),
+      );
+    }
 
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: times.map((time) {
-        final isSelected = _selectedFixedTime == time;
+      children: _scheduledTrips.map((trip) {
+        final time = trip['scheduledTime'] ?? "00:00";
+        final isSelected = _selectedScheduledTrip?['id'] == trip['id'];
         return InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
-            setState(() => _selectedFixedTime = time);
+            setState(() {
+              _selectedScheduledTrip = trip;
+              _selectedFixedTime = time;
+              _selectedSeatIndexes = [];
+              _occupiedSeats = [];
+            });
+            _loadOccupiedSeats(trip['id']);
           },
           borderRadius: BorderRadius.circular(12),
           child: AnimatedContainer(
@@ -963,13 +1070,26 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
               border: Border.all(color: isSelected ? TranSenColors.accentGold : Colors.transparent, width: 2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              time,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                color: isSelected ? Colors.orange : (isDark ? Colors.white70 : Colors.black87),
-              ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  time,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: isSelected ? Colors.orange : (isDark ? Colors.white70 : Colors.black87),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "${trip['availableSeats']} places",
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: isSelected ? Colors.orange.withValues(alpha: 0.8) : Colors.grey,
+                  ),
+                ),
+              ],
             ),
           ),
         );
@@ -1190,25 +1310,18 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         );
 
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-          // 2. Submit the trip reservation on backend
-          final tripRepo = ref.read(tripRepositoryProvider);
-          await tripRepo.createTrip(TripModel(
-            id: '',
-            departure: departure,
-            destination: destination,
-            type: 'Course Compagnie',
-            price: finalPrice.toDouble(),
-            status: 'pending',
-            createdAt: DateTime.now(),
-            scheduledDate: scheduledDate,
-            clientName: userName,
-            clientPhone: finalPhone,
-            clientId: userId,
-            paymentMethod: 'SenePay',
-            pointsDiscount: discount.toDouble(),
-            routingType: 'COMPANY_ONLY',
-            targetCompanyId: _selectedCompany?['id'],
-          ));
+          // 2. Submit the seat booking on the backend
+          final seatNumbersStr = _selectedSeatIndexes.join(',');
+          await ApiClient().dio.post(
+            '/api/bookings/book',
+            queryParameters: {
+              'tripId': _selectedScheduledTrip!['id'],
+              'passengerId': userId,
+              'seats': _selectedSeats,
+              'seatNumbers': seatNumbersStr,
+              'paymentReference': orderId,
+            },
+          );
 
           setState(() => _isProcessing = false);
           if (!mounted) return;
@@ -1312,6 +1425,302 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildClientSeatMap(bool isDark) {
+    if (_selectedScheduledTrip == null) return const SizedBox.shrink();
+
+    final int totalSeats = (_selectedScheduledTrip!['totalSeats'] as num?)?.toInt() ?? 15;
+    
+    int crossAxisCount = 4;
+    int aisleColumnIndex = 2; // Allée à la 3ème colonne (0-indexed) par défaut
+    
+    if (totalSeats <= 4) {
+      crossAxisCount = 3;
+      aisleColumnIndex = -1; // Pas d'allée (berline)
+    } else if (totalSeats <= 9) {
+      crossAxisCount = 3;
+      aisleColumnIndex = -1; // Pas d'allée (minivan)
+    } else if (totalSeats <= 22) {
+      crossAxisCount = 4;
+      aisleColumnIndex = 2; // Minibus 2-1 (2 sièges, allée, 1 siège)
+    } else {
+      crossAxisCount = 5;
+      aisleColumnIndex = 2; // Grand bus 2-2 (2 sièges, allée centrale, 2 sièges)
+    }
+
+    final int seatsPerRow = crossAxisCount - (aisleColumnIndex != -1 ? 1 : 0);
+    final int rowCount = (totalSeats / seatsPerRow).ceil();
+    final int totalGridItems = rowCount * crossAxisCount;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Choisissez vos sièges :",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
+            ),
+            Text(
+              "${_selectedSeatIndexes.length} sur $_selectedSeats sélectionné(s)",
+              style: TextStyle(
+                fontSize: 12, 
+                fontWeight: FontWeight.bold, 
+                color: _selectedSeatIndexes.length == _selectedSeats ? Colors.amber.shade800 : Colors.grey,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        
+        // Légende
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildLegendItem("Libre", const Color(0xFF10B981), isDark),
+            _buildLegendItem("Sélectionné", const Color(0xFFFFD700), isDark),
+            _buildLegendItem("Occupé", Colors.grey, isDark),
+          ],
+        ),
+        const SizedBox(height: 20),
+
+        Center(
+          child: Container(
+            constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(
+                color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                width: 3,
+              ),
+            ),
+            child: Column(
+              children: [
+                // Cabine Chauffeur
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Icon(Icons.directions_car, size: 24, color: Colors.grey),
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.2),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Center(child: Icon(Icons.support_agent, size: 18, color: Colors.grey)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Divider(thickness: 2),
+                const SizedBox(height: 20),
+                
+                // Grille
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: totalGridItems,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: crossAxisCount,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 1,
+                  ),
+                  itemBuilder: (context, gridIndex) {
+                    final int row = gridIndex ~/ crossAxisCount;
+                    final int col = gridIndex % crossAxisCount;
+
+                    if (aisleColumnIndex != -1 && col == aisleColumnIndex) {
+                      return const SizedBox.shrink();
+                    }
+
+                    int seatIndex = row * seatsPerRow;
+                    if (aisleColumnIndex != -1) {
+                      if (col < aisleColumnIndex) {
+                        seatIndex += col;
+                      } else {
+                        seatIndex += (col - 1);
+                      }
+                    } else {
+                      seatIndex += col;
+                    }
+
+                    final int seatNum = seatIndex + 1;
+                    if (seatNum > totalSeats) {
+                      return const SizedBox.shrink();
+                    }
+
+                    final isOccupied = _occupiedSeats.contains('$seatNum');
+                    final isSelected = _selectedSeatIndexes.contains(seatNum);
+
+                    return GlowingSeatWidget(
+                      index: seatNum,
+                      isSelected: isSelected,
+                      isOccupied: isOccupied,
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedSeatIndexes.remove(seatNum);
+                          } else {
+                            if (_selectedSeatIndexes.length >= _selectedSeats) {
+                              _selectedSeatIndexes.removeAt(0); // Supprimer le premier sélectionné
+                            }
+                            _selectedSeatIndexes.add(seatNum);
+                          }
+                        });
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color, bool isDark) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            border: Border.all(color: color, width: 2),
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
+}
+
+class GlowingSeatWidget extends StatefulWidget {
+  final int index;
+  final bool isSelected;
+  final bool isOccupied;
+  final VoidCallback onTap;
+
+  const GlowingSeatWidget({
+    super.key,
+    required this.index,
+    required this.isSelected,
+    required this.isOccupied,
+    required this.onTap,
+  });
+
+  @override
+  State<GlowingSeatWidget> createState() => _GlowingSeatWidgetState();
+}
+
+class _GlowingSeatWidgetState extends State<GlowingSeatWidget> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _glowAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    );
+    _glowAnimation = Tween<double>(begin: 3.0, end: 12.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    if (widget.isSelected) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant GlowingSeatWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isSelected && !oldWidget.isSelected) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.isSelected && oldWidget.isSelected) {
+      _controller.stop();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (widget.isOccupied) {
+      return Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Center(
+          child: Icon(Icons.close, size: 16, color: Colors.grey),
+        ),
+      );
+    }
+
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        widget.onTap();
+      },
+      child: AnimatedBuilder(
+        animation: _glowAnimation,
+        builder: (context, child) {
+          return Container(
+            decoration: BoxDecoration(
+              color: widget.isSelected 
+                  ? const Color(0xFFFFD700) 
+                  : (isDark ? const Color(0xFF1E293B) : Colors.white),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: widget.isSelected 
+                    ? const Color(0xFFFF8C00) 
+                    : const Color(0xFF10B981),
+                width: widget.isSelected ? 2 : 1.5,
+              ),
+              boxShadow: widget.isSelected
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFFFFD700).withValues(alpha: 0.6),
+                        blurRadius: _glowAnimation.value,
+                        spreadRadius: _glowAnimation.value / 3,
+                      )
+                    ]
+                  : [],
+            ),
+            child: Center(
+              child: Text(
+                '${widget.index}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: widget.isSelected
+                      ? Colors.black87
+                      : (isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
