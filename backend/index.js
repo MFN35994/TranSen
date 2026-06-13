@@ -137,7 +137,7 @@ app.post('/webhook/senepay', async (req, res) => {
         try {
             const parts = orderReference.split('-');
             if (parts.length < 3) return res.status(400).send("Format orderReference invalide");
-            const userId = parts[2];
+            const userId = parts.slice(2).join('-');
 
             const transactionRef = db.collection('users').doc(userId).collection('transactions');
             const existing = await transactionRef.where('description', '==', `Dépôt SenePay réussi : ${orderReference}`).get();
@@ -209,7 +209,7 @@ app.post('/webhook/payout', async (req, res) => {
         try {
             const parts = (external_id || '').split('-');
             if (parts.length >= 3) {
-                const userId = parts[2];
+                const userId = parts.slice(2).join('-');
                 await db.collection('users').doc(userId)
                     .collection('transactions').doc(external_id)
                     .update({ status: 'completed', disbursement_id });
@@ -222,7 +222,7 @@ app.post('/webhook/payout', async (req, res) => {
         try {
             const parts = (external_id || '').split('-');
             if (parts.length < 3) return res.status(400).send('Format external_id invalide');
-            const userId = parts[2];
+            const userId = parts.slice(2).join('-');
 
             // Idempotence : vérifier si déjà remboursé
             const transactionRef = db.collection('users').doc(userId).collection('transactions');
