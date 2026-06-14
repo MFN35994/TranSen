@@ -12,15 +12,37 @@ final poolDetailProvider = StreamProvider.family<PoolModel?, String>((ref, poolI
 
 
 
+final driverProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) {
+  return ref.watch(userRepositoryProvider).getUserData();
+});
+
 final pendingPoolsProvider = StreamProvider.family<List<PoolModel>, String>((ref, filterKey) {
   final parts = filterKey.split('|');
   final departure = parts[0] == 'ANY' ? null : parts[0];
   final destination = parts[1] == 'ANY' ? null : parts[1];
 
+  final profileAsync = ref.watch(driverProfileProvider);
+  final profile = profileAsync.value;
+  final companyId = profile?['companyId'] as String?;
+
   return ref.watch(tripRepositoryProvider).watchActivePools().map((pools) {
     return pools.where((p) {
       if (departure != null && p.departure != departure) return false;
       if (destination != null && p.destination != destination) return false;
+
+      // Récupérer le routingType du créateur du covoiturage
+      final firstPassengerId = p.passengerIds.isNotEmpty ? p.passengerIds.first : null;
+      final details = firstPassengerId != null ? p.passengerDetails[firstPassengerId] : null;
+      final rType = details != null ? (details['routingType'] ?? 'PUBLIC') : 'PUBLIC';
+
+      if (companyId != null && companyId.isNotEmpty) {
+        // Le chauffeur appartient à une compagnie : il ne doit pas voir les trajets ciblés "indépendants uniquement" (ex: Allô Dakar)
+        if (rType == 'INDEPENDENTS_ONLY') return false;
+      } else {
+        // Le chauffeur est indépendant : il ne doit pas voir les trajets ciblés "compagnie uniquement"
+        if (rType == 'COMPANY_ONLY') return false;
+      }
+
       return true;
     }).toList();
   });

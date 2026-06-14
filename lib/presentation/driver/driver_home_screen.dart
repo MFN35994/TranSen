@@ -277,27 +277,33 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     final auth = ref.read(authProvider);
     if (auth == null) return;
     
-    try {
-      // Pré-validation financière
-      final subInfo = await SubscriptionService().checkSubscription(auth.userId);
-      final wallet = ref.read(walletProvider).value;
-      final commission = trip.price * 0.01;
+    final profile = ref.read(driverProfileProvider).value;
+    final companyId = profile?['companyId'] as String?;
+    final hasCompany = companyId != null && companyId.isNotEmpty;
 
-      if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
-              backgroundColor: Colors.red,
-              action: SnackBarAction(
-                label: "RECHARGER",
-                textColor: Colors.white,
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+    try {
+      // Pré-validation financière (uniquement pour les chauffeurs indépendants)
+      if (!hasCompany) {
+        final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+        final wallet = ref.read(walletProvider).value;
+        final commission = trip.price * 0.01;
+
+        if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
+                backgroundColor: Colors.red,
+                action: SnackBarAction(
+                  label: "RECHARGER",
+                  textColor: Colors.white,
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                ),
               ),
-            ),
-          );
+            );
+          }
+          return;
         }
-        return;
       }
 
       if (mounted) {
@@ -332,27 +338,36 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     final auth = ref.read(authProvider);
     if (auth == null) return;
     
+    final profile = ref.read(driverProfileProvider).value;
+    final companyId = profile?['companyId'] as String?;
+    final hasCompany = companyId != null && companyId.isNotEmpty;
+    
     try {
-      // Pré-validation financière
-      final subInfo = await SubscriptionService().checkSubscription(auth.userId);
-      final wallet = ref.read(walletProvider).value;
-      final commission = (pool.currentFilling * 10000) * 0.01;
+      // Pré-validation financière (uniquement pour les chauffeurs indépendants)
+      double commission = (pool.currentFilling * 10000) * 0.01;
+      bool isSubActive = false;
 
-      if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
-              backgroundColor: Colors.red,
-              action: SnackBarAction(
-                label: "RECHARGER",
-                textColor: Colors.white,
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+      if (!hasCompany) {
+        final subInfo = await SubscriptionService().checkSubscription(auth.userId);
+        isSubActive = subInfo.isActive;
+        final wallet = ref.read(walletProvider).value;
+
+        if (!isSubActive && (wallet?.balance ?? 0.0) < commission) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Solde insuffisant pour la commission (${commission.toInt()} F). Rechargez votre portefeuille."),
+                backgroundColor: Colors.red,
+                action: SnackBarAction(
+                  label: "RECHARGER",
+                  textColor: Colors.white,
+                  onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen())),
+                ),
               ),
-            ),
-          );
+            );
+          }
+          return;
         }
-        return;
       }
 
       // Confirmation si peu de passagers
@@ -378,7 +393,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         );
       }
 
-      await ref.read(tripRepositoryProvider).acceptPool(pool.id, auth.userId);
+      // Passer la commission correcte (0 si compagnie ou si abonnement actif)
+      final finalCommission = (hasCompany || isSubActive) ? 0.0 : commission;
+      await ref.read(tripRepositoryProvider).acceptPool(pool.id, auth.userId, finalCommission);
       
       if (mounted) {
         Navigator.push(

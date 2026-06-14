@@ -106,10 +106,24 @@ class AuthNotifier extends Notifier<AuthState?> {
   Future<void> setUserRole(String role) async {
     if (state == null) return;
     try {
+      // 1. Mettre à jour le rôle sur le backend REST (met à jour Postgres et déclenche la sync Firestore)
+      await ApiClient().dio.put(
+        '/api/users/me',
+        data: {
+          'role': role,
+        },
+      );
+
+      // 2. Écrire aussi localement dans Firestore par sécurité pour une mise à jour immédiate de l'écouteur
       await _firestore.collection('users').doc(state!.userId).set({
         'role': role,
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
+
+      // 3. Mettre à jour les SharedPreferences locales pour préserver le rôle correct
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', role);
+
       state = state?.copyWith(role: role, isLoading: false);
       NotificationService().init(state!.userId);
     } catch (e) {

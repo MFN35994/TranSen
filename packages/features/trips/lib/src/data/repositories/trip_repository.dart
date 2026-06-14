@@ -17,14 +17,24 @@ class TripRepository {
   // 1. ACTIONS COVOITURAGE (POOL)
   Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
     try {
-      await ApiClient().dio.post(
-        '/api/pools/accept',
-        data: {
-          'poolId': poolId,
-        },
-      );
+      // 1. Mettre à jour le statut du pool dans Firestore
+      await _firestore.collection('pools').doc(poolId).update({
+        'driverId': driverId,
+        'status': 'accepted',
+        'acceptedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Débiter la commission du portefeuille si applicable
+      if (commission > 0) {
+        await _paymentRepo.updateWalletBalance(
+          driverId,
+          -commission,
+          "Commission Covoiturage (Pool : $poolId)",
+          type: 'commission_fee',
+        );
+      }
     } catch (e) {
-      debugPrint("Erreur lors de l'acceptation du pool: $e");
+      debugPrint("Erreur lors de l'acceptation du pool dans Firestore: $e");
       throw Exception("Erreur lors de l'acceptation");
     }
   }
