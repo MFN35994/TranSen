@@ -927,21 +927,20 @@ app.post('/api/internal/sync-wallet', async (req, res) => {
         return res.status(401).send("Non autorisé");
     }
 
-    const { userId, amountDelta, description, type } = req.body;
+    const { userId, amountDelta, description, type, ownerType } = req.body;
     if (!userId || amountDelta === undefined) {
         return res.status(400).send("Paramètres manquants");
     }
 
     try {
-        const userRef = db.collection('users').doc(userId);
-        const transactionRef = userRef.collection('transactions');
+        const collectionName = (ownerType === 'COMPANY') ? 'companies' : 'users';
+        const docRef = db.collection(collectionName).doc(userId);
+        const transactionRef = docRef.collection('transactions');
 
         await db.runTransaction(async (t) => {
-            const userDoc = await t.get(userRef);
-            if (!userDoc.exists) throw new Error("Utilisateur introuvable");
-
-            const currentBalance = userDoc.data().walletBalance || 0;
-            t.update(userRef, { walletBalance: currentBalance + Number(amountDelta) });
+            const docSnap = await t.get(docRef);
+            const currentBalance = docSnap.exists ? (docSnap.data().walletBalance || 0) : 0;
+            t.set(docRef, { walletBalance: currentBalance + Number(amountDelta) }, { merge: true });
             
             t.set(transactionRef.doc(), {
                 amount: Number(amountDelta),
@@ -952,10 +951,116 @@ app.post('/api/internal/sync-wallet', async (req, res) => {
             });
         });
 
-        console.log(`[Internal Sync] Solde Firestore synchronisé pour ${userId}: ${amountDelta} FCFA`);
+        console.log(`[Internal Sync] Solde Firestore (${collectionName}) synchronisé pour ${userId}: ${amountDelta} FCFA`);
         return res.status(200).send("OK");
     } catch (error) {
         console.error("❌ Erreur lors de la synchronisation interne du portefeuille:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
+// Endpoint de synchronisation totale d'un trajet sur Firestore (appelé par Spring Boot)
+app.post('/api/internal/sync-trip', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { tripId, tripData } = req.body;
+    if (!tripId || !tripData) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        // Formater les dates pour Firestore
+        if (tripData.createdAt) {
+            tripData.createdAt = admin.firestore.Timestamp.fromDate(new Date(tripData.createdAt));
+        } else {
+            tripData.createdAt = admin.firestore.FieldValue.serverTimestamp();
+        }
+
+        await db.collection('trips').doc(tripId).set(tripData, { merge: true });
+        console.log(`[Internal Sync] Trajet ${tripId} synchronisé sur Firestore.`);
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erreur lors de la synchronisation du trajet:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
+// Endpoint de suppression de trajet sur Firestore (appelé par Spring Boot)
+app.post('/api/internal/delete-trip', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { tripId } = req.body;
+    if (!tripId) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        await db.collection('trips').doc(tripId).delete();
+        console.log(`[Internal Sync] Trajet ${tripId} supprimé de Firestore.`);
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erreur lors de la suppression du trajet:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
+// Endpoint interne de synchronisation de statut de paiement de trajet sur Firestore (appelé par Spring Boot)
+app.post('/api/internal/sync-trip-payment', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { tripId, paymentStatus, status } = req.body;
+    if (!tripId || !paymentStatus) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        const updateData = { paymentStatus: paymentStatus };
+        if (status) {
+            updateData.status = status;
+        }
+        await db.collection('trips').doc(tripId).update(updateData);
+        console.log(`[Internal Sync] Trajet ${tripId} synchronisé avec paymentStatus: ${paymentStatus}${status ? ', status: ' + status : ''}`);
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erreur lors de la synchronisation du statut de paiement pour le trajet:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
+// Endpoint de synchronisation d'un profil utilisateur sur Firestore (appelé par Spring Boot)
+app.post('/api/internal/sync-user', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { userId, userData } = req.body;
+    if (!userId || !userData) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        if (userData.subscriptionExpires) {
+            userData.subscriptionExpires = admin.firestore.Timestamp.fromDate(new Date(userData.subscriptionExpires));
+        }
+        await db.collection('users').doc(userId).set(userData, { merge: true });
+        console.log(`[Internal Sync] Utilisateur ${userId} synchronisé sur Firestore.`);
+        return res.status(200).send("OK");
+    } catch (error) {
+        console.error("❌ Erreur lors de la synchronisation de l'utilisateur:", error);
         return res.status(500).send(error.message);
     }
 });

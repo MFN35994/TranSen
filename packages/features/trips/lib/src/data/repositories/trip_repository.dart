@@ -222,16 +222,17 @@ class TripRepository {
   Future<void> acceptTrip(String tripId, String driverId) async {
     try {
       await ApiClient().dio.post('/api/trips/$tripId/accept?driverId=$driverId');
+      
+      // On maintient la logique locale Firebase pour l'écoute temps réel SEULEMENT si l'appel API a réussi.
+      await _firestore.collection('trips').doc(tripId).update({
+        'driverId': driverId,
+        'status': 'accepted',
+        'acceptedAt': FieldValue.serverTimestamp(),
+      });
     } catch (e) {
       debugPrint("Erreur acceptTrip sur le backend: $e");
+      rethrow;
     }
-
-    // On maintient la logique locale Firebase pour l'écoute temps réel.
-    await _firestore.collection('trips').doc(tripId).update({
-      'driverId': driverId,
-      'status': 'accepted',
-      'acceptedAt': FieldValue.serverTimestamp(),
-    });
   }
 
   // 4. RÉSERVATION DE BILLETS DE BUS (Phase 5)
@@ -495,7 +496,11 @@ class TripRepository {
     });
   }
 
-  Stream<List<TripModel>> getPendingTrips({String? departure, String? destination}) {
+  Stream<List<TripModel>> getPendingTrips({
+    String? departure, 
+    String? destination,
+    String? driverCompanyId,
+  }) {
     Query query = _firestore.collection('trips').where('status', isEqualTo: 'pending');
     if (departure != null) query = query.where('departure', isEqualTo: departure);
     if (destination != null) query = query.where('destination', isEqualTo: destination);
@@ -506,8 +511,29 @@ class TripRepository {
         final trip = TripModel.fromFirestore(doc);
         if (_isExpired(trip.scheduledDate)) {
           _firestore.collection('trips').doc(doc.id).delete().catchError((_) {});
+          continue;
+        }
+
+        // Exclure les trajets en attente de paiement
+        if (trip.paymentReference != null && trip.paymentReference!.isNotEmpty) {
+          if (trip.paymentStatus != 'PAID_IN_ADVANCE') {
+            continue; // Course non payée d'avance, masquée pour les chauffeurs
+          }
+        }
+
+        final rType = trip.routingType ?? 'PUBLIC';
+        final targetComp = trip.targetCompanyId;
+
+        if (driverCompanyId != null && driverCompanyId.isNotEmpty) {
+          // Le chauffeur appartient à une compagnie
+          if (rType == 'PUBLIC' || (rType == 'COMPANY_ONLY' && targetComp == driverCompanyId)) {
+            trips.add(trip);
+          }
         } else {
-          trips.add(trip);
+          // Le chauffeur est indépendant
+          if (rType == 'PUBLIC' || rType == 'INDEPENDENTS_ONLY' || rType == 'none' || rType.isEmpty) {
+            trips.add(trip);
+          }
         }
       }
       return trips;

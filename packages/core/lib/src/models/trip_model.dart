@@ -32,6 +32,7 @@ class TripModel {
   final String? routingType;
   final String? targetCompanyId;
   final String? paymentReference;
+  final String? paymentStatus;
 
   TripModel({
     required this.id,
@@ -64,6 +65,7 @@ class TripModel {
     this.routingType,
     this.targetCompanyId,
     this.paymentReference,
+    this.paymentStatus,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -99,6 +101,7 @@ class TripModel {
       routingType: data['routingType'],
       targetCompanyId: data['targetCompanyId'],
       paymentReference: data['paymentReference'],
+      paymentStatus: data['paymentStatus'],
     );
   }
 
@@ -133,6 +136,7 @@ class TripModel {
       'routingType': routingType,
       'targetCompanyId': targetCompanyId,
       'paymentReference': paymentReference,
+      'paymentStatus': paymentStatus,
     };
   }
 }

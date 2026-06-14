@@ -56,7 +56,7 @@ class OrderSheet extends ConsumerStatefulWidget {
   ConsumerState<OrderSheet> createState() => _OrderSheetState();
 }
 
-class _OrderSheetState extends ConsumerState<OrderSheet> {
+class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObserver {
   // Step control: 0 = Route, 1 = Canal selection, 2 = Company selection, 3 = Confirmation & Payment
   int _currentStep = 0;
 
@@ -101,6 +101,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   String? _preferredDriverName;
   String? _preferredDriverId;
 
+  // Payment abandonment / cancellation state
+  String? _activeBookingId;
+  bool _isWaitingForPayment = false;
+
   final List<String> _regions = [
     'Dakar',
     'Diourbel',
@@ -122,6 +126,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _selectedTime = _roundToNearest15Mins(TimeOfDay.now());
     _selectedDeparture = widget.initialDeparture;
     _selectedDestination = widget.initialDestination;
@@ -140,6 +145,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _customDepartureController.dispose();
     _customDestinationController.dispose();
     _debounceTimer?.cancel();
@@ -430,6 +436,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    if (_isWaitingForPayment) {
+      return _buildPaymentWaitingScreen(isDark);
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
@@ -1312,7 +1322,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
           // 2. Submit the seat booking on the backend
           final seatNumbersStr = _selectedSeatIndexes.join(',');
-          await ApiClient().dio.post(
+          final response = await ApiClient().dio.post(
             '/api/bookings/book',
             queryParameters: {
               'tripId': _selectedScheduledTrip!['id'],
@@ -1323,9 +1333,18 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
             },
           );
 
-          setState(() => _isProcessing = false);
+          String? bookingId;
+          if (response.data != null && response.data is Map) {
+            bookingId = response.data['id'] as String?;
+          }
+
+          setState(() {
+            _activeBookingId = bookingId;
+            _isWaitingForPayment = true;
+            _isProcessing = false;
+          });
+
           if (!mounted) return;
-          Navigator.pop(context);
 
           // 3. Launch url
           final uri = Uri.parse(checkoutUrl);
@@ -1603,6 +1622,202 @@ class _OrderSheetState extends ConsumerState<OrderSheet> {
         const SizedBox(width: 6),
         Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
       ],
+    );
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed && _isWaitingForPayment && _activeBookingId != null) {
+      _checkBookingStatusAndPrompt();
+    }
+  }
+
+  Future<void> _checkBookingStatusAndPrompt() async {
+    if (_activeBookingId == null) return;
+    try {
+      final response = await ApiClient().dio.get('/api/bookings/$_activeBookingId');
+      if (response.statusCode == 200 && response.data != null) {
+        final paymentStatus = response.data['paymentStatus'] as String?;
+        final status = response.data['status'] as String?;
+
+        if (paymentStatus == 'PAID_IN_ADVANCE') {
+          _handlePaymentSuccess();
+        } else if (status == 'CANCELLED') {
+          _handlePaymentCancelledOrFailed();
+        }
+      }
+    } catch (e) {
+      debugPrint(">>> OrderSheet: Error checking booking status automatically: $e");
+    }
+  }
+
+  Future<void> _checkBookingStatusManual() async {
+    if (_activeBookingId == null) return;
+    setState(() => _isProcessing = true);
+    try {
+      final response = await ApiClient().dio.get('/api/bookings/$_activeBookingId');
+      if (response.statusCode == 200 && response.data != null) {
+        final paymentStatus = response.data['paymentStatus'] as String?;
+        final status = response.data['status'] as String?;
+
+        if (paymentStatus == 'PAID_IN_ADVANCE') {
+          _handlePaymentSuccess();
+        } else if (status == 'CANCELLED') {
+          _handlePaymentCancelledOrFailed();
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Le paiement est toujours en cours de traitement. Veuillez finaliser la transaction ou réessayer."),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur de vérification : $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  Future<void> _cancelBookingManually() async {
+    if (_activeBookingId == null) return;
+    setState(() => _isProcessing = true);
+    try {
+      await ApiClient().dio.post('/api/bookings/$_activeBookingId/cancel');
+      _handlePaymentCancelledOrFailed(message: "Réservation annulée avec succès. Places libérées.");
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Erreur lors de l'annulation : $e"), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isProcessing = false);
+      }
+    }
+  }
+
+  void _handlePaymentSuccess() {
+    setState(() {
+      _isWaitingForPayment = false;
+      _activeBookingId = null;
+    });
+    if (mounted) {
+      Navigator.pop(context);
+      SuccessDialog.show(
+        context,
+        title: "Réservation confirmée !",
+        message: "Votre billet de bus est validé et payé. Bon voyage !",
+      );
+    }
+  }
+
+  void _handlePaymentCancelledOrFailed({String message = "Paiement non finalisé. La réservation a été annulée."}) {
+    setState(() {
+      _isWaitingForPayment = false;
+      _activeBookingId = null;
+    });
+    if (mounted) {
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Widget _buildPaymentWaitingScreen(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Center(
+            child: Container(
+              width: 50,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Colors.grey,
+                borderRadius: BorderRadius.all(Radius.circular(10)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 30),
+          Center(
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: TranSenColors.primaryGreen.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  color: TranSenColors.primaryGreen,
+                  strokeWidth: 3,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            "Paiement en cours...",
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            "Veuillez finaliser le paiement sur l'interface SenePay. Votre réservation sera automatiquement validée après confirmation.",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.grey, fontSize: 14),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton(
+            onPressed: _isProcessing ? null : _checkBookingStatusManual,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: TranSenColors.primaryGreen,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+              elevation: 4,
+            ),
+            child: _isProcessing
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                  )
+                : const Text("VÉRIFIER LE STATUT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+          const SizedBox(height: 12),
+          TextButton(
+            onPressed: _isProcessing ? null : _cancelBookingManually,
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            child: const Text("ANNULER LA RÉSERVATION", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -32,9 +32,14 @@ final pendingTripsProvider =
   final dep = parts[0] == 'ANY' ? null : parts[0];
   final dest = parts[1] == 'ANY' ? null : parts[1];
 
+  final profileAsync = ref.watch(driverProfileProvider);
+  final profile = profileAsync.value;
+  final companyId = profile?['companyId'] as String?;
+
   return ref.watch(tripRepositoryProvider).getPendingTrips(
         departure: dep,
         destination: dest,
+        driverCompanyId: companyId,
       );
 });
 
