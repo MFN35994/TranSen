@@ -183,6 +183,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return Scaffold(
       backgroundColor: isDarkMode ? const Color(0xFF121212) : TranSenColors.primaryGreen,
+      extendBodyBehindAppBar: true,
+      appBar: (currentStep != AuthStep.phone)
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                onPressed: () async {
+                  if (currentStep == AuthStep.otp) {
+                    // Retour à l'étape téléphone
+                    setState(() => _step = AuthStep.phone);
+                  } else if (currentStep == AuthStep.identity) {
+                    // Retour complet : déconnexion
+                    final confirm = await showDialog<bool>(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text("Retourner en arrière"),
+                        content: const Text("Voulez-vous vous déconnecter et revenir à l'écran de saisie du numéro ?"),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text("Non"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text("Oui", style: TextStyle(color: Colors.red)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirm == true) {
+                      await ref.read(authProvider.notifier).logout();
+                      setState(() {
+                        _step = AuthStep.phone;
+                        _validatedPhone = "";
+                      });
+                    }
+                  }
+                },
+              ),
+              title: Text(
+                currentStep == AuthStep.otp ? "Vérification" : "Identité",
+                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+              centerTitle: true,
+            )
+          : null,
       body: PremiumBackground(
         blobColors: isDarkMode 
           ? [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)]

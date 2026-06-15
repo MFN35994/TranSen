@@ -77,7 +77,9 @@ class AuthNotifier extends Notifier<AuthState?> {
     final userId = prefs.getString('user_id');
     
     if (token != null && userId != null) {
-      state = AuthState(userId: userId, role: 'none', isLoading: true);
+      // Utiliser le rôle mis en cache localement comme valeur initiale
+      final cachedRole = prefs.getString('user_role') ?? 'none';
+      state = AuthState(userId: userId, role: cachedRole, isLoading: true);
       await _fetchUserRole(userId);
     } else {
       state = null;
@@ -89,17 +91,20 @@ class AuthNotifier extends Notifier<AuthState?> {
       final doc = await _firestore.collection('users').doc(uid).get();
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
-        final role = data['role'] ?? 'none';
+        final role = data['role'] ?? state?.role ?? 'none';
         final name = data['name'] ?? data['firstName'];
         final phone = data['phone'] ?? state?.phone;
         final points = data['loyaltyPoints'] ?? 0;
         state = state?.copyWith(role: role, name: name, phone: phone, loyaltyPoints: points, isLoading: false);
         NotificationService().init(uid);
       } else {
-        state = state?.copyWith(role: 'none', isLoading: false);
+        // Firestore doc introuvable : garder le rôle mis en cache
+        state = state?.copyWith(isLoading: false);
       }
     } catch (e) {
-      state = state?.copyWith(role: 'none', isLoading: false);
+      debugPrint("Erreur _fetchUserRole: $e");
+      // Firestore indisponible : garder le rôle mis en cache au lieu de forcer 'none'
+      state = state?.copyWith(isLoading: false);
     }
   }
 
@@ -107,12 +112,16 @@ class AuthNotifier extends Notifier<AuthState?> {
     if (state == null) return;
     try {
       // 1. Mettre à jour le rôle sur le backend REST (met à jour Postgres et déclenche la sync Firestore)
-      await ApiClient().dio.put(
-        '/api/users/me',
-        data: {
-          'role': role,
-        },
-      );
+      try {
+        await ApiClient().dio.put(
+          '/api/users/me',
+          data: {
+            'role': role,
+          },
+        );
+      } catch (restErr) {
+        debugPrint("Warning: Backend REST /api/users/me failed, falling back to Firestore: $restErr");
+      }
 
       // 2. Écrire aussi localement dans Firestore par sécurité pour une mise à jour immédiate de l'écouteur
       await _firestore.collection('users').doc(state!.userId).set({
