@@ -346,18 +346,54 @@ class AuthNotifier extends Notifier<AuthState?> {
   Future<void> deleteAccount() async {
     if (state == null) return;
     final uid = state!.userId;
+    final role = state?.role ?? '';
+
     try {
-      if (state?.role == 'driver') {
+      // 1. Supprimer de PostgreSQL via le backend Spring Boot
+      try {
+        await ApiClient().dio.delete('/api/users/me');
+        debugPrint("[DELETE ACCOUNT] PostgreSQL : supprimé via /api/users/me");
+      } catch (restErr) {
+        debugPrint("[DELETE ACCOUNT] Warning: Backend REST /api/users/me failed: $restErr");
+        // On continue quand même avec le nettoyage Firestore
+      }
+
+      // 2. Nettoyage Firestore complet
+      // Collections liées au rôle chauffeur
+      if (role == 'driver') {
         await _firestore.collection('active_drivers').doc(uid).delete();
         await _firestore.collection('driver_routes').doc(uid).delete();
       }
+
+      // Document utilisateur principal
       await _firestore.collection('users').doc(uid).delete();
-      
-      // On déconnecte l'utilisateur localement
+
+      // Portefeuille
+      try {
+        await _firestore.collection('wallets').doc(uid).delete();
+      } catch (_) {}
+
+      // Notifications
+      try {
+        final notifs = await _firestore
+            .collection('notifications')
+            .where('userId', isEqualTo: uid)
+            .get();
+        for (final doc in notifs.docs) {
+          await doc.reference.delete();
+        }
+      } catch (_) {}
+
+      debugPrint("[DELETE ACCOUNT] Firestore : toutes les collections nettoyées pour $uid");
+
+      // 3. Déconnexion locale (supprime SharedPreferences + Firebase Auth)
       await logout();
-      
+
     } catch (e) {
       debugPrint("Erreur suppression compte: $e");
+      // Même en cas d'erreur, on force la déconnexion locale
+      try { await logout(); } catch (_) {}
+      rethrow;
     }
   }
 }
