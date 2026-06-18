@@ -211,7 +211,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                   
                   final uri = Uri.parse(checkoutUrl);
                   try {
-                    await launchUrl(uri);
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
                   } catch (launchErr) {
                     messenger.showSnackBar(SnackBar(content: Text('❌ Impossible d\'ouvrir le lien. Erreur: $launchErr'), backgroundColor: Colors.orange));
                   }

@@ -988,6 +988,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                   return !type.contains('livraison') &&
                                       !type.contains('colis') &&
                                       !type.contains('yobante') &&
+                                      !type.contains('bus_company') &&
                                       (_pubDeparture == null ||
                                           _pubDeparture ==
                                               'TOUTES LES RÉGIONS' ||

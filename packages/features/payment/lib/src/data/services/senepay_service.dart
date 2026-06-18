@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
+import 'package:dio/dio.dart';
 import 'package:transen_core/transen_core.dart';
 
 class SenePayService {
@@ -47,13 +48,39 @@ class SenePayService {
       );
       
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data['checkoutUrl'] as String?;
+        final data = response.data;
+        if (data is Map) {
+          if (data.containsKey('checkoutUrl')) return data['checkoutUrl'] as String?;
+          if (data.containsKey('checkout_url')) return data['checkout_url'] as String?;
+          if (data.containsKey('paymentUrl')) return data['paymentUrl'] as String?;
+          if (data.containsKey('payment_url')) return data['payment_url'] as String?;
+          if (data.containsKey('redirectUrl')) return data['redirectUrl'] as String?;
+          if (data.containsKey('redirect_url')) return data['redirect_url'] as String?;
+          if (data.containsKey('url')) return data['url'] as String?;
+          
+          if (data.containsKey('token')) {
+            return "https://api.sene-pay.com/checkout?session=${data['token']}";
+          }
+          if (data.containsKey('sessionToken')) {
+            return "https://api.sene-pay.com/checkout?session=${data['sessionToken']}";
+          }
+        }
+        return null;
       } else {
         throw Exception("Erreur Serveur: ${response.statusCode}");
       }
     } catch (e) {
       debugPrint(">>> SenePayService Error: $e");
-      throw Exception("Erreur lors de la création de la session SenePay");
+      String errorMsg = "Erreur lors de la création de la session SenePay";
+      if (e is DioException && e.response?.data != null) {
+        final responseData = e.response!.data;
+        if (responseData is Map && responseData.containsKey('error')) {
+          errorMsg = responseData['error'].toString();
+        } else if (responseData is Map && responseData.containsKey('message')) {
+          errorMsg = responseData['message'].toString();
+        }
+      }
+      throw Exception(errorMsg);
     }
   }
 

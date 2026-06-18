@@ -104,6 +104,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   // Payment abandonment / cancellation state
   String? _activeBookingId;
   bool _isWaitingForPayment = false;
+  String? _checkoutUrl;
 
   final List<String> _regions = [
     'Dakar',
@@ -1341,6 +1342,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           setState(() {
             _activeBookingId = bookingId;
             _isWaitingForPayment = true;
+            _checkoutUrl = checkoutUrl;
             _isProcessing = false;
           });
 
@@ -1711,6 +1713,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     setState(() {
       _isWaitingForPayment = false;
       _activeBookingId = null;
+      _checkoutUrl = null;
     });
     if (mounted) {
       Navigator.pop(context);
@@ -1726,6 +1729,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     setState(() {
       _isWaitingForPayment = false;
       _activeBookingId = null;
+      _checkoutUrl = null;
     });
     if (mounted) {
       Navigator.pop(context);
@@ -1764,7 +1768,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: TranSenColors.primaryGreen.withOpacity(0.1),
+                color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const SizedBox(
@@ -1790,6 +1794,31 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             style: TextStyle(color: Colors.grey, fontSize: 14),
           ),
           const SizedBox(height: 32),
+          if (_checkoutUrl != null && _checkoutUrl!.isNotEmpty) ...[
+            ElevatedButton.icon(
+              onPressed: () async {
+                final uri = Uri.parse(_checkoutUrl!);
+                try {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                } catch (e) {
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Impossible d'ouvrir le lien : $e"), backgroundColor: Colors.orange),
+                  );
+                }
+              },
+              icon: const Icon(Icons.open_in_new, size: 18),
+              label: const Text("RÉOUVRIR LE LIEN DE PAIEMENT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blueAccent,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+                elevation: 4,
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
           ElevatedButton(
             onPressed: _isProcessing ? null : _checkBookingStatusManual,
             style: ElevatedButton.styleFrom(
