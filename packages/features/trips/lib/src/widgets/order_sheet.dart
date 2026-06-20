@@ -423,11 +423,22 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
   String _getFixedTimeDateString() {
     if (_selectedFixedTime == null) return "";
-    final parts = _selectedFixedTime!.split(':');
-    final hour = int.parse(parts[0]);
-    final min = int.parse(parts[1]);
-    final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, min);
-    return "${date.day}/${date.month}/${date.year} ${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}";
+    try {
+      // scheduledTime can be ISO datetime "2026-06-21T15:00:00" or plain "HH:MM"
+      if (_selectedFixedTime!.contains('T')) {
+        final dt = DateTime.parse(_selectedFixedTime!);
+        return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+      }
+      // Fallback: plain "HH:MM" format
+      final parts = _selectedFixedTime!.split(':');
+      final hour = int.parse(parts[0]);
+      final min = parts.length > 1 ? int.parse(parts[1]) : 0;
+      final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, min);
+      return "${date.day}/${date.month}/${date.year} ${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}";
+    } catch (e) {
+      debugPrint(">>> _getFixedTimeDateString error: $e (value: $_selectedFixedTime)");
+      return "";
+    }
   }
 
   String _getDepartureTimeString() {
@@ -1057,14 +1068,24 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       spacing: 10,
       runSpacing: 10,
       children: _scheduledTrips.map((trip) {
-        final time = trip['scheduledTime'] ?? "00:00";
+        final rawTime = trip['scheduledTime'] ?? "00:00";
+        // Format display: extract HH:mm from ISO string "2026-06-21T15:00:00" or keep plain "HH:MM"
+        String displayTime = rawTime;
+        if (rawTime.contains('T')) {
+          try {
+            final dt = DateTime.parse(rawTime);
+            displayTime = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+          } catch (_) {
+            displayTime = rawTime.split('T').last.substring(0, 5);
+          }
+        }
         final isSelected = _selectedScheduledTrip?['id'] == trip['id'];
         return InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
             setState(() {
               _selectedScheduledTrip = trip;
-              _selectedFixedTime = time;
+              _selectedFixedTime = rawTime;
               _selectedSeatIndexes = [];
               _occupiedSeats = [];
             });
@@ -1085,7 +1106,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  time,
+                  displayTime,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
