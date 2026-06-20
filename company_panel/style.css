@@ -481,6 +481,24 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
     gap: 20px;
 }
 
+.grid-3-col {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+.grid-2-col .input-group,
+.grid-3-col .input-group {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.grid-2-col .input-group > div,
+.grid-3-col .input-group > div {
+    margin-top: auto;
+}
+
 /* ============================================
    MOBILE TOGGLE BUTTON (hamburger)
    ============================================ */
@@ -819,7 +837,7 @@ tr:hover td { background: rgba(255, 255, 255, 0.02); }
 
     /* Dashboard middle/bottom: full width stacked */
     .dashboard-middle, .dashboard-bottom { grid-template-columns: 1fr; gap: 14px; }
-    .grid-2-col { grid-template-columns: 1fr; gap: 14px; }
+    .grid-2-col, .grid-3-col { grid-template-columns: 1fr; gap: 14px; }
 
     /* Map: taller for better visibility */
     .map-placeholder { height: 220px; }

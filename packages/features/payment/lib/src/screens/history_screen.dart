@@ -19,6 +19,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget build(BuildContext context) {
     final auth = ref.watch(authProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDriver = auth?.role == 'driver';
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
@@ -28,16 +29,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         foregroundColor: Colors.white,
         elevation: 0,
       ),
-      body: _buildTripsTab(context, auth?.userId ?? ''),
+      body: _buildTripsTab(context, auth?.userId ?? '', isDriver),
     );
   }
 
 
-  Widget _buildTripsTab(BuildContext context, String userId) {
+  Widget _buildTripsTab(BuildContext context, String userId, bool isDriver) {
     return Column(
       children: [
         _buildFilters(),
-        Expanded(child: _buildTripsList(context, userId)),
+        Expanded(child: _buildTripsList(context, userId, isDriver)),
       ],
     );
   }
@@ -74,7 +75,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildTripsList(BuildContext context, String userId) {
+  Widget _buildTripsList(BuildContext context, String userId, bool isDriver) {
     final tripsAsync = ref.watch(tripHistoryProvider(userId));
     
     return tripsAsync.when(
@@ -114,16 +115,16 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         return ListView(
           padding: const EdgeInsets.all(15),
           children: [
-            _buildSummaryCard(monthlyTotal, monthlyTrips.length),
+            _buildSummaryCard(monthlyTotal, monthlyTrips.length, isDriver),
             const SizedBox(height: 20),
-            ...trips.map((trip) => _buildTripCard(trip)),
+            ...trips.map((trip) => _buildTripCard(trip, isDriver)),
           ],
         );
       },
     );
   }
 
-  Widget _buildSummaryCard(double total, int count) {
+  Widget _buildSummaryCard(double total, int count, bool isDriver) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -151,7 +152,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildSummaryItem('Dépenses', '${total.toInt()} FCFA'),
+              _buildSummaryItem(isDriver ? 'Revenus' : 'Dépenses', '${total.toInt()} FCFA'),
               _buildSummaryItem('Trajets', '$count'),
             ],
           ),
@@ -169,7 +170,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     );
   }
 
-  Widget _buildTripCard(TripModel trip) {
+  Widget _buildTripCard(TripModel trip, bool isDriver) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
@@ -197,24 +198,25 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: () => _reorderTrip(trip),
-                  icon: const Icon(Icons.refresh, size: 16),
-                  label: const Text('COMMANDER À NOUVEAU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: TranSenColors.primaryGreen,
-                    side: const BorderSide(color: TranSenColors.primaryGreen),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          if (!isDriver)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: () => _reorderTrip(trip),
+                    icon: const Icon(Icons.refresh, size: 16),
+                    label: const Text('COMMANDER À NOUVEAU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: TranSenColors.primaryGreen,
+                      side: const BorderSide(color: TranSenColors.primaryGreen),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

@@ -1118,7 +1118,14 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     final destination = _selectedDestination == 'Autre (Saisir manuellement)...' ? _customDestinationController.text.trim() : _selectedDestination!;
 
     // Calculation logic
-    int finalPrice = _selectedRoutingType == 'COMPANY_ONLY' ? 12000 : 10000;
+    int finalPrice = 10000;
+    if (_selectedRoutingType == 'COMPANY_ONLY') {
+      if (_selectedScheduledTrip != null && _selectedScheduledTrip!['price'] != null) {
+        finalPrice = ((_selectedScheduledTrip!['price'] as num).toInt()) * _selectedSeats;
+      } else {
+        finalPrice = 3000 * _selectedSeats; // fallback
+      }
+    }
     int discount = 0;
     if (_usePoints && points >= 10) {
       discount = pointsValue;
@@ -1348,9 +1355,20 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
           if (!mounted) return;
 
-          // 3. Launch url
+          // 3. Launch url with robust try-catch fallback
           final uri = Uri.parse(checkoutUrl);
-          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          try {
+            final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+            if (!launched) {
+              await launchUrl(uri, mode: LaunchMode.platformDefault);
+            }
+          } catch (e) {
+            try {
+              await launchUrl(uri, mode: LaunchMode.platformDefault);
+            } catch (e2) {
+              debugPrint('Failed to launch SenePay URL: $e2');
+            }
+          }
         } else {
           throw Exception("Impossible de générer le lien de paiement SenePay.");
         }
