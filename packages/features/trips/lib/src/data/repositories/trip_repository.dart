@@ -556,13 +556,20 @@ class TripRepository {
       if (response.statusCode == 200) {
         final List data = response.data;
         return data.map((json) {
+          final String cat = json['category']?.toString() ?? 'ALLO_DAKAR';
+          final String type = cat == 'BUS_COMPANY'
+              ? 'Billet Bus'
+              : cat == 'YOBANTE'
+                  ? 'Livraison Yobanté'
+                  : 'Course';
           return TripModel(
             id: json['id'] ?? '',
             departure: json['pickupLocation'] ?? '',
             destination: json['dropoffLocation'] ?? '',
             price: (json['price'] ?? 0).toDouble(),
             status: json['status']?.toString().toLowerCase() ?? 'completed',
-            type: 'Course',
+            type: type,
+            category: cat,
             driverName: json['driverName'],
             createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
           );

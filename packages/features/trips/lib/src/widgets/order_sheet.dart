@@ -1661,7 +1661,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         final status = response.data['status'] as String?;
 
         if (paymentStatus == 'PAID_IN_ADVANCE') {
-          _handlePaymentSuccess();
+          _handlePaymentSuccess(Map<String, dynamic>.from(response.data));
         } else if (status == 'CANCELLED') {
           _handlePaymentCancelledOrFailed();
         }
@@ -1681,7 +1681,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         final status = response.data['status'] as String?;
 
         if (paymentStatus == 'PAID_IN_ADVANCE') {
-          _handlePaymentSuccess();
+          _handlePaymentSuccess(Map<String, dynamic>.from(response.data));
         } else if (status == 'CANCELLED') {
           _handlePaymentCancelledOrFailed();
         } else {
@@ -1727,7 +1727,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     }
   }
 
-  void _handlePaymentSuccess() {
+  void _handlePaymentSuccess(Map<String, dynamic> bookingData) {
     setState(() {
       _isWaitingForPayment = false;
       _activeBookingId = null;
@@ -1739,6 +1739,14 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         context,
         title: "Réservation confirmée !",
         message: "Votre billet de bus est validé et payé. Bon voyage !",
+        onDismiss: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TicketScreen(bookingData: bookingData),
+            ),
+          );
+        },
       );
     }
   }

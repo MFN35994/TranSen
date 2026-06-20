@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import 'trip_detail_screen.dart';
 
 // --- Models ---
@@ -856,6 +857,7 @@ class QRScannerScreen extends StatefulWidget {
 
 class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProviderStateMixin {
   final TextEditingController _codeController = TextEditingController();
+  final MobileScannerController _cameraController = MobileScannerController();
   late AnimationController _animController;
   bool _isProcessing = false;
 
@@ -872,7 +874,19 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
   void dispose() {
     _codeController.dispose();
     _animController.dispose();
+    _cameraController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleScan(BarcodeCapture capture) async {
+    if (_isProcessing) return;
+    final List<Barcode> barcodes = capture.barcodes;
+    if (barcodes.isNotEmpty) {
+      final String? code = barcodes.first.rawValue;
+      if (code != null && code.isNotEmpty) {
+        await _submitCode(code);
+      }
+    }
   }
 
   Future<void> _submitCode(String code) async {
@@ -884,6 +898,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
         if (mounted) {
           showDialog(
             context: context,
+            barrierDismissible: false,
             builder: (ctx) => AlertDialog(
               title: Row(
                 children: const [
@@ -910,6 +925,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
       if (mounted) {
         showDialog(
           context: context,
+          barrierDismissible: false,
           builder: (ctx) => AlertDialog(
             title: Row(
               children: const [
@@ -945,77 +961,104 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
         backgroundColor: Colors.transparent,
         foregroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            color: Colors.white,
+            icon: const Icon(Icons.flash_on),
+            onPressed: () => _cameraController.toggleTorch(),
+          ),
+          IconButton(
+            color: Colors.white,
+            icon: const Icon(Icons.cameraswitch),
+            onPressed: () => _cameraController.switchCamera(),
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            // Cadre Scanner
-            Center(
-              child: Stack(
-                children: [
-                  Container(
-                    width: 250,
-                    height: 250,
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white70, width: 2),
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(22),
-                      child: Container(
-                        color: Colors.white10,
-                        child: const Center(
-                          child: Icon(
-                            Icons.qr_code,
-                            size: 120,
-                            color: Colors.white24,
-                          ),
-                        ),
+      extendBodyBehindAppBar: true,
+      body: Stack(
+        children: [
+          // Camera scanner fills the entire background
+          MobileScanner(
+            controller: _cameraController,
+            onDetect: _handleScan,
+          ),
+          
+          // Semitransparent overlay
+          Positioned.fill(
+            child: Container(
+              color: Colors.black38,
+            ),
+          ),
+          
+          // Cadre Scanner & Anim
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Stack(
+                  children: [
+                    Container(
+                      width: 250,
+                      height: 250,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white70, width: 2),
+                        borderRadius: BorderRadius.circular(24),
                       ),
                     ),
-                  ),
-                  // Ligne de scan animée
-                  AnimatedBuilder(
-                    animation: _animController,
-                    builder: (context, child) {
-                      return Positioned(
-                        top: 250 * _animController.value,
-                        left: 10,
-                        right: 10,
-                        child: Container(
-                          height: 3,
-                          decoration: BoxDecoration(
-                            color: Colors.green,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.green.withValues(alpha: 0.8),
-                                blurRadius: 10,
-                                spreadRadius: 2,
-                              )
-                            ],
+                    // Animated line inside the cadre
+                    AnimatedBuilder(
+                      animation: _animController,
+                      builder: (context, child) {
+                        return Positioned(
+                          top: 246 * _animController.value,
+                          left: 10,
+                          right: 10,
+                          child: Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.green.withValues(alpha: 0.8),
+                                  blurRadius: 10,
+                                  spreadRadius: 2,
+                                )
+                              ],
+                            ),
                           ),
-                        ),
-                      );
-                    },
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ],
-              ),
+                  child: Text(
+                    "Visez le QR Code du passager",
+                    style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
+                  ),
+                ),
+                const SizedBox(height: 80),
+              ],
             ),
-            const SizedBox(height: 30),
-            Text(
-              "Placez le QR Code dans le cadre ci-dessus",
-              style: GoogleFonts.outfit(color: Colors.white70, fontSize: 13),
-            ),
-            const SizedBox(height: 40),
-            // Section Saisie Manuelle
-            Container(
+          ),
+
+          // Bottom card sheet for manual input
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
                 color: Color(0xFF1E293B),
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
@@ -1055,12 +1098,19 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
                     ),
                     onSubmitted: (val) => _submitCode(val.trim()),
                   ),
-                  const SizedBox(height: 20),
                 ],
               ),
             ),
-          ],
-        ),
+          ),
+          
+          if (_isProcessing)
+            Container(
+              color: Colors.black54,
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.green),
+              ),
+            ),
+        ],
       ),
     );
   }

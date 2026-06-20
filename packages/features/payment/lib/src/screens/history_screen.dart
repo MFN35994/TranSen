@@ -172,6 +172,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Widget _buildTripCard(TripModel trip, bool isDriver) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isBusBilling = trip.category == 'BUS_COMPANY';
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -181,21 +182,32 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         children: [
           ListTile(
             leading: CircleAvatar(
-              backgroundColor: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+              backgroundColor: isBusBilling
+                  ? Colors.blue.withValues(alpha: 0.1)
+                  : TranSenColors.primaryGreen.withValues(alpha: 0.1),
               child: Icon(
-                trip.type.contains('Livraison') ? Icons.inventory_2_outlined : Icons.directions_car_outlined, 
-                color: TranSenColors.primaryGreen
+                isBusBilling
+                    ? Icons.directions_bus_outlined
+                    : trip.type.contains('Livraison')
+                        ? Icons.inventory_2_outlined
+                        : Icons.directions_car_outlined,
+                color: isBusBilling ? Colors.blue : TranSenColors.primaryGreen,
               ),
             ),
-            title: Text("${trip.departure} ➔ ${trip.destination}", 
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: isDark ? Colors.white : Colors.black)),
+            title: Text("${trip.departure} ➔ ${trip.destination}",
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: isDark ? Colors.white : Colors.black)),
             subtitle: Text(
               '${trip.createdAt.day}/${trip.createdAt.month}/${trip.createdAt.year} • ${trip.type}',
               style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
             trailing: Text(
               '${trip.price.toInt()} F',
-              style: TextStyle(fontWeight: FontWeight.bold, color: isDark ? Colors.white : Colors.black),
+              style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? Colors.white : Colors.black),
             ),
           ),
           if (!isDriver)
@@ -204,22 +216,74 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: () => _reorderTrip(trip),
-                    icon: const Icon(Icons.refresh, size: 16),
-                    label: const Text('COMMANDER À NOUVEAU', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: TranSenColors.primaryGreen,
-                      side: const BorderSide(color: TranSenColors.primaryGreen),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  if (isBusBilling)
+                    OutlinedButton.icon(
+                      onPressed: () => _openMyTicket(trip),
+                      icon: const Icon(Icons.qr_code, size: 16),
+                      label: const Text('MON BILLET',
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
                     ),
-                  ),
+                  if (isBusBilling) const SizedBox(width: 8),
+                  if (!isBusBilling)
+                    OutlinedButton.icon(
+                      onPressed: () => _reorderTrip(trip),
+                      icon: const Icon(Icons.refresh, size: 16),
+                      label: const Text('COMMANDER À NOUVEAU',
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: TranSenColors.primaryGreen,
+                        side: const BorderSide(color: TranSenColors.primaryGreen),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
                 ],
               ),
             ),
         ],
       ),
     );
+  }
+
+  Future<void> _openMyTicket(TripModel trip) async {
+    try {
+      final response = await ApiClient().dio.get('/api/bookings/my-ticket?tripId=${trip.id}');
+      if (response.statusCode == 200 && response.data != null) {
+        if (!mounted) return;
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => TicketScreen(
+              bookingData: Map<String, dynamic>.from(response.data),
+            ),
+          ),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Billet introuvable pour ce trajet.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Erreur : $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _reorderTrip(TripModel trip) {

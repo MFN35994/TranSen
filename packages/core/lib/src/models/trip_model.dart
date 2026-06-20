@@ -33,6 +33,7 @@ class TripModel {
   final String? targetCompanyId;
   final String? paymentReference;
   final String? paymentStatus;
+  final String? category;
 
   TripModel({
     required this.id,
@@ -66,6 +67,7 @@ class TripModel {
     this.targetCompanyId,
     this.paymentReference,
     this.paymentStatus,
+    this.category,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -102,6 +104,7 @@ class TripModel {
       targetCompanyId: data['targetCompanyId'],
       paymentReference: data['paymentReference'],
       paymentStatus: data['paymentStatus'],
+      category: data['category'],
     );
   }
 
@@ -137,6 +140,7 @@ class TripModel {
       'targetCompanyId': targetCompanyId,
       'paymentReference': paymentReference,
       'paymentStatus': paymentStatus,
+      'category': category,
     };
   }
 }
