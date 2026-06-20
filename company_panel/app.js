@@ -532,6 +532,14 @@ async function loadDashboardData() {
                             <button class="btn-primary" onclick="window.openPassengerManager('${t.id}', '${t.departure} ➔ ${t.destination}')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
                                 <i class="fas fa-users"></i> Gérer
                             </button>
+                            ${t.status === 'PENDING' ? `
+                            <button class="btn-success" onclick="window.updateTripStatus('${t.id}', 'COMPLETED')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 5px; background-color: var(--green); border: none; color: white; cursor: pointer;" title="Terminer la course">
+                                <i class="fas fa-check"></i> Terminer
+                            </button>
+                            <button class="btn-danger" onclick="window.updateTripStatus('${t.id}', 'CANCELLED')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 5px; background-color: var(--red); border: none; color: white; cursor: pointer;" title="Annuler la course">
+                                <i class="fas fa-times"></i> Annuler
+                            </button>
+                            ` : ''}
                         </td>
                     </tr>`;
                     
@@ -587,6 +595,36 @@ async function loadDashboardData() {
 
 let map;
 let markers = {}; // Store markers by driverId
+let activeDriversUnsubscribe = null;
+
+window.updateTripStatus = async function(tripId, status) {
+    const actionText = status === 'COMPLETED' ? "terminer" : "annuler";
+    if (!confirm(`Voulez-vous vraiment ${actionText} ce trajet ?`)) {
+        return;
+    }
+
+    try {
+        const url = `${API_BASE_URL}/api/company/dashboard/trips/${tripId}/status?status=${status}`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${currentToken}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(result.message || "Statut du trajet mis à jour !");
+            loadDashboardData(); // Refresh the table
+        } else {
+            alert("Erreur: " + (result.error || "Impossible de mettre à jour le statut"));
+        }
+    } catch (error) {
+        alert("Erreur de connexion au serveur.");
+    }
+};
 
 function setupMapbox(drivers) {
     if (!document.getElementById('fleetMap')) return;
@@ -621,7 +659,13 @@ function setupMapbox(drivers) {
     // Subscribe to Firestore for real-time driver locations
     const activeDriversRef = collection(db, "active_drivers");
     
-    onSnapshot(activeDriversRef, (snapshot) => {
+    if (activeDriversUnsubscribe) {
+        activeDriversUnsubscribe();
+    }
+
+    activeDriversUnsubscribe = onSnapshot(activeDriversRef, (snapshot) => {
+        const onlineOurDrivers = new Set();
+
         snapshot.docs.forEach(doc => {
             const data = doc.data();
             const driverId = doc.id;
@@ -630,6 +674,7 @@ function setupMapbox(drivers) {
             const isOurDriver = drivers.find(d => d.id === driverId);
             
             if (isOurDriver && data.status === 'online') {
+                onlineOurDrivers.add(driverId);
                 const lng = data.lng;
                 const lat = data.lat;
 
@@ -667,6 +712,66 @@ function setupMapbox(drivers) {
                 // If driver goes offline or leaves, remove marker
                 markers[driverId].remove();
                 delete markers[driverId];
+            }
+        });
+
+        // Clean up markers of drivers that are no longer in the snapshot
+        Object.keys(markers).forEach(driverId => {
+            const stillOnline = snapshot.docs.some(doc => doc.id === driverId && doc.data().status === 'online');
+            const isOurDriver = drivers.find(d => d.id === driverId);
+            if (isOurDriver && !stillOnline) {
+                markers[driverId].remove();
+                delete markers[driverId];
+            }
+        });
+
+        // Dynamic update of active/online driver counts in UI in real-time!
+        const totalDrivers = drivers.length;
+        const onlineCount = onlineOurDrivers.size;
+        const offlineCount = totalDrivers - onlineCount;
+
+        const activeDriversCountEl = document.getElementById('activeDriversCount');
+        const onlineDriversCountEl = document.getElementById('onlineDriversCount');
+        const offlineDriversCountEl = document.getElementById('offlineDriversCount');
+
+        if (activeDriversCountEl) activeDriversCountEl.innerText = `${onlineCount} / ${totalDrivers}`;
+        if (onlineDriversCountEl) onlineDriversCountEl.innerText = onlineCount;
+        if (offlineDriversCountEl) offlineDriversCountEl.innerText = offlineCount;
+
+        // Also dynamically update the status badges in the drivers table!
+        drivers.forEach(d => {
+            const isOnlineNow = onlineOurDrivers.has(d.id);
+            const statusStr = isOnlineNow ? 'ACTIVE' : 'INACTIVE';
+            
+            const driversTbody = document.getElementById('driversTableBody');
+            if (driversTbody) {
+                const rows = driversTbody.querySelectorAll('tr');
+                rows.forEach(row => {
+                    const phoneCell = row.querySelector('td[data-label="Téléphone"]');
+                    if (phoneCell && phoneCell.innerText === d.phone) {
+                        const statusTag = row.querySelector('.status-tag');
+                        if (statusTag) {
+                            statusTag.innerText = statusStr;
+                            statusTag.className = `status-tag ${isOnlineNow ? 'active' : 'inactive'}`;
+                        }
+                    }
+                });
+            }
+
+            // Also update the dashboard driver list status badge!
+            const dashboardDriverList = document.getElementById('dashboardDriverList');
+            if (dashboardDriverList) {
+                const items = dashboardDriverList.querySelectorAll('.driver-status-item');
+                items.forEach(item => {
+                    const phoneSpan = item.querySelector('.d-car');
+                    if (phoneSpan && phoneSpan.innerText === d.phone) {
+                        const badge = item.querySelector('.status-badge');
+                        if (badge) {
+                            badge.innerText = isOnlineNow ? 'En Ligne' : 'Hors Ligne';
+                            badge.className = `status-badge ${isOnlineNow ? 'available' : 'maintenance'}`;
+                        }
+                    }
+                });
             }
         });
     }, (error) => {

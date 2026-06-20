@@ -36,7 +36,19 @@ service cloud.firestore {
             .hasAny(['bonusPoints', 'walletBalance', 'isVerified', 'referralCount']) &&
           (
             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']) ||
-            (!('role' in resource.data) || resource.data.role == 'none')
+            (
+              request.resource.data.role != 'admin' &&
+              request.resource.data.role != 'ADMIN' &&
+              (
+                !('role' in resource.data) || 
+                resource.data.role == 'none' || 
+                resource.data.role == 'NONE' ||
+                resource.data.role == 'client' ||
+                resource.data.role == 'CLIENT' ||
+                resource.data.role == 'driver' ||
+                resource.data.role == 'DRIVER'
+              )
+            )
           )
         )
         ||

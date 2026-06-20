@@ -4,6 +4,7 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
+import 'package:transen_trips/transen_trips.dart';
 
 final userFutureProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
   return ref.read(userRepositoryProvider).getUserData();
@@ -100,6 +101,7 @@ class ProfileDrawer extends ConsumerWidget {
                   onTap: () async {
                     // On ferme le tiroir avant de se déconnecter
                     Navigator.pop(context);
+                    ref.invalidate(driverProfileProvider);
                     await ref.read(authProvider.notifier).logout();
                   },
                 ),

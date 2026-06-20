@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_core/transen_core.dart';
+import 'package:transen_auth/transen_auth.dart';
 
 final activePoolsProvider = StreamProvider<List<PoolModel>>((ref) {
   return ref.watch(tripRepositoryProvider).watchActivePools();
@@ -13,6 +14,8 @@ final poolDetailProvider = StreamProvider.family<PoolModel?, String>((ref, poolI
 
 
 final driverProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) {
+  final auth = ref.watch(authProvider);
+  if (auth == null) return null;
   return ref.watch(userRepositoryProvider).getUserData();
 });
 
