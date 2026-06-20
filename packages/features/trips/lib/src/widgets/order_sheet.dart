@@ -57,10 +57,7 @@ class OrderSheet extends ConsumerStatefulWidget {
 }
 
 class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObserver {
-  // Step control: 0 = Route, 1 = Canal selection, 2 = Company selection, 3 = Confirmation & Payment
   int _currentStep = 0;
-
-  // Step 0 variables
   String? _selectedDeparture;
   String? _selectedDestination;
   int _selectedSeats = 1;
@@ -79,10 +76,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   bool _isSearchingDestination = false;
   Timer? _debounceTimer;
 
-  // Step 1 variables
-  String? _selectedRoutingType; // 'INDEPENDENTS_ONLY', 'COMPANY_ONLY', 'PUBLIC'
+  String? _selectedRoutingType; 
 
-  // Step 2 variables
   List<Map<String, dynamic>> _companies = [];
   bool _isLoadingCompanies = false;
   Map<String, dynamic>? _selectedCompany;
@@ -90,10 +85,9 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   List<Map<String, dynamic>> _scheduledTrips = [];
   bool _isLoadingScheduledTrips = false;
   Map<String, dynamic>? _selectedScheduledTrip;
-  List<int> _selectedSeatIndexes = []; // Sièges sélectionnés (ex: [3, 4])
-  List<String> _occupiedSeats = []; // Sièges déjà occupés (ex: ["5", "6"])
+  List<int> _selectedSeatIndexes = []; 
+  List<String> _occupiedSeats = []; 
 
-  // Step 3 variables
   String _paymentMethod = 'Espèces';
   bool _isProcessing = false;
   bool _usePoints = false;
@@ -101,26 +95,17 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   String? _preferredDriverName;
   String? _preferredDriverId;
 
-  // Payment abandonment / cancellation state
   String? _activeBookingId;
   bool _isWaitingForPayment = false;
   String? _checkoutUrl;
+  Timer? _paymentPollingTimer;
+  int _pollingAttempts = 0;
+  static const int _maxPollingAttempts = 30; 
+  Map<String, dynamic>? _pendingBookingSnapshot;
 
   final List<String> _regions = [
-    'Dakar',
-    'Diourbel',
-    'Fatick',
-    'Kaffrine',
-    'Kaolack',
-    'Kédougou',
-    'Kolda',
-    'Louga',
-    'Matam',
-    'Saint-Louis',
-    'Sédhiou',
-    'Tambacounda',
-    'Thiès',
-    'Ziguinchor',
+    'Dakar', 'Diourbel', 'Fatick', 'Kaffrine', 'Kaolack', 'Kédougou', 'Kolda',
+    'Louga', 'Matam', 'Saint-Louis', 'Sédhiou', 'Tambacounda', 'Thiès', 'Ziguinchor',
     'Autre (Saisir manuellement)...',
   ];
 
@@ -150,6 +135,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     _customDepartureController.dispose();
     _customDestinationController.dispose();
     _debounceTimer?.cancel();
+    _paymentPollingTimer?.cancel();
     super.dispose();
   }
 
@@ -421,35 +407,28 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     return TimeOfDay(hour: hour, minute: roundedMinute);
   }
 
-  /// Normalizes any time/datetime string to a clean "HH:mm" format.
-  /// Accepts: "2026-06-21T15:00:00", "2026-06-21T15:00", "2026-06-21T15", "15:00", "15"
   String _normalizeToHHmm(String raw) {
     try {
       if (raw.contains('T')) {
-        // ISO-8601 format: extract the time part after 'T'
-        final timePart = raw.split('T').last; // e.g. "15:00:00" or "15:00" or "15"
+        final timePart = raw.split('T').last;
         final segments = timePart.split(':');
         final hour = int.parse(segments[0].substring(0, segments[0].length > 2 ? 2 : segments[0].length));
         final min = segments.length > 1 ? int.parse(segments[1].substring(0, segments[1].length > 2 ? 2 : segments[1].length)) : 0;
         return '${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
       } else if (raw.contains(':')) {
-        // Already "HH:mm" or "HH:mm:ss"
         final segments = raw.split(':');
         final hour = int.parse(segments[0].trim());
         final min = int.parse(segments[1].trim());
         return '${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
       } else {
-        // Plain hour string like "15"
         final hour = int.parse(raw.trim());
         return '${hour.toString().padLeft(2, '0')}:00';
       }
     } catch (_) {
-      return raw; // Return as-is if parsing fails
+      return raw;
     }
   }
 
-  /// Returns the scheduled date+time as "dd/MM/yyyy HH:mm" string.
-  /// _selectedFixedTime is guaranteed to be "HH:mm" after normalization.
   String _getFixedTimeDateString() {
     if (_selectedFixedTime == null) return "";
     try {
@@ -489,7 +468,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Top drag indicator
               Center(
                 child: Container(
                   width: 40,
@@ -501,8 +479,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                   ),
                 ),
               ),
-
-              // Header Row with back arrow
               Row(
                 children: [
                   if (_currentStep > 0)
@@ -532,12 +508,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                       textAlign: TextAlign.center,
                     ),
                   ),
-                  const SizedBox(width: 48), // To balance the back icon
+                  const SizedBox(width: 48),
                 ],
               ),
               const SizedBox(height: 20),
-
-              // Step Content Switcher
               _buildStepContent(isDark),
               const SizedBox(height: 20),
             ],
@@ -549,35 +523,24 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
   String _getStepTitle() {
     switch (_currentStep) {
-      case 0:
-        return "Où allez-vous ?";
-      case 1:
-        return "Choisissez le service";
-      case 2:
-        return "Sélectionnez la flotte";
-      case 3:
-        return "Confirmation & Paiement";
-      default:
-        return "";
+      case 0: return "Où allez-vous ?";
+      case 1: return "Choisissez le service";
+      case 2: return "Sélectionnez la flotte";
+      case 3: return "Confirmation & Paiement";
+      default: return "";
     }
   }
 
   Widget _buildStepContent(bool isDark) {
     switch (_currentStep) {
-      case 0:
-        return _buildStep0RouteSelection(isDark);
-      case 1:
-        return _buildStep1ChannelSelection(isDark);
-      case 2:
-        return _buildStep2CompanySelection(isDark);
-      case 3:
-        return _buildStep3SummaryAndValidation(isDark);
-      default:
-        return const SizedBox.shrink();
+      case 0: return _buildStep0RouteSelection(isDark);
+      case 1: return _buildStep1ChannelSelection(isDark);
+      case 2: return _buildStep2CompanySelection(isDark);
+      case 3: return _buildStep3SummaryAndValidation(isDark);
+      default: return const SizedBox.shrink();
     }
   }
 
-  // --- STEP 0: ROUTE SELECTION ---
   Widget _buildStep0RouteSelection(bool isDark) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -611,8 +574,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               ],
             ),
           ),
-
-        // Departure Region Select
         Row(
           children: [
             Expanded(
@@ -648,7 +609,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             ),
           ],
         ),
-
         if (_selectedDeparture == 'Autre (Saisir manuellement)...') ...[
           const SizedBox(height: 10),
           TextField(
@@ -659,11 +619,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               suffixIcon: _isSearchingDeparture
                   ? const Padding(
                       padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                     )
                   : null,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
@@ -677,10 +633,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ),
           if (_departureSuggestions.isNotEmpty) _buildSuggestionsList(_departureSuggestions, true, isDark),
         ],
-
         const SizedBox(height: 15),
-
-        // Destination Region Select
         DropdownButtonFormField<String>(
           decoration: InputDecoration(
             hintText: 'Région de destination',
@@ -695,7 +648,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           items: _regions.map((region) => DropdownMenuItem(value: region, child: Text(region))).toList(),
           onChanged: (value) => setState(() => _selectedDestination = value),
         ),
-
         if (_selectedDestination == 'Autre (Saisir manuellement)...') ...[
           const SizedBox(height: 10),
           TextField(
@@ -706,11 +658,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               suffixIcon: _isSearchingDestination
                   ? const Padding(
                       padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                      child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)),
                     )
                   : null,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
@@ -724,10 +672,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ),
           if (_destinationSuggestions.isNotEmpty) _buildSuggestionsList(_destinationSuggestions, false, isDark),
         ],
-
         const SizedBox(height: 15),
-
-        // Seats & Date/Time selectors
         Row(
           children: [
             const Icon(Icons.groups, color: Colors.grey),
@@ -742,7 +687,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ],
         ),
         const SizedBox(height: 15),
-
         Row(
           children: [
             Expanded(
@@ -791,10 +735,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             ),
           ],
         ),
-
         const SizedBox(height: 25),
-
-        // CONTINUE BUTTON
         ElevatedButton(
           onPressed: (_selectedDeparture != null && _selectedDestination != null)
               ? () => setState(() => _currentStep = 1)
@@ -850,7 +791,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     );
   }
 
-  // --- STEP 1: SERVICE/CHANNEL SELECTION ---
   Widget _buildStep1ChannelSelection(bool isDark) {
     return Column(
       children: [
@@ -939,14 +879,13 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     setState(() {
       _selectedRoutingType = routing;
       if (routing == 'COMPANY_ONLY') {
-        _currentStep = 2; // Jump to Company selection
+        _currentStep = 2;
       } else {
-        _currentStep = 3; // Jump directly to summary
+        _currentStep = 3;
       }
     });
   }
 
-  // --- STEP 2: COMPANY SELECTION ---
   Widget _buildStep2CompanySelection(bool isDark) {
     if (_isLoadingCompanies) {
       return const Padding(
@@ -1016,7 +955,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         HapticFeedback.selectionClick();
         setState(() {
           _selectedCompany = comp;
-          _selectedFixedTime = null; // reset fixed time on company switch
+          _selectedFixedTime = null;
           _selectedScheduledTrip = null;
           _selectedSeatIndexes = [];
           _occupiedSeats = [];
@@ -1091,7 +1030,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       runSpacing: 10,
       children: _scheduledTrips.map((trip) {
         final rawTime = trip['scheduledTime'] ?? "00:00";
-        // Normalize rawTime to clean "HH:mm" string immediately, regardless of format
         String displayTime = _normalizeToHHmm(rawTime);
         final isSelected = _selectedScheduledTrip?['id'] == trip['id'];
         return InkWell(
@@ -1099,7 +1037,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             HapticFeedback.lightImpact();
             setState(() {
               _selectedScheduledTrip = trip;
-              // Always store as clean "HH:mm" — prevents ALL FormatException downstream
               _selectedFixedTime = displayTime;
               _selectedSeatIndexes = [];
               _occupiedSeats = [];
@@ -1144,7 +1081,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     );
   }
 
-  // --- STEP 3: SUMMARY & VALIDATION ---
   Widget _buildStep3SummaryAndValidation(bool isDark) {
     final auth = ref.watch(authProvider);
     final points = auth?.loyaltyPoints ?? 0;
@@ -1153,13 +1089,12 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     final departure = _selectedDeparture == 'Autre (Saisir manuellement)...' ? _customDepartureController.text.trim() : _selectedDeparture!;
     final destination = _selectedDestination == 'Autre (Saisir manuellement)...' ? _customDestinationController.text.trim() : _selectedDestination!;
 
-    // Calculation logic
     int finalPrice = 10000;
     if (_selectedRoutingType == 'COMPANY_ONLY') {
       if (_selectedScheduledTrip != null && _selectedScheduledTrip!['price'] != null) {
         finalPrice = ((_selectedScheduledTrip!['price'] as num).toInt()) * _selectedSeats;
       } else {
-        finalPrice = 3000 * _selectedSeats; // fallback
+        finalPrice = 3000 * _selectedSeats;
       }
     }
     int discount = 0;
@@ -1174,7 +1109,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Summary Card
         Container(
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
@@ -1205,8 +1139,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ),
         ),
         const SizedBox(height: 15),
-
-        // Loyalty Switch
         if (points >= 10)
           Container(
             decoration: BoxDecoration(
@@ -1224,10 +1156,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             ),
           ),
         const SizedBox(height: 20),
-
-        // Payment logic differences
         if (_selectedRoutingType == 'COMPANY_ONLY') ...[
-          // Compagnie: Online payment only
           Container(
             padding: const EdgeInsets.all(15),
             decoration: BoxDecoration(
@@ -1249,7 +1178,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             ),
           ),
         ] else ...[
-          // Allô Dakar / Public: Pay at pickup intention only
           const Text('Mode de règlement privilégié (À bord) :', style: TextStyle(fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           SingleChildScrollView(
@@ -1267,10 +1195,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             ),
           ),
         ],
-
         const SizedBox(height: 25),
-
-        // CONFIRMATION BUTTON
         ElevatedButton(
           onPressed: !_isProcessing ? () => _handleFinalSubmit(departure, destination, finalPrice, discount) : null,
           style: ElevatedButton.styleFrom(
@@ -1342,19 +1267,14 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       final userLastName = userData.data()?['lastName'];
       final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
 
-      final scheduledDate = _selectedRoutingType == 'COMPANY_ONLY' ? _getFixedTimeDateString() : _getDepartureTimeString();
-
-      // Deduct loyalty points if used
       if (discount > 0 && auth != null) {
         final usedPoints = discount ~/ 10;
         await ref.read(authProvider.notifier).addLoyaltyPoints(-usedPoints);
       }
 
-      // If it is a COMPANY TRIP: Payment is required first!
       if (_selectedRoutingType == 'COMPANY_ONLY') {
         final orderId = "TKT-${DateTime.now().millisecondsSinceEpoch}-${userId.substring(0, 4)}";
 
-        // 1. Create Checkout Session via SenePay
         final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
           amount: finalPrice.toDouble(),
           orderId: orderId,
@@ -1364,7 +1284,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         );
 
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
-          // 2. Submit the seat booking on the backend
           final seatNumbersStr = _selectedSeatIndexes.join(',');
           final response = await ApiClient().dio.post(
             '/api/bookings/book',
@@ -1382,42 +1301,47 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             bookingId = response.data['id'] as String?;
           }
 
+          final company = _selectedCompany;
           setState(() {
             _activeBookingId = bookingId;
             _isWaitingForPayment = true;
             _checkoutUrl = checkoutUrl;
             _isProcessing = false;
+            _pendingBookingSnapshot = {
+              'id': bookingId ?? '',
+              'boardingCode': 'TX-PENDING',
+              'numberOfSeatsBooked': _selectedSeats,
+              'seatNumbers': _selectedSeatIndexes.join(','),
+              'passengerName': userName,
+              'passengerPhone': finalPhone,
+              'paymentStatus': 'PENDING',
+              'companyName': company?['name'] ?? '',
+              'departure': departure,
+              'destination': destination,
+              'scheduledDate': _getFixedTimeDateString(),
+              'price': finalPrice,
+            };
           });
 
           if (!mounted) return;
 
-          // 3. Launch url with robust try-catch fallback
           final uri = Uri.parse(checkoutUrl);
           try {
             final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
-            if (!launched) {
-              await launchUrl(uri, mode: LaunchMode.platformDefault);
-            }
+            if (!launched) await launchUrl(uri, mode: LaunchMode.platformDefault);
           } catch (e) {
-            try {
-              await launchUrl(uri, mode: LaunchMode.platformDefault);
-            } catch (e2) {
-              debugPrint('Failed to launch SenePay URL: $e2');
-            }
+            try { await launchUrl(uri, mode: LaunchMode.platformDefault); } catch (_) {}
           }
         } else {
           throw Exception("Impossible de générer le lien de paiement SenePay.");
         }
       } else {
-        // Allô Dakar / Public: Instant booking dispatch
         final tripRepo = ref.read(tripRepositoryProvider);
-
-        // We use the covoiturage pooling mechanism if routing is independents/pool, else backend routing
         final poolId = await tripRepo.joinOrCreatePool(
           userId: userId,
           departure: departure,
           destination: destination,
-          scheduledDate: scheduledDate,
+          scheduledDate: _getDepartureTimeString(),
           lat: _preciseDepartureLat ?? 14.7167,
           lng: _preciseDepartureLng ?? -17.4677,
           seats: _selectedSeats,
@@ -1438,7 +1362,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
         final navigator = Navigator.of(context);
         navigator.pop();
-
         SuccessDialog.show(
           context,
           title: 'Demande enregistrée !',
@@ -1468,7 +1391,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   Widget _buildPaymentIconTile(String name, String? assetPath, Color color) {
     final isSelected = _paymentMethod == name;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -1506,24 +1428,22 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
   Widget _buildClientSeatMap(bool isDark) {
     if (_selectedScheduledTrip == null) return const SizedBox.shrink();
-
     final int totalSeats = (_selectedScheduledTrip!['totalSeats'] as num?)?.toInt() ?? 15;
-    
     int crossAxisCount = 4;
-    int aisleColumnIndex = 2; // Allée à la 3ème colonne (0-indexed) par défaut
+    int aisleColumnIndex = 2; 
     
     if (totalSeats <= 4) {
       crossAxisCount = 3;
-      aisleColumnIndex = -1; // Pas d'allée (berline)
+      aisleColumnIndex = -1;
     } else if (totalSeats <= 9) {
       crossAxisCount = 3;
-      aisleColumnIndex = -1; // Pas d'allée (minivan)
+      aisleColumnIndex = -1;
     } else if (totalSeats <= 22) {
       crossAxisCount = 4;
-      aisleColumnIndex = 2; // Minibus 2-1 (2 sièges, allée, 1 siège)
+      aisleColumnIndex = 2;
     } else {
       crossAxisCount = 5;
-      aisleColumnIndex = 2; // Grand bus 2-2 (2 sièges, allée centrale, 2 sièges)
+      aisleColumnIndex = 2;
     }
 
     final int seatsPerRow = crossAxisCount - (aisleColumnIndex != -1 ? 1 : 0);
@@ -1537,10 +1457,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
-              "Choisissez vos sièges :",
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey),
-            ),
+            const Text("Choisissez vos sièges :", style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
             Text(
               "${_selectedSeatIndexes.length} sur $_selectedSeats sélectionné(s)",
               style: TextStyle(
@@ -1552,8 +1469,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ],
         ),
         const SizedBox(height: 15),
-        
-        // Légende
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
@@ -1563,7 +1478,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           ],
         ),
         const SizedBox(height: 20),
-
         Center(
           child: Container(
             constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
@@ -1571,14 +1485,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E293B) : Colors.white,
               borderRadius: BorderRadius.circular(40),
-              border: Border.all(
-                color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
-                width: 3,
-              ),
+              border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1), width: 3),
             ),
             child: Column(
               children: [
-                // Cabine Chauffeur
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -1586,10 +1496,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                     Container(
                       width: 36,
                       height: 36,
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withValues(alpha: 0.2),
-                        shape: BoxShape.circle,
-                      ),
+                      decoration: BoxDecoration(color: Colors.grey.withValues(alpha: 0.2), shape: BoxShape.circle),
                       child: const Center(child: Icon(Icons.support_agent, size: 18, color: Colors.grey)),
                     ),
                   ],
@@ -1597,8 +1504,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                 const SizedBox(height: 20),
                 const Divider(thickness: 2),
                 const SizedBox(height: 20),
-                
-                // Grille
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -1612,11 +1517,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                   itemBuilder: (context, gridIndex) {
                     final int row = gridIndex ~/ crossAxisCount;
                     final int col = gridIndex % crossAxisCount;
-
-                    if (aisleColumnIndex != -1 && col == aisleColumnIndex) {
-                      return const SizedBox.shrink();
-                    }
-
+                    if (aisleColumnIndex != -1 && col == aisleColumnIndex) return const SizedBox.shrink();
                     int seatIndex = row * seatsPerRow;
                     if (aisleColumnIndex != -1) {
                       if (col < aisleColumnIndex) {
@@ -1627,15 +1528,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                     } else {
                       seatIndex += col;
                     }
-
                     final int seatNum = seatIndex + 1;
-                    if (seatNum > totalSeats) {
-                      return const SizedBox.shrink();
-                    }
-
+                    if (seatNum > totalSeats) return const SizedBox.shrink();
                     final isOccupied = _occupiedSeats.contains('$seatNum');
                     final isSelected = _selectedSeatIndexes.contains(seatNum);
-
                     return GlowingSeatWidget(
                       index: seatNum,
                       isSelected: isSelected,
@@ -1646,7 +1542,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                             _selectedSeatIndexes.remove(seatNum);
                           } else {
                             if (_selectedSeatIndexes.length >= _selectedSeats) {
-                              _selectedSeatIndexes.removeAt(0); // Supprimer le premier sélectionné
+                              _selectedSeatIndexes.removeAt(0);
                             }
                             _selectedSeatIndexes.add(seatNum);
                           }
@@ -1689,22 +1585,48 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   }
 
   Future<void> _checkBookingStatusAndPrompt() async {
+    // On app resume, start polling to detect SenePay webhook confirmation
     if (_activeBookingId == null) return;
-    try {
-      final response = await ApiClient().dio.get('/api/bookings/$_activeBookingId');
-      if (response.statusCode == 200 && response.data != null) {
-        final paymentStatus = response.data['paymentStatus'] as String?;
-        final status = response.data['status'] as String?;
+    _startPaymentPolling();
+  }
 
-        if (paymentStatus == 'PAID_IN_ADVANCE') {
-          _handlePaymentSuccess(Map<String, dynamic>.from(response.data));
-        } else if (status == 'CANCELLED') {
-          _handlePaymentCancelledOrFailed();
+  void _startPaymentPolling() {
+    _paymentPollingTimer?.cancel();
+    _pollingAttempts = 0;
+    _paymentPollingTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
+      if (!mounted || _activeBookingId == null) {
+        timer.cancel();
+        return;
+      }
+      _pollingAttempts++;
+      try {
+        final response = await ApiClient().dio.get('/api/bookings/$_activeBookingId');
+        if (response.statusCode == 200 && response.data != null) {
+          final paymentStatus = response.data['paymentStatus'] as String?;
+          final status = response.data['status'] as String?;
+          if (paymentStatus == 'PAID_IN_ADVANCE') {
+            timer.cancel();
+            final merged = Map<String, dynamic>.from(_pendingBookingSnapshot ?? {});
+            merged.addAll(Map<String, dynamic>.from(response.data));
+            _handlePaymentSuccess(merged);
+            return;
+          } else if (status == 'CANCELLED') {
+            timer.cancel();
+            _handlePaymentCancelledOrFailed();
+            return;
+          }
+        }
+      } catch (e) {
+        debugPrint('>>> Polling error: $e');
+      }
+      // After max attempts (~90s), show ticket with pending status anyway
+      if (_pollingAttempts >= _maxPollingAttempts) {
+        timer.cancel();
+        if (mounted && _pendingBookingSnapshot != null) {
+          _handlePaymentSuccess(Map<String, dynamic>.from(_pendingBookingSnapshot!));
         }
       }
-    } catch (e) {
-      debugPrint(">>> OrderSheet: Error checking booking status automatically: $e");
-    }
+    });
   }
 
   Future<void> _checkBookingStatusManual() async {
@@ -1715,16 +1637,20 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       if (response.statusCode == 200 && response.data != null) {
         final paymentStatus = response.data['paymentStatus'] as String?;
         final status = response.data['status'] as String?;
-
         if (paymentStatus == 'PAID_IN_ADVANCE') {
-          _handlePaymentSuccess(Map<String, dynamic>.from(response.data));
+          final merged = Map<String, dynamic>.from(_pendingBookingSnapshot ?? {});
+          merged.addAll(Map<String, dynamic>.from(response.data));
+          _handlePaymentSuccess(merged);
         } else if (status == 'CANCELLED') {
           _handlePaymentCancelledOrFailed();
         } else {
-          if (mounted) {
+          // Payment still pending — show pending ticket with trip info
+          if (mounted && _pendingBookingSnapshot != null) {
+            _handlePaymentSuccess(Map<String, dynamic>.from(_pendingBookingSnapshot!));
+          } else if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Le paiement est toujours en cours de traitement. Veuillez finaliser la transaction ou réessayer."),
+                content: Text('Le paiement est en cours de traitement par SenePay. Patientez...'),
                 backgroundColor: Colors.orange,
               ),
             );
@@ -1734,13 +1660,11 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Erreur de vérification : $e"), backgroundColor: Colors.red),
+          SnackBar(content: Text('Erreur de vérification : $e'), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isProcessing = false);
-      }
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
@@ -1764,34 +1688,46 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   }
 
   void _handlePaymentSuccess(Map<String, dynamic> bookingData) {
+    _paymentPollingTimer?.cancel();
     setState(() {
       _isWaitingForPayment = false;
       _activeBookingId = null;
       _checkoutUrl = null;
+      _pendingBookingSnapshot = null;
     });
     if (mounted) {
       Navigator.pop(context);
-      SuccessDialog.show(
+      // Navigate directly to the enriched TicketScreen
+      Navigator.push(
         context,
-        title: "Réservation confirmée !",
-        message: "Votre billet de bus est validé et payé. Bon voyage !",
-        onDismiss: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TicketScreen(bookingData: bookingData),
-            ),
-          );
-        },
+        MaterialPageRoute(
+          builder: (context) => TicketScreen(bookingData: bookingData),
+        ),
+      );
+      // Show a success snackbar
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.white),
+              SizedBox(width: 10),
+              Expanded(child: Text('✅ Réservation confirmée ! Bon voyage !')),
+            ],
+          ),
+          backgroundColor: Colors.green,
+          duration: Duration(seconds: 4),
+        ),
       );
     }
   }
 
   void _handlePaymentCancelledOrFailed({String message = "Paiement non finalisé. La réservation a été annulée."}) {
+    _paymentPollingTimer?.cancel();
     setState(() {
       _isWaitingForPayment = false;
       _activeBookingId = null;
       _checkoutUrl = null;
+      _pendingBookingSnapshot = null;
     });
     if (mounted) {
       Navigator.pop(context);
@@ -1802,10 +1738,13 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
   }
 
   Widget _buildPaymentWaitingScreen(bool isDark) {
+    final snap = _pendingBookingSnapshot;
+    final isPending = snap?['paymentStatus'] == 'PENDING';
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(30),
           topRight: Radius.circular(30),
@@ -1815,80 +1754,137 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Drag handle
           Center(
             child: Container(
-              width: 50,
+              width: 40,
               height: 5,
-              decoration: const BoxDecoration(
-                color: Colors.grey,
-                borderRadius: BorderRadius.all(Radius.circular(10)),
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[400],
+                borderRadius: BorderRadius.circular(10),
               ),
             ),
           ),
-          const SizedBox(height: 30),
-          Center(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const SizedBox(
-                width: 40,
-                height: 40,
+
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const SizedBox(
+                width: 22,
+                height: 22,
                 child: CircularProgressIndicator(
                   color: TranSenColors.primaryGreen,
-                  strokeWidth: 3,
+                  strokeWidth: 2.5,
                 ),
               ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  isPending ? '⏳ Confirmation du paiement en cours...' : '✅ Paiement reçu !',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: isPending ? Colors.orange : Colors.green,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Trip info card
+          if (snap != null) ...[
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF252545) : Colors.grey[50],
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: TranSenColors.primaryGreen.withValues(alpha: 0.3),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Company
+                  if ((snap['companyName'] as String?)?.isNotEmpty == true)
+                    _payWaitRow(Icons.business, 'Compagnie', snap['companyName']),
+                  // Route
+                  _payWaitRow(Icons.route, 'Trajet',
+                      '${snap['departure']} → ${snap['destination']}'),
+                  // Date
+                  if ((snap['scheduledDate'] as String?)?.isNotEmpty == true)
+                    _payWaitRow(Icons.calendar_today, 'Départ', snap['scheduledDate']),
+                  // Seats
+                  _payWaitRow(Icons.event_seat, 'Places',
+                      '${snap['numberOfSeatsBooked']} place(s) — Sièges: ${snap['seatNumbers']?.isEmpty == true ? 'N/A' : snap['seatNumbers']}'),
+                  // Price
+                  _payWaitRow(Icons.payments, 'Montant payé', '${snap['price']} FCFA',
+                      valueColor: Colors.green, bold: true),
+                  // Passenger
+                  _payWaitRow(Icons.person, 'Passager', snap['passengerName'] ?? ''),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // Info text
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.orange, size: 18),
+                SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Votre code QR d\'embarquement sera disponible dès que le paiement est confirmé par SenePay.',
+                    style: TextStyle(color: Colors.orange, fontSize: 12),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 24),
-          const Text(
-            "Paiement en cours...",
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            "Veuillez finaliser le paiement sur l'interface SenePay. Votre réservation sera automatiquement validée après confirmation.",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey, fontSize: 14),
-          ),
-          const SizedBox(height: 32),
-          if (_checkoutUrl != null && _checkoutUrl!.isNotEmpty) ...[
+          const SizedBox(height: 16),
+
+          // Reopen payment link
+          if (_checkoutUrl != null && _checkoutUrl!.isNotEmpty)
             ElevatedButton.icon(
               onPressed: () async {
                 final uri = Uri.parse(_checkoutUrl!);
                 try {
                   await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } catch (e) {
-                  if (!mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Impossible d'ouvrir le lien : $e"), backgroundColor: Colors.orange),
-                  );
+                } catch (_) {
+                  await launchUrl(uri, mode: LaunchMode.platformDefault);
                 }
               },
               icon: const Icon(Icons.open_in_new, size: 18),
-              label: const Text("RÉOUVRIR LE LIEN DE PAIEMENT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              label: const Text('RÉOUVRIR LE LIEN DE PAIEMENT',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blueAccent,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                elevation: 4,
               ),
             ),
-            const SizedBox(height: 12),
-          ],
+          const SizedBox(height: 10),
+
+          // Manual check
           ElevatedButton(
             onPressed: _isProcessing ? null : _checkBookingStatusManual,
             style: ElevatedButton.styleFrom(
               backgroundColor: TranSenColors.primaryGreen,
               foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-              elevation: 4,
             ),
             child: _isProcessing
                 ? const SizedBox(
@@ -1896,16 +1892,45 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
                     height: 20,
                     child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                   )
-                : const Text("VÉRIFIER LE STATUT", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                : const Text('VOIR MON BILLET / VÉRIFIER',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
+
+          // Cancel
           TextButton(
             onPressed: _isProcessing ? null : _cancelBookingManually,
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(vertical: 16),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
-            child: const Text("ANNULER LA RÉSERVATION", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            child: const Text('ANNULER LA RÉSERVATION',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _payWaitRow(IconData icon, String label, String value,
+      {Color? valueColor, bool bold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text('$label : ', style: const TextStyle(color: Colors.grey, fontSize: 12)),
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: bold ? FontWeight.bold : FontWeight.w500,
+                color: valueColor,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
