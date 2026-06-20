@@ -421,20 +421,42 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     return TimeOfDay(hour: hour, minute: roundedMinute);
   }
 
+  /// Normalizes any time/datetime string to a clean "HH:mm" format.
+  /// Accepts: "2026-06-21T15:00:00", "2026-06-21T15:00", "2026-06-21T15", "15:00", "15"
+  String _normalizeToHHmm(String raw) {
+    try {
+      if (raw.contains('T')) {
+        // ISO-8601 format: extract the time part after 'T'
+        final timePart = raw.split('T').last; // e.g. "15:00:00" or "15:00" or "15"
+        final segments = timePart.split(':');
+        final hour = int.parse(segments[0].substring(0, segments[0].length > 2 ? 2 : segments[0].length));
+        final min = segments.length > 1 ? int.parse(segments[1].substring(0, segments[1].length > 2 ? 2 : segments[1].length)) : 0;
+        return '${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+      } else if (raw.contains(':')) {
+        // Already "HH:mm" or "HH:mm:ss"
+        final segments = raw.split(':');
+        final hour = int.parse(segments[0].trim());
+        final min = int.parse(segments[1].trim());
+        return '${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}';
+      } else {
+        // Plain hour string like "15"
+        final hour = int.parse(raw.trim());
+        return '${hour.toString().padLeft(2, '0')}:00';
+      }
+    } catch (_) {
+      return raw; // Return as-is if parsing fails
+    }
+  }
+
+  /// Returns the scheduled date+time as "dd/MM/yyyy HH:mm" string.
+  /// _selectedFixedTime is guaranteed to be "HH:mm" after normalization.
   String _getFixedTimeDateString() {
     if (_selectedFixedTime == null) return "";
     try {
-      // scheduledTime can be ISO datetime "2026-06-21T15:00:00" or plain "HH:MM"
-      if (_selectedFixedTime!.contains('T')) {
-        final dt = DateTime.parse(_selectedFixedTime!);
-        return "${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-      }
-      // Fallback: plain "HH:MM" format
       final parts = _selectedFixedTime!.split(':');
       final hour = int.parse(parts[0]);
       final min = parts.length > 1 ? int.parse(parts[1]) : 0;
-      final date = DateTime(_selectedDate.year, _selectedDate.month, _selectedDate.day, hour, min);
-      return "${date.day}/${date.month}/${date.year} ${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}";
+      return "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${hour.toString().padLeft(2, '0')}:${min.toString().padLeft(2, '0')}";
     } catch (e) {
       debugPrint(">>> _getFixedTimeDateString error: $e (value: $_selectedFixedTime)");
       return "";
@@ -1069,23 +1091,16 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       runSpacing: 10,
       children: _scheduledTrips.map((trip) {
         final rawTime = trip['scheduledTime'] ?? "00:00";
-        // Format display: extract HH:mm from ISO string "2026-06-21T15:00:00" or keep plain "HH:MM"
-        String displayTime = rawTime;
-        if (rawTime.contains('T')) {
-          try {
-            final dt = DateTime.parse(rawTime);
-            displayTime = "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-          } catch (_) {
-            displayTime = rawTime.split('T').last.substring(0, 5);
-          }
-        }
+        // Normalize rawTime to clean "HH:mm" string immediately, regardless of format
+        String displayTime = _normalizeToHHmm(rawTime);
         final isSelected = _selectedScheduledTrip?['id'] == trip['id'];
         return InkWell(
           onTap: () {
             HapticFeedback.lightImpact();
             setState(() {
               _selectedScheduledTrip = trip;
-              _selectedFixedTime = rawTime;
+              // Always store as clean "HH:mm" — prevents ALL FormatException downstream
+              _selectedFixedTime = displayTime;
               _selectedSeatIndexes = [];
               _occupiedSeats = [];
             });
@@ -1173,7 +1188,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               const Divider(height: 20),
               _buildSummaryRow(
                 "Date & Heure",
-                _selectedRoutingType == 'COMPANY_ONLY' ? "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} à $_selectedFixedTime" : _getDepartureTimeString(),
+                _selectedRoutingType == 'COMPANY_ONLY' ? _getFixedTimeDateString() : _getDepartureTimeString(),
                 Icons.calendar_today,
               ),
               const Divider(height: 20),
