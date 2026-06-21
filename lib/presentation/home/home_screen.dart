@@ -168,7 +168,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
         while (retries < maxRetries) {
           try {
-            response = await ApiClient().dio.get('/api/bookings/$bookingId');
+            final url = bookingId.startsWith('TKT-') ? '/api/bookings/by-reference/$bookingId' : '/api/bookings/$bookingId';
+            response = await ApiClient().dio.get(url);
             if (response.statusCode == 200 && response.data != null) {
               final paymentStatus = response.data['paymentStatus'] as String?;
               if (paymentStatus == 'PAID_IN_ADVANCE') {
@@ -929,14 +930,23 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
       Uint8List pngBytes = byteData!.buffer.asUint8List();
 
       // 2. Sauvegarde temporaire
-      final directory = await getTemporaryDirectory();
-      final imagePath = await File('${directory.path}/recu_transen_${widget.trip.id.substring(0,8)}.png').create();
-      await imagePath.writeAsBytes(pngBytes);
+      XFile xFile;
+      final fileName = 'recu_transen_${widget.trip.id.substring(0,8)}.png';
+      if (kIsWeb) {
+        xFile = XFile.fromData(pngBytes, mimeType: 'image/png', name: fileName);
+      } else {
+        final directory = await getTemporaryDirectory();
+        final imagePath = await File('${directory.path}/$fileName').create();
+        await imagePath.writeAsBytes(pngBytes);
+        xFile = XFile(imagePath.path);
+      }
 
       // 3. Partage
-      await Share.shareXFiles(
-        [XFile(imagePath.path)],
-        text: 'Reçu de trajet TranSen - ${widget.trip.price.toInt()} FCFA',
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [xFile],
+          text: 'Reçu de trajet TranSen - ${widget.trip.price.toInt()} FCFA',
+        ),
       );
     } catch (e) {
       debugPrint("Erreur partage reçu: $e");

@@ -3,6 +3,7 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -66,12 +67,20 @@ class _TicketScreenState extends State<TicketScreen>
       final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
       if (byteData == null) return;
       final bytes = byteData.buffer.asUint8List();
-      final dir = await getTemporaryDirectory();
-      final file = File('${dir.path}/billet_transen.png');
-      await file.writeAsBytes(bytes);
+
+      XFile xFile;
+      if (kIsWeb) {
+        xFile = XFile.fromData(bytes, mimeType: 'image/png', name: 'billet_transen.png');
+      } else {
+        final dir = await getTemporaryDirectory();
+        final file = File('${dir.path}/billet_transen.png');
+        await file.writeAsBytes(bytes);
+        xFile = XFile(file.path);
+      }
+
       await SharePlus.instance.share(
         ShareParams(
-          files: [XFile(file.path)],
+          files: [xFile],
           text: 'Mon billet TranSen — Code: $_boardingCode',
         ),
       );
