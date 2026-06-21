@@ -55,8 +55,7 @@ class _TicketScreenState extends State<TicketScreen>
   String get _boardingCode =>
       widget.bookingData['boardingCode'] as String? ?? 'TX-PENDING';
 
-  String get _qrData =>
-      _isPaid ? _boardingCode : widget.bookingData['id']?.toString() ?? 'PENDING';
+  String get _qrData => _boardingCode;
 
   Future<void> _shareTicket() async {
     try {
