@@ -255,7 +255,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
 
   Future<void> _openMyTicket(TripModel trip) async {
     try {
-      final response = await ApiClient().dio.get('/api/bookings/my-ticket?tripId=${trip.id}');
+      final response = await ApiClient().dio.get('/api/bookings/${trip.id}');
       if (response.statusCode == 200 && response.data != null) {
         if (!mounted) return;
         Navigator.push(

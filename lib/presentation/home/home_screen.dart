@@ -552,6 +552,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   Widget _buildHistoryItem(BuildContext context, TripModel trip) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bool isBusBilling = trip.category == 'BUS_COMPANY';
     return InkWell(
       onTap: () {
         HapticFeedback.lightImpact();
@@ -562,53 +563,80 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         decoration: BoxDecoration(
           border: Border(bottom: BorderSide(color: isDark ? Colors.white10 : Colors.grey[200]!, width: 0.5)),
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: trip.category == 'BUS_COMPANY'
-                    ? Colors.orange.withValues(alpha: 0.1)
-                    : trip.type.contains('Yobanté')
-                        ? Colors.blue.withValues(alpha: 0.1)
-                        : TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(
-                trip.category == 'BUS_COMPANY'
-                    ? Icons.directions_bus
-                    : trip.type.contains('Yobanté')
-                        ? Icons.inventory_2
-                        : Icons.directions_car,
-                size: 20,
-                color: trip.category == 'BUS_COMPANY'
-                    ? Colors.orange
-                    : trip.type.contains('Yobanté')
-                        ? Colors.blue
-                        : TranSenColors.primaryGreen,
-              ),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isBusBilling
+                        ? Colors.orange.withValues(alpha: 0.1)
+                        : trip.type.contains('Yobanté')
+                            ? Colors.blue.withValues(alpha: 0.1)
+                            : TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isBusBilling
+                        ? Icons.directions_bus
+                        : trip.type.contains('Yobanté')
+                            ? Icons.inventory_2
+                            : Icons.directions_car,
+                    size: 20,
+                    color: isBusBilling
+                        ? Colors.orange
+                        : trip.type.contains('Yobanté')
+                            ? Colors.blue
+                            : TranSenColors.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(trip.destination, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
+                      Text(
+                        "${trip.createdAt.day} ${_getMonth(trip.createdAt.month)}, ${trip.createdAt.hour}:${trip.createdAt.minute.toString().padLeft(2, '0')}",
+                        style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  "${trip.price.toInt()} F",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 15,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 15),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            if (isBusBilling) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(trip.destination, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14), overflow: TextOverflow.ellipsis),
-                  Text(
-                    "${trip.createdAt.day} ${_getMonth(trip.createdAt.month)}, ${trip.createdAt.hour}:${trip.createdAt.minute.toString().padLeft(2, '0')}",
-                    style: const TextStyle(color: Colors.grey, fontSize: 11),
+                  OutlinedButton.icon(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      _showTripDetails(context, trip);
+                    },
+                    icon: const Icon(Icons.qr_code, size: 16),
+                    label: const Text('MON BILLET',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.blue,
+                      side: const BorderSide(color: Colors.blue),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    ),
                   ),
                 ],
               ),
-            ),
-            Text(
-              "${trip.price.toInt()} F",
-              style: TextStyle(
-                fontWeight: FontWeight.w900,
-                fontSize: 15,
-                color: isDark ? Colors.white : Colors.black87,
-              ),
-            ),
+            ],
           ],
         ),
       ),
