@@ -17,8 +17,8 @@ class SenePayService {
   }) async {
     try {
       const String apiBase = "https://api.transen.org";
-      final returnUrl = kIsWeb ? "https://app.transen.org/payment/success" : "$apiBase/payment/success";
-      final failUrl = kIsWeb ? "https://app.transen.org/payment/cancel" : "$apiBase/payment/cancel";
+      final returnUrl = kIsWeb ? "https://app.transen.org/payment/success?bookingId=$orderId" : "$apiBase/payment/success";
+      final failUrl = kIsWeb ? "https://app.transen.org/payment/cancel?bookingId=$orderId" : "$apiBase/payment/cancel";
 
       final bodyMap = {
         "amount": amount.toInt(),

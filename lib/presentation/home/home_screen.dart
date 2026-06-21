@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:ui' as ui;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
@@ -68,6 +69,147 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   PointAnnotationManager? _annotationManager;
   double? _userLng;
   double? _userLat;
+  static bool _webRedirectChecked = false;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kIsWeb && !_webRedirectChecked) {
+      _webRedirectChecked = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkWebPaymentRedirect();
+      });
+    }
+  }
+
+  void _checkWebPaymentRedirect() async {
+    final uri = Uri.base;
+    if (uri.path.contains('/payment/success') || uri.path.contains('/payment/cancel')) {
+      final bookingId = uri.queryParameters['bookingId'];
+      if (bookingId == null || bookingId.isEmpty) return;
+
+      if (uri.path.contains('/payment/cancel')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Paiement annulé. La réservation a été annulée."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // If it is a wallet deposit (starts with D-)
+      if (bookingId.startsWith('D-')) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                ),
+                SizedBox(width: 12),
+                Text("Vérification de votre dépôt..."),
+              ],
+            ),
+            backgroundColor: TranSenColors.primaryGreen,
+            duration: Duration(seconds: 2),
+          ),
+        );
+
+        try {
+          await ref.read(walletProvider.notifier).refresh();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("✅ Rechargement de votre portefeuille réussi !"),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text("Erreur de mise à jour du portefeuille : $e"),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+        return;
+      }
+
+      // Success flow for ticket bookings
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Text("Vérification de votre paiement..."),
+            ],
+          ),
+          backgroundColor: TranSenColors.primaryGreen,
+          duration: Duration(seconds: 3),
+        ),
+      );
+
+      try {
+        final response = await ApiClient().dio.get('/api/bookings/$bookingId');
+        if (response.statusCode == 200 && response.data != null) {
+          final paymentStatus = response.data['paymentStatus'] as String?;
+          if (paymentStatus == 'PAID_IN_ADVANCE') {
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TicketScreen(bookingData: response.data),
+                ),
+              );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      Icon(Icons.check_circle, color: Colors.white),
+                      SizedBox(width: 10),
+                      Expanded(child: Text('✅ Réservation confirmée ! Bon voyage !')),
+                    ],
+                  ),
+                  backgroundColor: Colors.green,
+                  duration: Duration(seconds: 4),
+                ),
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Le paiement n'a pas encore été validé par SenePay."),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+          }
+        }
+      } catch (e) {
+        debugPrint("Error fetching booking on web redirect: $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Erreur lors de la vérification : $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
 
   void _loadIsochrones(double lng, double lat) async {
     try {
@@ -425,13 +567,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: trip.type.contains('Yobanté') ? Colors.blue.withValues(alpha: 0.1) : TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                color: trip.category == 'BUS_COMPANY'
+                    ? Colors.orange.withValues(alpha: 0.1)
+                    : trip.type.contains('Yobanté')
+                        ? Colors.blue.withValues(alpha: 0.1)
+                        : TranSenColors.primaryGreen.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
-                trip.type.contains('Yobanté') ? Icons.inventory_2 : Icons.directions_car,
+                trip.category == 'BUS_COMPANY'
+                    ? Icons.directions_bus
+                    : trip.type.contains('Yobanté')
+                        ? Icons.inventory_2
+                        : Icons.directions_car,
                 size: 20,
-                color: trip.type.contains('Yobanté') ? Colors.blue : TranSenColors.primaryGreen,
+                color: trip.category == 'BUS_COMPANY'
+                    ? Colors.orange
+                    : trip.type.contains('Yobanté')
+                        ? Colors.blue
+                        : TranSenColors.primaryGreen,
               ),
             ),
             const SizedBox(width: 15),
@@ -494,8 +648,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return months[month - 1];
   }
 
-  void _showTripDetails(BuildContext context, TripModel trip) {
+  void _showTripDetails(BuildContext context, TripModel trip) async {
     HapticFeedback.selectionClick();
+
+    if (trip.category == 'BUS_COMPANY') {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(color: TranSenColors.primaryGreen),
+        ),
+      );
+
+      try {
+        final response = await ApiClient().dio.get('/api/bookings/${trip.id}');
+        if (context.mounted) Navigator.pop(context); // Close loading indicator
+
+        if (response.statusCode == 200 && response.data != null) {
+          if (context.mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TicketScreen(bookingData: response.data),
+              ),
+            );
+          }
+        } else {
+          throw Exception("Billet introuvable");
+        }
+      } catch (e) {
+        if (context.mounted) {
+          Navigator.pop(context); // Close loading indicator
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text("Impossible de charger les détails du billet : $e"),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
