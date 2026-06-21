@@ -161,40 +161,61 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       );
 
       try {
-        final response = await ApiClient().dio.get('/api/bookings/$bookingId');
-        if (response.statusCode == 200 && response.data != null) {
-          final paymentStatus = response.data['paymentStatus'] as String?;
-          if (paymentStatus == 'PAID_IN_ADVANCE') {
-            if (mounted) {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => TicketScreen(bookingData: response.data),
-                ),
-              );
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Row(
-                    children: [
-                      Icon(Icons.check_circle, color: Colors.white),
-                      SizedBox(width: 10),
-                      Expanded(child: Text('✅ Réservation confirmée ! Bon voyage !')),
-                    ],
-                  ),
-                  backgroundColor: Colors.green,
-                  duration: Duration(seconds: 4),
-                ),
-              );
+        int retries = 0;
+        const maxRetries = 5;
+        dynamic response;
+        bool isPaid = false;
+
+        while (retries < maxRetries) {
+          try {
+            response = await ApiClient().dio.get('/api/bookings/$bookingId');
+            if (response.statusCode == 200 && response.data != null) {
+              final paymentStatus = response.data['paymentStatus'] as String?;
+              if (paymentStatus == 'PAID_IN_ADVANCE') {
+                isPaid = true;
+                break;
+              }
             }
-          } else {
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Le paiement n'a pas encore été validé par SenePay."),
-                  backgroundColor: Colors.orange,
+          } catch (e) {
+            debugPrint("Tentative de vérification $retries échouée: $e");
+          }
+          
+          retries++;
+          if (!isPaid && retries < maxRetries) {
+            await Future.delayed(const Duration(seconds: 3));
+          }
+        }
+
+        if (isPaid && response != null && response.data != null) {
+          if (mounted) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => TicketScreen(bookingData: response.data),
+              ),
+            );
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Row(
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.white),
+                    SizedBox(width: 10),
+                    Expanded(child: Text('✅ Réservation confirmée ! Bon voyage !')),
+                  ],
                 ),
-              );
-            }
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 4),
+              ),
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Le paiement est en cours de traitement par SenePay. Veuillez vérifier vos billets dans un instant."),
+                backgroundColor: Colors.orange,
+              ),
+            );
           }
         }
       } catch (e) {
