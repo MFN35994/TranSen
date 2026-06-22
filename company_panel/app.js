@@ -1930,6 +1930,16 @@ window.loadSchedulePageData = async function() {
     }
 };
 
+window.toggleRecurrenceFields = function() {
+    const typeSelect = document.getElementById('schRecurrenceType');
+    if (!typeSelect) return;
+    const type = typeSelect.value;
+    const dailyPanel = document.getElementById('recurrenceDailyPanel');
+    const weeklyPanel = document.getElementById('recurrenceWeeklyPanel');
+    if (dailyPanel) dailyPanel.style.display = (type === 'DAILY') ? 'block' : 'none';
+    if (weeklyPanel) weeklyPanel.style.display = (type === 'WEEKLY') ? 'block' : 'none';
+};
+
 document.getElementById('scheduleTripForm').onsubmit = async (e) => {
     e.preventDefault();
     if (!currentCompanyId) return;
@@ -1940,7 +1950,6 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
     const scheduledTime = document.getElementById('schScheduledTime').value; // AAAA-MM-JJTHH:MM
     const price = document.getElementById('schPrice').value;
     const totalSeats = document.getElementById('schTotalSeats').value;
-    const recurrenceDays = document.getElementById('schRecurrenceDays').value;
 
     const btn = document.getElementById('submitScheduleBtn');
     const originalText = btn.innerHTML;
@@ -1949,6 +1958,48 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
 
     try {
         const isoTime = scheduledTime + ":00";
+        const recurrenceType = document.getElementById('schRecurrenceType').value;
+        const times = [];
+
+        if (recurrenceType === 'UNIQUE') {
+            times.push(isoTime);
+        } else if (recurrenceType === 'DAILY') {
+            const start = new Date(scheduledTime);
+            const days = parseInt(document.getElementById('schRecurrenceDays').value) || 1;
+            for (let i = 0; i < days; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                const isoStr = d.getFullYear() + '-' + 
+                    String(d.getMonth()+1).padStart(2, '0') + '-' + 
+                    String(d.getDate()).padStart(2, '0') + 'T' + 
+                    String(d.getHours()).padStart(2, '0') + ':' + 
+                    String(d.getMinutes()).padStart(2, '0') + ':00';
+                times.push(isoStr);
+            }
+        } else if (recurrenceType === 'WEEKLY') {
+            const selectedDays = Array.from(document.querySelectorAll('input[name="schWeeklyDays"]:checked')).map(el => parseInt(el.value));
+            if (selectedDays.length === 0) {
+                alert("Veuillez sélectionner au moins un jour de la semaine pour la récurrence hebdomadaire.");
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+                return;
+            }
+            const start = new Date(scheduledTime);
+            const weeks = parseInt(document.getElementById('schRecurrenceWeeks').value) || 1;
+            for (let i = 0; i < weeks * 7; i++) {
+                const d = new Date(start);
+                d.setDate(start.getDate() + i);
+                if (selectedDays.includes(d.getDay())) {
+                    const isoStr = d.getFullYear() + '-' + 
+                        String(d.getMonth()+1).padStart(2, '0') + '-' + 
+                        String(d.getDate()).padStart(2, '0') + 'T' + 
+                        String(d.getHours()).padStart(2, '0') + ':' + 
+                        String(d.getMinutes()).padStart(2, '0') + ':00';
+                    times.push(isoStr);
+                }
+            }
+        }
+
         const response = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/trips/schedule?companyId=${currentCompanyId}`, {
             method: 'POST',
             headers: {
@@ -1959,10 +2010,9 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
                 departure: departure,
                 destination: destination,
                 driverId: driverId,
-                scheduledTime: isoTime,
                 price: parseFloat(price),
                 totalSeats: parseInt(totalSeats),
-                recurrenceDays: parseInt(recurrenceDays)
+                scheduledTimes: times
             })
         });
 
@@ -1982,6 +2032,7 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
             }
 
             document.getElementById('scheduleTripForm').reset();
+            if (window.toggleRecurrenceFields) window.toggleRecurrenceFields();
             loadDashboardData();
             const tripsLink = document.querySelector('#mainNav a[data-section="trips"]');
             if (tripsLink) tripsLink.click();

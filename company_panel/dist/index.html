@@ -30,7 +30,7 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/introjs.min.css">
     <script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/intro.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-  <script type="module" crossorigin src="/assets/index-D6_cuPRo.js"></script>
+  <script type="module" crossorigin src="/assets/index-B5t1ICma.js"></script>
   <link rel="stylesheet" crossorigin href="/assets/index-DnNrTpWJ.css">
 </head>
 <body>
@@ -1054,6 +1054,31 @@
                     #section-profile .switch-toggle input:checked + .switch-slider:before {
                         transform: translateX(20px);
                     }
+                    .weekday-pill {
+                        cursor: pointer;
+                        display: inline-block;
+                    }
+                    .weekday-pill input {
+                        display: none;
+                    }
+                    .weekday-pill span {
+                        display: inline-block;
+                        padding: 8px 16px;
+                        border-radius: 20px;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid var(--glass-border);
+                        color: var(--text-dim);
+                        font-weight: 600;
+                        font-size: 0.78rem;
+                        transition: all 0.2s ease;
+                        user-select: none;
+                    }
+                    .weekday-pill input:checked + span {
+                        background: var(--primary);
+                        border-color: var(--primary);
+                        color: #fff;
+                        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+                    }
                     </style>
 
                     <!-- App Quick Stats or Summary stats -->
@@ -1695,10 +1720,50 @@
                                     </div>
                                 </div>
                                 <div class="input-group" style="margin-bottom: 0;">
-                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Récurrence (Jours consécutifs)</label>
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Type de Récurrence</label>
                                     <div style="position: relative;">
                                         <i class="fas fa-arrows-spin" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
-                                        <input type="number" id="schRecurrenceDays" placeholder="Ex: 1" min="1" max="14" value="1" style="padding-left: 40px; width: 100%;" required>
+                                        <select id="schRecurrenceType" style="padding-left: 40px; width: 100%;" onchange="window.toggleRecurrenceFields()">
+                                            <option value="UNIQUE">Unique (Pas de récurrence)</option>
+                                            <option value="DAILY">Quotidien (Jours consécutifs)</option>
+                                            <option value="WEEKLY">Jours spécifiques de la semaine</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- CONDITIONAL RECURRENCE PANELS -->
+                            <div id="recurrenceDailyPanel" style="display: none; margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px;">
+                                <div class="input-group" style="margin-bottom: 0; max-width: 320px;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nombre de jours consécutifs</label>
+                                    <div style="position: relative;">
+                                        <i class="fas fa-calendar-day" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                        <input type="number" id="schRecurrenceDays" placeholder="Ex: 5" min="1" max="14" value="1" style="padding-left: 40px; width: 100%;">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="recurrenceWeeklyPanel" style="display: none; margin-top: 15px; padding: 15px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--glass-border); border-radius: 12px;">
+                                <label style="display: block; margin-bottom: 12px; font-weight: 600;">Sélectionnez les jours de passage</label>
+                                <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 15px;">
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="1"><span>Lun</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="2"><span>Mar</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="3"><span>Mer</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="4"><span>Jeu</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="5"><span>Ven</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="6"><span>Sam</span></label>
+                                    <label class="weekday-pill"><input type="checkbox" name="schWeeklyDays" value="0"><span>Dim</span></label>
+                                </div>
+                                <div class="input-group" style="margin-bottom: 0; max-width: 320px;">
+                                    <label style="display: block; margin-bottom: 8px; font-weight: 600;">Nombre de semaines de récurrence</label>
+                                    <div style="position: relative;">
+                                        <i class="fas fa-calendar-week" style="position: absolute; left: 15px; top: 15px; color: var(--text-dim);"></i>
+                                        <select id="schRecurrenceWeeks" style="padding-left: 40px; width: 100%;">
+                                            <option value="1">1 Semaine</option>
+                                            <option value="2">2 Semaines</option>
+                                            <option value="3">3 Semaines</option>
+                                            <option value="4">4 Semaines (1 mois)</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>
