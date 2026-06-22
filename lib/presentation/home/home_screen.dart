@@ -7,6 +7,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -87,6 +88,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (uri.path.contains('/payment/success') || uri.path.contains('/payment/cancel')) {
       final bookingId = uri.queryParameters['bookingId'];
       if (bookingId == null || bookingId.isEmpty) return;
+
+      // Check if we already processed this booking ID to avoid infinite loop on page refresh or relaunch
+      final prefs = await SharedPreferences.getInstance();
+      final alreadyChecked = prefs.getBool('checked_booking_$bookingId') ?? false;
+      if (alreadyChecked) return;
+
+      // Mark as checked immediately
+      await prefs.setBool('checked_booking_$bookingId', true);
+
+      // Clean URL parameters immediately on Web to avoid loop check on browser page refresh
+      if (kIsWeb) {
+        SystemNavigator.routeInformationUpdated(uri: Uri.parse('/'));
+      }
 
       if (uri.path.contains('/payment/cancel')) {
         ScaffoldMessenger.of(context).showSnackBar(
