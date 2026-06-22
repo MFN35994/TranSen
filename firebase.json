@@ -38,7 +38,7 @@
     },
     {
       "target": "company",
-      "public": "company_panel",
+      "public": "company_panel/dist",
       "ignore": [
         "firebase.json",
         "**/.*",

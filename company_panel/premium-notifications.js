@@ -17,14 +17,14 @@
             padding: 22px 25px;
             border-radius: 24px;
             z-index: 999999; /* Set extremely high to override modals/overlays */
-            background: rgba(15, 23, 42, 0.85) !important; /* Premium dark glassmorphism */
+            background: #FFFFFF !important; /* Premium light emerald theme white */
             backdrop-filter: blur(16px) !important;
             -webkit-backdrop-filter: blur(16px) !important;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+            box-shadow: 0 20px 50px rgba(6, 78, 59, 0.12), 0 0 0 1px rgba(16, 185, 129, 0.1) !important;
             transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
             opacity: 0;
             font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
-            color: white !important;
+            color: #0F172A !important;
         }
 
         .confirm-drawer.show {
@@ -65,14 +65,14 @@
         .confirm-text h4 {
             font-size: 1.1rem !important;
             font-weight: 700 !important;
-            color: white !important;
+            color: #0F172A !important;
             margin: 0 0 4px 0 !important;
             line-height: 1.2 !important;
         }
 
         .confirm-text p {
             font-size: 0.88rem !important;
-            color: #94a3b8 !important; /* Dim slate */
+            color: #475569 !important; /* Dim slate */
             margin: 0 !important;
             line-height: 1.4 !important;
             word-wrap: break-word !important;
@@ -86,10 +86,10 @@
 
         .confirm-btn-cancel {
             padding: 10px 18px !important;
-            background: rgba(255, 255, 255, 0.04) !important;
-            border: 1px solid rgba(255, 255, 255, 0.08) !important;
+            background: #f1f5f9 !important;
+            border: 1px solid #cbd5e1 !important;
             border-radius: 12px !important;
-            color: #94a3b8 !important;
+            color: #475569 !important;
             font-size: 0.85rem !important;
             font-weight: 600 !important;
             cursor: pointer !important;
@@ -97,8 +97,8 @@
         }
 
         .confirm-btn-cancel:hover {
-            background: rgba(255, 255, 255, 0.08) !important;
-            color: white !important;
+            background: #e2e8f0 !important;
+            color: #0f172a !important;
         }
 
         .confirm-btn-yes {

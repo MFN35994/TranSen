@@ -1,0 +1,10 @@
+{
+  "name": "TranSen B2B",
+  "description": "Console d'administration et de gestion de flotte TranSen Compagnie",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
