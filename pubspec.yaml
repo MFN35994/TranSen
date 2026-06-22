@@ -2,7 +2,7 @@ name: transen
 description: "A new Flutter project for transport and delivery."
 publish_to: 'none'
 
-version: 2026.6.21+2325
+version: 2026.6.21+0008
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
