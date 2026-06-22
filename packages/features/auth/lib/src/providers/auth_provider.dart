@@ -92,7 +92,7 @@ class AuthNotifier extends Notifier<AuthState?> {
       if (doc.exists && doc.data() != null) {
         final data = doc.data()!;
         final role = data['role'] ?? state?.role ?? 'none';
-        final name = data['name'] ?? data['firstName'];
+        final name = data['name'] ?? data['firstName'] ?? data['fullName'];
         final phone = data['phone'] ?? state?.phone;
         final points = data['loyaltyPoints'] ?? 0;
         state = state?.copyWith(role: role, name: name, phone: phone, loyaltyPoints: points, isLoading: false);
@@ -166,10 +166,28 @@ class AuthNotifier extends Notifier<AuthState?> {
           ? "$firstName $lastName"
           : null;
       
+      // 1. Mettre à jour sur le backend REST (met à jour Postgres et synchronise Firestore)
+      try {
+        final Map<String, dynamic> restUpdates = {};
+        if (name != null) restUpdates['fullName'] = name;
+        if (firstName != null) restUpdates['firstName'] = firstName;
+        if (lastName != null) restUpdates['lastName'] = lastName;
+        if (phone != null) restUpdates['phone'] = phone.replaceAll(' ', '');
+        if (email != null) restUpdates['email'] = email;
+
+        await ApiClient().dio.put('/api/users/me', data: restUpdates);
+      } catch (restErr) {
+        debugPrint("Warning: REST profile update failed: $restErr");
+      }
+
+      // 2. Écrire aussi localement dans Firestore par sécurité
       final updates = <String, dynamic>{
         'lastActive': FieldValue.serverTimestamp(),
       };
-      if (name != null) updates['name'] = name;
+      if (name != null) {
+        updates['name'] = name;
+        updates['fullName'] = name;
+      }
       if (firstName != null) updates['firstName'] = firstName;
       if (lastName != null) updates['lastName'] = lastName;
       if (phone != null) updates['phone'] = phone.replaceAll(' ', '');

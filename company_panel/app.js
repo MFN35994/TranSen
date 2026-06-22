@@ -961,9 +961,51 @@ async function loadDashboardData() {
         // Initialize Mapbox with active drivers
         setupMapbox(drivers);
 
-        // 3. Load Trips & Search and Filter setup
         const trips = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips?companyId=${currentCompanyId}`);
         window.loadedTrips = trips; // Cache globally for real-time filters
+
+        // Update timelineTrips dynamically from active trips
+        const activeTrips = trips.filter(t => t.status === 'PENDING' || t.status === 'ACCEPTED' || t.status === 'IN_PROGRESS');
+        window.timelineTrips = activeTrips.map(t => {
+            let timeStr = "08:00";
+            if (t.scheduledTime) {
+                try {
+                    const parts = t.scheduledTime.split('T');
+                    if (parts.length > 1) {
+                        timeStr = parts[1].substring(0, 5);
+                    } else {
+                        const spaceParts = t.scheduledTime.split(' ');
+                        if (spaceParts.length > 1) {
+                            timeStr = spaceParts[1].substring(0, 5);
+                        }
+                    }
+                } catch(e) {}
+            }
+            return {
+                id: t.id,
+                title: `${t.departure} ➔ ${t.destination}`,
+                time: timeStr,
+                route: `${t.departure} vers ${t.destination}`,
+                assignedDriver: t.driverName || "Non assigné",
+                cost: `${t.price} F`
+            };
+        });
+
+        // Update statistics indicators for company fleet
+        const totalTrips = trips.length;
+        const activeTripsCount = activeTrips.length;
+        const completedTrips = trips.filter(t => t.status === 'COMPLETED').length;
+        const totalBookedSeats = trips.reduce((acc, t) => acc + ((t.totalSeats || 0) - (t.availableSeats || 0)), 0);
+        const totalCapacity = trips.reduce((acc, t) => acc + (t.totalSeats || 0), 0);
+
+        const totalCountEl = document.getElementById('tripsStatTotalCount');
+        if (totalCountEl) totalCountEl.innerText = `${activeTripsCount} / ${totalTrips}`;
+
+        const completedCountEl = document.getElementById('tripsStatCompletedCount');
+        if (completedCountEl) completedCountEl.innerText = `${completedTrips}`;
+
+        const passengersCountEl = document.getElementById('tripsStatPassengersCount');
+        if (passengersCountEl) passengersCountEl.innerText = `${totalBookedSeats} / ${totalCapacity}`;
 
         const liveTbody = document.getElementById('liveTripsTableBody');
         liveTbody.innerHTML = "";
@@ -3436,7 +3478,7 @@ window.handleTimelineDragLeave = function(event) {
     if (slot) slot.classList.remove('dragover');
 };
 
-window.handleTimelineDrop = function(event, tripId) {
+window.handleTimelineDrop = async function(event, tripId) {
     event.preventDefault();
     const slot = event.currentTarget.closest('.timeline-trip-slot');
     if (slot) slot.classList.remove('dragover');
@@ -3444,34 +3486,46 @@ window.handleTimelineDrop = function(event, tripId) {
     const driverName = event.dataTransfer.getData('text/plain');
     if (!driverName) return;
 
-    const trip = window.timelineTrips.find(t => t.id === tripId);
-    if (trip) {
-        const oldDriver = trip.assignedDriver;
-        trip.assignedDriver = driverName;
+    const driverObj = (window.loadedDriversCache || []).find(d => d.name === driverName);
+    if (!driverObj) {
+        alert("Chauffeur introuvable.");
+        return;
+    }
+
+    try {
+        const response = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips/${tripId}/assign?driverId=${driverObj.id}`, {
+            method: 'POST'
+        });
+        if (!response.ok && response.status !== 200) {
+            const errData = await response.json();
+            throw new Error(errData.error || "Erreur lors de l'attribution");
+        }
 
         Toastify({
-            text: `🎯 Planning : ${driverName} réassigné à ${trip.title}`,
+            text: `🎯 Planning : ${driverName} réassigné à la course !`,
             duration: 5000,
             gravity: "top",
             position: "right",
             style: {
-                background: "linear-gradient(to right, #1A73E8, #3B82F6)",
+                background: "linear-gradient(to right, #10B981, #059669)",
                 fontFamily: "Outfit, sans-serif",
                 borderRadius: "8px"
             }
         }).showToast();
 
-        // Trigger automated SMS if active
-        try {
-            const drv = (window.loadedDriversCache || []).find(d => d.name === driverName);
-            if (drv && window.sendSmsAlertIfEnabled) {
-                window.sendSmsAlertIfEnabled(drv.phone, drv.name, trip.title, "35 000 F");
+        await loadDashboardData();
+    } catch (err) {
+        Toastify({
+            text: `❌ Erreur : ${err.message}`,
+            duration: 5000,
+            gravity: "top",
+            position: "right",
+            style: {
+                background: "linear-gradient(to right, #EF4444, #C084FC)",
+                fontFamily: "Outfit, sans-serif",
+                borderRadius: "8px"
             }
-        } catch (smsErr) {
-            console.error("SMS timeline drop error", smsErr);
-        }
-
-        window.renderTimelinePlanning(window.loadedDriversCache || []);
+        }).showToast();
     }
 };
 
@@ -4036,40 +4090,19 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const events = [];
         
-        // Active real-time trips
+        // Load active and scheduled trips from backend database!
         if (window.loadedTrips && window.loadedTrips.length > 0) {
             window.loadedTrips.forEach(t => {
-                const dateObj = new Date(t.createdAt || Date.now());
+                const dateObj = t.scheduledTime ? new Date(t.scheduledTime) : new Date(t.createdAt || Date.now());
+                const isScheduled = t.scheduledTime != null;
                 events.push({
                     id: t.id,
-                    title: `${t.departure} ➔ ${t.destination}`,
-                    start: dateObj.toISOString().slice(0, 10),
-                    description: `Course Active | Chauffeur: ${t.driverName || 'Non assigné'} | Tarif: ${t.price} F | Statut: ${t.status}`,
-                    backgroundColor: '#10B981',
-                    borderColor: '#10B981'
+                    title: `${isScheduled ? '[PROGRAMMÉ] ' : ''}${t.departure} ➔ ${t.destination}`,
+                    start: dateObj.toISOString(),
+                    description: `${isScheduled ? 'Trajet programmé' : 'Course active'} | Chauffeur: ${t.driverName || 'Non assigné'} | Tarif: ${t.price} F | Statut: ${t.status}`,
+                    backgroundColor: isScheduled ? '#1A73E8' : '#10B981',
+                    borderColor: isScheduled ? '#1A73E8' : '#10B981'
                 });
-            });
-        }
-        
-        // Recurrent schedule trips generator
-        const today = new Date();
-        if (window.timelineTrips && window.timelineTrips.length > 0) {
-            window.timelineTrips.forEach((trip, idx) => {
-                // Populate multi recurrences onto the calendar view
-                for (let offset = -7; offset <= 21; offset += 3) {
-                    const eventDate = new Date(today);
-                    eventDate.setDate(today.getDate() + offset + (idx * 1));
-                    
-                    const dateStr = eventDate.toISOString().slice(0, 10);
-                    events.push({
-                        id: `sch-event-${trip.id}-${offset}`,
-                        title: `[RÉCURRENT] ${trip.route}`,
-                        start: `${dateStr}T${trip.time || '08:00'}:00`,
-                        description: `Type: Recurrent | Chauffeur: ${trip.assignedDriver} | Tarif: ${trip.cost}`,
-                        backgroundColor: '#1A73E8',
-                        borderColor: '#1A73E8'
-                    });
-                }
             });
         }
         
@@ -4348,50 +4381,19 @@ window.sendSmsAlertIfEnabled = function(driverPhone, driverName, route, price) {
             style: { background: "linear-gradient(to right, #2563EB, #1D4ED8)", fontFamily: "Outfit, sans-serif" }
         }).showToast();
     }, 1500);
-}
+};
 
-// ====================================================
-// NOTES DE FRAIS (EXPENSES) TRACKER MODULE
-// ====================================================
-
-function initExpensesTracker() {
+async function initExpensesTracker() {
     const listTable = document.getElementById('expensesTableBody');
     if (!listTable) return;
 
-    let expenses = [];
+    // Load from backend
     try {
-        expenses = JSON.parse(localStorage.getItem('transen_driver_expenses'));
+        const expenses = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/expenses?companyId=${currentCompanyId}`);
+        window.loadedExpenses = expenses;
     } catch (e) {
-        expenses = [];
-    }
-
-    if (!expenses || expenses.length === 0) {
-        // Seed default dummy expenses to showcase immediately !
-        expenses = [
-            {
-                id: 'exp-1',
-                driverName: 'Samba Diop',
-                driverPhone: '77 450 10 20',
-                category: 'Carburant',
-                amount: 15000,
-                description: "Plein de Super 91 - Navette Aéroport",
-                date: new Date(Date.now() - 3600000 * 2).toLocaleString('fr-FR'),
-                image: '', // will be simulated
-                status: 'ATTENTE'
-            },
-            {
-                id: 'exp-2',
-                driverName: 'Mariama Sy',
-                driverPhone: '77 620 30 40',
-                category: 'Péage',
-                amount: 3000,
-                description: 'Péage Autoroute de l’Avenir (Aller-Retour)',
-                date: new Date(Date.now() - 3600000 * 5).toLocaleString('fr-FR'),
-                image: '',
-                status: 'ATTENTE'
-            }
-        ];
-        localStorage.setItem('transen_driver_expenses', JSON.stringify(expenses));
+        window.loadedExpenses = [];
+        console.error("Erreur lors de la récupération des notes de frais", e);
     }
 
     renderExpensesList();
@@ -4399,19 +4401,18 @@ function initExpensesTracker() {
     // Setup submit form
     const form = document.getElementById('submitExpenseForm');
     if (form) {
-        form.onsubmit = (e) => {
+        form.onsubmit = async (e) => {
             e.preventDefault();
 
             const select = document.getElementById('expenseDriverSelect');
             const driverId = select.value;
             if (!driverId) {
-                alert("Veuillez choisir un chauffeur pour la démonstration.");
+                alert("Veuillez choisir un chauffeur.");
                 return;
             }
 
             const driverOpt = select.options[select.selectedIndex];
             const driverName = driverOpt.getAttribute('data-name');
-            const driverPhone = driverOpt.innerText.match(/\(([^)]+)\)/)?.[1] || "";
 
             const category = document.getElementById('expenseCategory').value;
             const amount = parseInt(document.getElementById('expenseAmount').value);
@@ -4419,39 +4420,49 @@ function initExpensesTracker() {
 
             const image = window.lastUploadedTicketBase64 || "";
 
-            const newExp = {
-                id: 'exp-' + Date.now(),
-                driverName,
-                driverPhone,
-                category,
-                amount,
-                description,
-                date: new Date().toLocaleString('fr-FR'),
-                image,
-                status: 'ATTENTE'
-            };
+            try {
+                const response = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/expenses/submit?companyId=${currentCompanyId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        driverId,
+                        category,
+                        amount,
+                        description,
+                        image
+                    })
+                });
 
-            const existing = JSON.parse(localStorage.getItem('transen_driver_expenses') || '[]');
-            existing.unshift(newExp);
-            localStorage.setItem('transen_driver_expenses', JSON.stringify(existing));
+                if (!response.ok && response.status !== 200) {
+                    const errData = await response.json();
+                    throw new Error(errData.error || "Erreur soumission");
+                }
 
-            // Clean form
-            form.reset();
-            const preview = document.getElementById('expenseImagePreview');
-            if (preview) preview.style.display = 'none';
-            const dropTitle = document.getElementById('expenseDropzoneText');
-            if (dropTitle) dropTitle.innerText = "Glissez votre justificatif ou cliquez ici";
-            window.lastUploadedTicketBase64 = null;
+                // Clean form
+                form.reset();
+                const preview = document.getElementById('expenseImagePreview');
+                if (preview) preview.style.display = 'none';
+                const dropTitle = document.getElementById('expenseDropzoneText');
+                if (dropTitle) dropTitle.innerText = "Glissez votre justificatif ou cliquez ici";
+                window.lastUploadedTicketBase64 = null;
 
-            window.addAuditLog("Dépôt Note de Frais", `Note de frais pour ${driverName} soumise d'un montant de ${amount.toLocaleString()} FCFA (${category})`, "FINANCES");
+                window.addAuditLog("Dépôt Note de Frais", `Note de frais pour ${driverName} soumise d'un montant de ${amount.toLocaleString()} FCFA (${category})`, "FINANCES");
 
-            renderExpensesList();
+                Toastify({
+                    text: "✨ Note de frais soumise pour validation !",
+                    duration: 4000,
+                    style: { background: "linear-gradient(to right, #10B981, #059669)", fontFamily: "Outfit, sans-serif" }
+                }).showToast();
 
-            Toastify({
-                text: "✨ Note de frais soumise pour validation !",
-                duration: 4000,
-                style: { background: "linear-gradient(to right, #10B981, #059669)", fontFamily: "Outfit, sans-serif" }
-            }).showToast();
+                // Reload tracker
+                await initExpensesTracker();
+            } catch (err) {
+                Toastify({
+                    text: `❌ Erreur : ${err.message}`,
+                    duration: 5000,
+                    style: { background: "linear-gradient(to right, #EF4444, #C084FC)", fontFamily: "Outfit, sans-serif" }
+                }).showToast();
+            }
         };
     }
 
@@ -4463,11 +4474,7 @@ function renderExpensesList() {
     const listTable = document.getElementById('expensesTableBody');
     if (!listTable) return;
 
-    let expenses = [];
-    try {
-        expenses = JSON.parse(localStorage.getItem('transen_driver_expenses')) || [];
-    } catch (e) {}
-
+    const expenses = window.loadedExpenses || [];
     listTable.innerHTML = "";
 
     if (expenses.length === 0) {
@@ -4485,7 +4492,7 @@ function renderExpensesList() {
 
         const viewImageHtml = exp.image 
             ? `<a href="${exp.image}" target="_blank" style="color:var(--primary); font-weight:600; display:inline-flex; align-items:center; gap:4px; font-size:0.75rem;"><i class="fas fa-image"></i> Voir Ticket</a>` 
-            : `<span style="color:var(--text-dim); font-size:0.75rem; font-style:italic;"><i class="fas fa-receipt"></i> Reçu Simulél</span>`;
+            : `<span style="color:var(--text-dim); font-size:0.75rem; font-style:italic;"><i class="fas fa-receipt"></i> Aucun reçu</span>`;
 
         const actionButtons = exp.status === 'ATTENTE' 
             ? `<div style="display: flex; gap: 5px; justify-content: flex-end;">
@@ -4494,17 +4501,19 @@ function renderExpensesList() {
                </div>`
             : `<span style="font-size: 1.1rem; color: var(--text-dim); padding-right:15px; display:inline-block;"><i class="fas fa-circle-check" style="color:${exp.status === 'VALIDÉ' ? '#10B981' : '#EC4899'}"></i></span>`;
 
+        const formattedDate = new Date(exp.date).toLocaleString('fr-FR');
+
         listTable.innerHTML += `
             <tr style="border-bottom: 1px solid var(--glass-border);">
                 <td style="padding: 10px 14px; font-size: 0.8rem;">
-                    <b>${exp.driverName}</b><br><span style="font-size:0.72rem; color:var(--text-dim);">${exp.driverPhone}</span>
+                    <b>${escapeHtml(exp.driverName)}</b><br><span style="font-size:0.72rem; color:var(--text-dim);">${escapeHtml(exp.driverPhone)}</span>
                 </td>
                 <td style="padding: 10px 14px; font-size: 0.8rem;">
                     <span style="font-weight:700; color:var(--text-main);">${exp.amount.toLocaleString()} F CFA</span><br>
-                    <span style="font-size: 0.72rem; color:var(--text-dim);">${exp.category} &middot; ${exp.description}</span>
+                    <span style="font-size: 0.72rem; color:var(--text-dim);">${escapeHtml(exp.category)} &middot; ${escapeHtml(exp.description)}</span>
                 </td>
                 <td style="padding: 10px 14px;">
-                    ${viewImageHtml}<br><span style="font-size:0.68rem; color:var(--text-dim);">${exp.date}</span>
+                    ${viewImageHtml}<br><span style="font-size:0.68rem; color:var(--text-dim);">${formattedDate}</span>
                 </td>
                 <td style="padding: 10px 14px;">
                     <span style="font-size:0.68rem; padding: 2px 6px; border-radius: 4px; font-weight:700; ${badgeStyle}">${exp.status}</span>
@@ -4517,35 +4526,46 @@ function renderExpensesList() {
     });
 }
 
-window.handleExpenseDecision = function(expenseId, decision) {
-    let expenses = [];
+window.handleExpenseDecision = async function(expenseId, decision) {
     try {
-        expenses = JSON.parse(localStorage.getItem('transen_driver_expenses')) || [];
-    } catch(e){}
+        const response = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/expenses/${expenseId}/decision?decision=${decision}`, {
+            method: 'POST'
+        });
 
-    const expIndex = expenses.findIndex(x => x.id === expenseId);
-    if (expIndex !== -1) {
-        expenses[expIndex].status = decision;
-        localStorage.setItem('transen_driver_expenses', JSON.stringify(expenses));
+        if (!response.ok && response.status !== 200) {
+            const errData = await response.json();
+            throw new Error(errData.error || "Erreur mise à jour statut");
+        }
+
+        const currentExp = (window.loadedExpenses || []).find(x => x.id === expenseId);
+        const driverName = currentExp ? currentExp.driverName : "Chauffeur";
+        const amount = currentExp ? currentExp.amount : 0;
+        const category = currentExp ? currentExp.category : "";
 
         // Audit Log
-        const currentExp = expenses[expIndex];
         window.addAuditLog(
             decision === 'VALIDÉ' ? "Remboursement Approuvé" : "Remboursement Rejeté",
-            `${decision === 'VALIDÉ' ? 'Validation' : 'Rejet'} de la note de frais de ${currentExp.driverName} d'un montant de ${currentExp.amount.toLocaleString()} FCFA (${currentExp.category})`,
+            `${decision === 'VALIDÉ' ? 'Validation' : 'Rejet'} de la note de frais de ${driverName} d'un montant de ${amount.toLocaleString()} FCFA (${category})`,
             "FINANCES"
         );
 
         // Toast message
         Toastify({
-            text: decision === 'VALIDÉ' ? `✅ Note de frais de ${currentExp.amount.toLocaleString()} F validée !` : `❌ Note de frais rejetée !`,
+            text: decision === 'VALIDÉ' ? `✅ Note de frais de ${amount.toLocaleString()} F validée !` : `❌ Note de frais rejetée !`,
             duration: 3000,
             style: { background: decision === 'VALIDÉ' ? "linear-gradient(to right, #10B981, #059669)" : "linear-gradient(to right, #EF4444, #DC2626)", fontFamily: "Outfit, sans-serif" }
         }).showToast();
 
-        renderExpensesList();
+        // Reload tracker
+        await initExpensesTracker();
+    } catch (err) {
+        Toastify({
+            text: `❌ Erreur : ${err.message}`,
+            duration: 5000,
+            style: { background: "linear-gradient(to right, #EF4444, #C084FC)", fontFamily: "Outfit, sans-serif" }
+        }).showToast();
     }
-}
+};
 
 function initExpenseDropzone() {
     const dropzone = document.getElementById('expenseDropzone');
