@@ -97,6 +97,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Mark as checked immediately
       await prefs.setBool('checked_booking_$bookingId', true);
 
+      if (!mounted) return;
+
       // Clean URL parameters immediately on Web to avoid loop check on browser page refresh
       if (kIsWeb) {
         SystemNavigator.routeInformationUpdated(uri: Uri.parse('/'));
