@@ -431,15 +431,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         child: Consumer(builder: (context, ref, child) {
                           final activePoolAsync = ref.watch(providers.activePoolProvider);
                           final activeTripAsync = ref.watch(providers.activeTripProvider);
+                          final activeCompanyTripAsync = ref.watch(providers.activeCompanyTripProvider);
                           return Column(
                             children: [
                               activePoolAsync.when(
-                                data: (pool) => pool == null ? const SizedBox.shrink() : _buildActiveTripCard(context, pool, isYobante: false),
+                                data: (pool) => pool == null ? const SizedBox.shrink() : _buildActiveTripCard(context, pool, cardType: 'pool'),
                                 loading: () => const SizedBox.shrink(),
                                 error: (_, __) => const SizedBox.shrink(),
                               ),
                               activeTripAsync.when(
-                                data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveTripCard(context, trip, isYobante: true),
+                                data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveTripCard(context, trip, cardType: 'yobante'),
+                                loading: () => const SizedBox.shrink(),
+                                error: (_, __) => const SizedBox.shrink(),
+                              ),
+                              activeCompanyTripAsync.when(
+                                data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveTripCard(context, trip, cardType: 'company'),
                                 loading: () => const SizedBox.shrink(),
                                 error: (_, __) => const SizedBox.shrink(),
                               ),
@@ -767,8 +773,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
 
-  Widget _buildActiveTripCard(BuildContext context, TripModel trip, {required bool isYobante}) {
-    final color = isYobante ? Colors.blue : TranSenColors.primaryGreen;
+  Widget _buildActiveTripCard(BuildContext context, TripModel trip, {required String cardType}) {
+    final Color color;
+    final String title;
+    final IconData icon;
+
+    if (cardType == 'yobante') {
+      color = Colors.blue;
+      title = "LIVRAISON EN COURS";
+      icon = Icons.inventory_2;
+    } else if (cardType == 'company') {
+      color = Colors.indigo;
+      title = trip.category == 'BUS_COMPANY' ? "TRAJET BUS COMPAGNIE" : "TRAJET COMPAGNIE EN COURS";
+      icon = trip.category == 'BUS_COMPANY' ? Icons.directions_bus : Icons.business;
+    } else {
+      color = TranSenColors.primaryGreen;
+      title = "COURSE EN COURS";
+      icon = Icons.directions_car;
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 15),
       decoration: BoxDecoration(
@@ -796,10 +819,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             leading: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(12)),
-              child: Icon(isYobante ? Icons.inventory_2 : Icons.directions_car, color: Colors.white, size: 22),
+              child: Icon(icon, color: Colors.white, size: 22),
             ),
             title: Text(
-              isYobante ? "LIVRAISON EN COURS" : "COURSE EN COURS",
+              title,
               style: TextStyle(fontWeight: FontWeight.w900, color: color, fontSize: 12, letterSpacing: 1.2),
             ),
             subtitle: Text(

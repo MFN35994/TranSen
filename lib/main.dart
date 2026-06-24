@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb, kReleaseMode;
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_trips/transen_trips.dart';
 import 'firebase_options.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'presentation/onboarding/onboarding_screen.dart';
@@ -126,6 +127,18 @@ class _InitialGateState extends State<InitialGate> {
   void initState() {
     super.initState();
     _checkOnboarding();
+
+    // Enregistrer le callback de redirection au clic de notification push
+    NotificationService.onTripNotificationClicked = (tripId) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => TripTrackingScreen(tripId: tripId),
+          ),
+        );
+      }
+    };
   }
 
   Future<void> _checkOnboarding() async {

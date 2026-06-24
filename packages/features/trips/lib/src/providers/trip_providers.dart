@@ -1,4 +1,4 @@
-
+import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
 import 'package:transen_core/transen_core.dart';
@@ -172,4 +172,47 @@ final demandHeatmapProvider = StreamProvider<Map<String, int>>((ref) {
 
 final demandHeatpointsProvider = StreamProvider<List<Map<String, double>>>((ref) {
   return ref.watch(tripRepositoryProvider).watchDemandHeatpoints();
+});
+
+final activeCompanyBookingProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  final auth = ref.watch(authProvider);
+  if (auth == null) return null;
+
+  try {
+    final response = await ApiClient().dio.get('/api/bookings/active');
+    if (response.statusCode == 200 && response.data is List) {
+      final List bookings = response.data;
+      if (bookings.isNotEmpty) {
+        return Map<String, dynamic>.from(bookings.first);
+      }
+    }
+  } catch (e) {
+    debugPrint("Erreur activeCompanyBookingProvider: $e");
+  }
+  return null;
+});
+
+final activeCompanyTripProvider = StreamProvider<TripModel?>((ref) {
+  final bookingAsync = ref.watch(activeCompanyBookingProvider);
+
+  return bookingAsync.when(
+    data: (booking) {
+      if (booking == null) return Stream.value(null);
+      final tripId = booking['tripId'] as String?;
+      if (tripId == null || tripId.isEmpty) return Stream.value(null);
+
+      final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+      return firestore.collection('trips').doc(tripId).snapshots().map((doc) {
+        if (!doc.exists) return null;
+        final trip = TripModel.fromFirestore(doc);
+        if (trip.status == 'completed' || trip.status == 'cancelled') {
+          ref.invalidate(activeCompanyBookingProvider);
+          return null;
+        }
+        return trip;
+      });
+    },
+    loading: () => Stream.value(null),
+    error: (_, __) => Stream.value(null),
+  );
 });

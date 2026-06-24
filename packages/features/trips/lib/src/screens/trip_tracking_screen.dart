@@ -17,6 +17,7 @@ import 'dart:convert';
 import 'package:transen_rating/transen_rating.dart';
 import 'dart:ui' as ui;
 import 'package:share_plus/share_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class TripTrackingScreen extends ConsumerStatefulWidget {
   final String tripId;
@@ -32,6 +33,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   Uint8List? _carIconBytes;
   ({double lat, double lng})? _myPosition;
   bool _isRoutePlotted = false;
+  String? _lastPlottedStatus;
 
   ({double lat, double lng})? _lastRawPosition;
   ({double lat, double lng})? _snappedDriverPosition;
@@ -96,8 +98,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     } catch (_) {}
   }
 
-  void _getPolyline(({double lat, double lng}) driverPos,
-      ({double lat, double lng}) clientPos) async {
+  void _plotDynamicRoute(TripModel trip) async {
     if (_mapController == null) return;
     if (_isRoutePlotted) return;
     _isRoutePlotted = true;
@@ -106,8 +107,43 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       final dio = Dio();
       const String mapboxToken =
           "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+
+      double startLng, startLat, endLng, endLat;
+
+      if (trip.category == 'BUS_COMPANY') {
+        if (trip.status == 'in_progress') {
+          // Trajet en cours : Du point de relais à la destination
+          startLat = trip.departureLat ?? 14.7167;
+          startLng = trip.departureLng ?? -17.4677;
+          endLat = trip.destinationLat ?? 14.7167;
+          endLng = trip.destinationLng ?? -17.4677;
+        } else {
+          // Avant le départ : Du passager au point de relais
+          if (_myPosition == null) {
+            _isRoutePlotted = false;
+            return;
+          }
+          startLat = _myPosition!.lat;
+          startLng = _myPosition!.lng;
+          endLat = trip.departureLat ?? 14.7167;
+          endLng = trip.departureLng ?? -17.4677;
+        }
+      } else {
+        // VTC Classique
+        if (_snappedDriverPosition == null && _myPosition == null) {
+          _isRoutePlotted = false;
+          return;
+        }
+        final driverPos = _snappedDriverPosition ?? (lat: 14.7167, lng: -17.4677);
+        final clientPos = _myPosition ?? (lat: 14.7167, lng: -17.4677);
+        startLat = driverPos.lat;
+        startLng = driverPos.lng;
+        endLat = clientPos.lat;
+        endLng = clientPos.lng;
+      }
+
       final url =
-          "https://api.mapbox.com/directions/v5/mapbox/driving/${driverPos.lng},${driverPos.lat};${clientPos.lng},${clientPos.lat}?overview=full&geometries=geojson&access_token=$mapboxToken";
+          "https://api.mapbox.com/directions/v5/mapbox/driving/$startLng,$startLat;$endLng,$endLat?overview=full&geometries=geojson&access_token=$mapboxToken";
 
       final response = await dio.get(url);
 
@@ -119,6 +155,11 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           final geometry = route['geometry'];
 
           if (_mapController != null) {
+            try {
+              await _mapController!.style.removeStyleLayer("route-layer");
+              await _mapController!.style.removeStyleSource("route-source");
+            } catch (_) {}
+
             final source =
                 GeoJsonSource(id: "route-source", data: jsonEncode(geometry));
             await _mapController!.style.addSource(source);
@@ -126,7 +167,9 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             final layer = LineLayer(
               id: "route-layer",
               sourceId: "route-source",
-              lineColor: Colors.blue.toARGB32(),
+              lineColor: (trip.category == 'BUS_COMPANY' && trip.status != 'in_progress')
+                  ? Colors.green.toARGB32() // Vert pour l'itinéraire vers le point de relais
+                  : Colors.blue.toARGB32(), // Bleu pour le trajet du bus
               lineWidth: 6.0,
             );
             await _mapController!.style.addLayer(layer);
@@ -137,6 +180,274 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
       debugPrint("Erreur Directions API: $e");
       _isRoutePlotted = false;
     }
+  }
+
+  void _showBusSeatMapSheet(BuildContext context, TripModel trip) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final totalSeats = trip.seats ?? 15;
+        
+        int crossAxisCount = 4;
+        int aisleColumnIndex = 2;
+        if (totalSeats <= 4) {
+          crossAxisCount = 3;
+          aisleColumnIndex = -1;
+        } else if (totalSeats <= 9) {
+          crossAxisCount = 3;
+          aisleColumnIndex = -1;
+        } else if (totalSeats <= 22) {
+          crossAxisCount = 4;
+          aisleColumnIndex = 2;
+        } else {
+          crossAxisCount = 5;
+          aisleColumnIndex = 2;
+        }
+
+        final int seatsPerRow = crossAxisCount - (aisleColumnIndex != -1 ? 1 : 0);
+        final int rowCount = (totalSeats / seatsPerRow).ceil();
+        final int totalGridItems = rowCount * crossAxisCount;
+
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 5,
+                      margin: const EdgeInsets.only(bottom: 20),
+                      decoration: BoxDecoration(
+                        color: Colors.grey[300],
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      const Icon(Icons.directions_bus_outlined, color: TranSenColors.primaryGreen, size: 26),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Plan de Remplissage",
+                              style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                            Text(
+                              "Visualisation en temps réel",
+                              style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey[600]),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
+                    decoration: BoxDecoration(
+                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _buildLegendItem(Colors.green, "Libre"),
+                        _buildLegendItem(Colors.blueAccent, "Réservé"),
+                        _buildLegendItem(Colors.purple, "À Bord"),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Expanded(
+                    child: StreamBuilder<TripModel?>(
+                      stream: ref.watch(tripRepositoryProvider).watchTrip(trip.id),
+                      initialData: trip,
+                      builder: (context, snapshot) {
+                        final liveTrip = snapshot.data ?? trip;
+                        final seatsMap = liveTrip.seatsMap ?? {};
+                        
+                        int boardedCount = 0;
+                        int reservedCount = 0;
+                        seatsMap.forEach((key, val) {
+                          if (val == 'BOARDED') boardedCount++;
+                          if (val == 'RESERVED') reservedCount++;
+                        });
+                        final freeCount = totalSeats - boardedCount - reservedCount;
+
+                        return ListView(
+                          controller: scrollController,
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 20),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _buildStatChip(Colors.green, "$freeCount Libres", isDark),
+                                  _buildStatChip(Colors.blueAccent, "$reservedCount Réservés", isDark),
+                                  _buildStatChip(Colors.purple, "$boardedCount Embarqués", isDark),
+                                ],
+                              ),
+                            ),
+                            Center(
+                              child: Container(
+                                constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
+                                decoration: BoxDecoration(
+                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  borderRadius: BorderRadius.circular(40),
+                                  border: Border.all(
+                                    color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),
+                                    width: 3,
+                                  ),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Icon(Icons.directions_car, size: 24, color: Colors.grey),
+                                        Container(
+                                          width: 36,
+                                          height: 36,
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.withValues(alpha: 0.2),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Center(child: Icon(Icons.support_agent, size: 18, color: Colors.grey)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 20),
+                                    const Divider(thickness: 2),
+                                    const SizedBox(height: 20),
+                                    GridView.builder(
+                                      shrinkWrap: true,
+                                      physics: const NeverScrollableScrollPhysics(),
+                                      itemCount: totalGridItems,
+                                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: crossAxisCount,
+                                        mainAxisSpacing: 12,
+                                        crossAxisSpacing: 12,
+                                        childAspectRatio: 1,
+                                      ),
+                                      itemBuilder: (context, gridIndex) {
+                                        final int row = gridIndex ~/ crossAxisCount;
+                                        final int col = gridIndex % crossAxisCount;
+
+                                        if (aisleColumnIndex != -1 && col == aisleColumnIndex) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        int seatIndex = row * seatsPerRow + (col > aisleColumnIndex && aisleColumnIndex != -1 ? col - 1 : col) + 1;
+                                        if (seatIndex > totalSeats) {
+                                          return const SizedBox.shrink();
+                                        }
+
+                                        final String seatKey = seatIndex.toString();
+                                        final String status = seatsMap[seatKey] ?? 'FREE';
+                                        
+                                        Color seatColor = Colors.green;
+                                        IconData? seatIcon;
+                                        if (status == 'BOARDED') {
+                                          seatColor = Colors.purple;
+                                          seatIcon = Icons.check;
+                                        } else if (status == 'RESERVED') {
+                                          seatColor = Colors.blueAccent;
+                                          seatIcon = Icons.bookmark;
+                                        }
+
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: seatColor.withValues(alpha: 0.15),
+                                            borderRadius: BorderRadius.circular(12),
+                                            border: Border.all(color: seatColor, width: 2),
+                                          ),
+                                          child: Stack(
+                                            alignment: Alignment.center,
+                                            children: [
+                                              if (seatIcon != null)
+                                                Positioned(
+                                                  top: 4,
+                                                  right: 4,
+                                                  child: Icon(seatIcon, size: 10, color: seatColor),
+                                                ),
+                                              Text(
+                                                seatKey,
+                                                style: GoogleFonts.outfit(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: seatColor,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold)),
+      ],
+    );
+  }
+
+  Widget _buildStatChip(Color color, String label, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.outfit(color: color, fontWeight: FontWeight.bold, fontSize: 11),
+      ),
+    );
   }
 
   void _loadMarkerIcon() async {
@@ -380,6 +691,17 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
   }
 
   Widget _buildMapView(TripModel trip) {
+    if (_lastPlottedStatus != trip.status) {
+      _lastPlottedStatus = trip.status;
+      _isRoutePlotted = false;
+      if (_mapController != null) {
+        try {
+          _mapController!.style.removeStyleLayer("route-layer");
+          _mapController!.style.removeStyleSource("route-source");
+        } catch (_) {}
+      }
+    }
+
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instanceFor(
               app: Firebase.app(), databaseId: 'transen')
@@ -402,18 +724,56 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
 
           if (_annotationManager != null) {
             _annotationManager!.deleteAll();
-            if (_carIconBytes != null) {
-              _annotationManager!.create(PointAnnotationOptions(
-                geometry: Point(
-                    coordinates: Position(displayPos.lng, displayPos.lat)),
-                image: _carIconBytes!,
-                iconSize: 1.0,
-              ));
+            if (trip.category == 'BUS_COMPANY') {
+              if (trip.status != 'in_progress') {
+                if (_myPosition != null && _carIconBytes != null) {
+                  _annotationManager!.create(PointAnnotationOptions(
+                    geometry: Point(
+                        coordinates: Position(_myPosition!.lng, _myPosition!.lat)),
+                    image: _carIconBytes!,
+                    iconSize: 0.8,
+                  ));
+                }
+                if (trip.departureLat != null && trip.departureLng != null && _carIconBytes != null) {
+                  _annotationManager!.create(PointAnnotationOptions(
+                    geometry: Point(
+                        coordinates: Position(trip.departureLng!, trip.departureLat!)),
+                    image: _carIconBytes!,
+                    iconSize: 1.2,
+                  ));
+                }
+              } else {
+                if (_carIconBytes != null) {
+                  _annotationManager!.create(PointAnnotationOptions(
+                    geometry: Point(
+                        coordinates: Position(displayPos.lng, displayPos.lat)),
+                    image: _carIconBytes!,
+                    iconSize: 1.0,
+                  ));
+                }
+                if (trip.destinationLat != null && trip.destinationLng != null && _carIconBytes != null) {
+                  _annotationManager!.create(PointAnnotationOptions(
+                    geometry: Point(
+                        coordinates: Position(trip.destinationLng!, trip.destinationLat!)),
+                    image: _carIconBytes!,
+                    iconSize: 1.2,
+                  ));
+                }
+              }
+            } else {
+              if (_carIconBytes != null) {
+                _annotationManager!.create(PointAnnotationOptions(
+                  geometry: Point(
+                      coordinates: Position(displayPos.lng, displayPos.lat)),
+                  image: _carIconBytes!,
+                  iconSize: 1.0,
+                ));
+              }
             }
           }
 
-          if (_myPosition != null && !_isRoutePlotted) {
-            _getPolyline(displayPos, _myPosition!);
+          if (!_isRoutePlotted) {
+            _plotDynamicRoute(trip);
           }
 
           if (!_isRoutePlotted) {
@@ -642,9 +1002,11 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                     child: Text(
-                                      trip.type.contains('Livraison')
-                                          ? '📦 Livraison Yobanté'
-                                          : '🚕 Course VTC',
+                                      trip.category == 'BUS_COMPANY'
+                                          ? '🚌 Trajet Compagnie'
+                                          : trip.type.contains('Livraison')
+                                              ? '📦 Livraison Yobanté'
+                                              : '🚕 Course VTC',
                                       style: const TextStyle(
                                           color: Colors.white,
                                           fontSize: 11,
@@ -667,6 +1029,57 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                           ],
                         ),
                       ),
+
+                      if (trip.category == 'BUS_COMPANY') ...[
+                        _SectionCard(
+                          children: [
+                            Row(
+                              children: [
+                                const Icon(Icons.directions_bus_outlined, color: TranSenColors.primaryGreen, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      const Text(
+                                        "Plan de remplissage du bus",
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      const SizedBox(height: 2),
+                                      Text(
+                                        "Suivez le remplissage des sièges en temps réel",
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () => _showBusSeatMapSheet(context, trip),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: TranSenColors.primaryGreen,
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 14),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                icon: const Icon(Icons.grid_view_rounded, size: 20),
+                                label: const Text(
+                                  "VOIR LE PLAN DE REMPLISSAGE",
+                                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 0.5),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                      ],
 
                       // --- SECTION TRAJET ---
                       _SectionCard(

@@ -54,7 +54,21 @@ class NotificationService {
         _saveTokenToDatabase(userId, newToken);
       });
 
-      // 5. Démarrer les écouteurs locaux (sans Cloud Functions)
+      // 5. Gérer le message initial si l'application a été ouverte depuis un état fermé
+      _fcm.getInitialMessage().then((RemoteMessage? message) {
+        if (message != null) {
+          final tripId = message.data['tripId'] ?? message.data['payload'];
+          if (tripId != null) {
+            Future.delayed(const Duration(milliseconds: 1200), () {
+              if (onTripNotificationClicked != null) {
+                onTripNotificationClicked!(tripId);
+              }
+            });
+          }
+        }
+      });
+
+      // 6. Démarrer les écouteurs locaux (sans Cloud Functions)
       startChatListener(userId);
       startTripStatusListener(userId);
     }
@@ -203,6 +217,9 @@ class NotificationService {
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         debugPrint("Notification clicked: ${details.payload}");
+        if (details.payload != null && onTripNotificationClicked != null) {
+          onTripNotificationClicked!(details.payload!);
+        }
       },
     );
 
@@ -248,6 +265,9 @@ class NotificationService {
     );
   }
 
+  // Callback global pour la redirection
+  static void Function(String tripId)? onTripNotificationClicked;
+
   // Écouter les messages quand l'app est au premier plan
   static void listenToMessages() {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -270,6 +290,7 @@ class NotificationService {
               priority: Priority.high,
             ),
           ),
+          payload: message.data['tripId'] ?? message.data['payload'],
         );
       }
       
@@ -279,7 +300,10 @@ class NotificationService {
     // Gérer le clic sur une notification quand l'app est ouverte
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       debugPrint('Notification cliquée! Message ID: ${message.messageId}');
-      // Ici vous pouvez naviguer vers un écran spécifique
+      final tripId = message.data['tripId'] ?? message.data['payload'];
+      if (tripId != null && onTripNotificationClicked != null) {
+        onTripNotificationClicked!(tripId);
+      }
     });
   }
 }

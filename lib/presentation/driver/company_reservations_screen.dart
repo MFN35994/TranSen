@@ -322,6 +322,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
   int _totalSeats = 15; // Valeur par défaut
   int _boardedCount = 0;
   int _reservedCount = 0;
+  String _tripStatus = 'PENDING';
 
   @override
   void initState() {
@@ -337,6 +338,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
       if (tripResponse.statusCode == 200) {
         final tripData = tripResponse.data as Map<String, dynamic>;
         _totalSeats = (tripData['totalSeats'] as num?)?.toInt() ?? 15;
+        _tripStatus = tripData['status'] ?? 'PENDING';
       }
 
       // 2. Charger les bookings
@@ -410,6 +412,160 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
     }
   }
 
+  Future<void> _startTrip() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Démarrer le trajet ?", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: const Text("Cela enverra une notification SMS à tous les passagers pour les informer du départ."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.green),
+            child: const Text("DÉMARRER"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await ApiClient().dio.post('/api/trips/${widget.tripId}/start');
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Le trajet a démarré ! SMS envoyés aux passagers."), backgroundColor: Colors.green),
+        );
+        _loadBookings();
+      }
+    } catch (e) {
+      debugPrint("Erreur démarrage trajet: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur: ${e.toString()}"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _completeTrip() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text("Terminer le trajet ?", style: GoogleFonts.outfit(fontWeight: FontWeight.bold)),
+        content: const Text("Confirmez-vous que le bus est bien arrivé à destination ? Le trajet sera clôturé pour tout le monde."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("ANNULER")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+            child: const Text("TERMINER"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final response = await ApiClient().dio.post('/api/trips/${widget.tripId}/complete');
+      if (response.statusCode == 200) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Trajet terminé avec succès. Passagers notifiés."), backgroundColor: Colors.blue),
+        );
+        _loadBookings();
+      }
+    } catch (e) {
+      debugPrint("Erreur clôture trajet: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Erreur: ${e.toString()}"), backgroundColor: Colors.red),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Widget _buildDriverActionBanner(bool isDark) {
+    if (_tripStatus == 'COMPLETED') {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withValues(alpha: 0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.grey),
+              const SizedBox(width: 10),
+              Text(
+                "Ce trajet est terminé",
+                style: GoogleFonts.outfit(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
+                  fontSize: 15,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final bool isStarted = _tripStatus == 'IN_PROGRESS';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -5),
+          )
+        ],
+      ),
+      child: SafeArea(
+        top: false,
+        child: ElevatedButton.icon(
+          onPressed: isStarted ? _completeTrip : _startTrip,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: isStarted ? Colors.redAccent : TranSenColors.primaryGreen,
+            foregroundColor: Colors.white,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            elevation: 2,
+          ),
+          icon: Icon(isStarted ? Icons.stop_rounded : Icons.play_arrow_rounded, size: 24),
+          label: Text(
+            isStarted ? "TERMINER LE TRAJET" : "DÉMARRER LE TRAJET",
+            style: GoogleFonts.outfit(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -451,6 +607,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
                     child: _buildBusLayout(isDark),
                   ),
                 ),
+                _buildDriverActionBanner(isDark),
               ],
             ),
       floatingActionButton: FloatingActionButton.extended(

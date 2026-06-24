@@ -1065,6 +1065,65 @@ app.post('/api/internal/sync-user', async (req, res) => {
     }
 });
 
+// Endpoint interne d'envoi de notification push FCM (appelé par Spring Boot)
+app.post('/api/internal/send-notification', async (req, res) => {
+    const internalKey = req.headers['x-internal-key'];
+    const expectedKey = process.env.INTERNAL_API_KEY || 'default_internal_key_transen';
+    if (!internalKey || internalKey !== expectedKey) {
+        return res.status(401).send("Non autorisé");
+    }
+
+    const { userId, title, body, data } = req.body;
+    if (!userId || !title || !body) {
+        return res.status(400).send("Paramètres manquants");
+    }
+
+    try {
+        const userDoc = await db.collection('users').doc(userId).get();
+        if (!userDoc.exists) {
+            return res.status(404).send("Utilisateur introuvable");
+        }
+
+        const userData = userDoc.data();
+        const fcmToken = userData.fcmToken;
+
+        if (!fcmToken) {
+            console.log(`[Push Notification] Aucun token FCM pour l'utilisateur ${userId}. Notification ignorée.`);
+            return res.status(200).send("No token found");
+        }
+
+        const message = {
+            token: fcmToken,
+            notification: {
+                title: title,
+                body: body
+            },
+            data: data || {},
+            android: {
+                priority: "high",
+                notification: {
+                    sound: "default",
+                    clickAction: "FLUTTER_NOTIFICATION_CLICK"
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        sound: "default"
+                    }
+                }
+            }
+        };
+
+        const response = await admin.messaging().send(message);
+        console.log(`[Push Notification] Envoyée avec succès à ${userId}: ${response}`);
+        return res.status(200).send({ success: true, messageId: response });
+    } catch (error) {
+        console.error("❌ Erreur lors de l'envoi de la notification push:", error);
+        return res.status(500).send(error.message);
+    }
+});
+
 const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Serveur Webhook TranSen lancé sur le port ${PORT}`);

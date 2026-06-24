@@ -34,6 +34,7 @@ class TripModel {
   final String? paymentReference;
   final String? paymentStatus;
   final String? category;
+  final Map<String, dynamic>? seatsMap;
 
   TripModel({
     required this.id,
@@ -68,6 +69,7 @@ class TripModel {
     this.paymentReference,
     this.paymentStatus,
     this.category,
+    this.seatsMap,
   });
 
   factory TripModel.fromFirestore(DocumentSnapshot doc) {
@@ -105,6 +107,7 @@ class TripModel {
       paymentReference: data['paymentReference'],
       paymentStatus: data['paymentStatus'],
       category: data['category'],
+      seatsMap: data['seatsMap'] != null ? Map<String, dynamic>.from(data['seatsMap']) : null,
     );
   }
 
@@ -141,6 +144,7 @@ class TripModel {
       'paymentReference': paymentReference,
       'paymentStatus': paymentStatus,
       'category': category,
+      'seatsMap': seatsMap,
     };
   }
 }
