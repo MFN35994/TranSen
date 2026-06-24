@@ -7,6 +7,7 @@ import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_trips/transen_trips.dart';
 
 final userFutureProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
+  ref.watch(authProvider); // Re-run and refresh cache whenever the user details change
   return ref.read(userRepositoryProvider).getUserData();
 });
 

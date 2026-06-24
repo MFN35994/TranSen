@@ -23,7 +23,8 @@ import 'active_deliveries_sheet.dart';
 import 'company_reservations_screen.dart';
 
 final driverProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) {
-  return ref.watch(userRepositoryProvider).getUserData();
+  ref.watch(authProvider); // Re-run when auth details (e.g. name or phone) change
+  return ref.read(userRepositoryProvider).getUserData();
 });
 
 final pendingTripsProvider =
