@@ -44,7 +44,8 @@ class HubAnnouncement {
 
 class SmartMediaHubCard extends ConsumerStatefulWidget {
   final VoidCallback? onNavigateToBus;
-  const SmartMediaHubCard({super.key, this.onNavigateToBus});
+  final ValueChanged<Color>? onColorChanged;
+  const SmartMediaHubCard({super.key, this.onNavigateToBus, this.onColorChanged});
 
   @override
   ConsumerState<SmartMediaHubCard> createState() => _SmartMediaHubCardState();
@@ -549,6 +550,12 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
         final activeGlowColor = _activeAnnouncements.isNotEmpty
             ? _activeAnnouncements[_currentPageIndex].gradientColors.first
             : const Color(0xFFF39C12);
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            widget.onColorChanged?.call(activeGlowColor);
+          }
+        });
 
         return TweenAnimationBuilder<Color?>(
           duration: const Duration(milliseconds: 1000),
