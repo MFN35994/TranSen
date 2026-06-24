@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -56,6 +57,7 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   StreamSubscription? _audioPlayerStateSubscription;
   StreamSubscription? _audioPlayerCompleteSubscription;
   
+  late AnimationController _pulseController;
   Timer? _carouselTimer;
   Timer? _soundwaveTimer;
   Timer? _typewriterTimer;
@@ -86,6 +88,10 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   void initState() {
     super.initState();
     _pageController = PageController(initialPage: 0);
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    )..repeat(reverse: true);
     _initTts();
     _initAudioPlayer();
     _startTypewriter();
@@ -303,6 +309,7 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   @override
   void dispose() {
     _pageController.dispose();
+    _pulseController.dispose();
     _flutterTts.stop();
     _audioPlayer.stop();
     _audioPlayer.dispose();
@@ -539,281 +546,320 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
 
         final bool isCurrentlyPlaying = _isSpeaking || _isPlayingAudio;
 
-        return Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0x2B000000) : const Color(0x0E000000),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.05),
-              width: 1.5,
-            ),
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: Padding(
-              padding: const EdgeInsets.all(22),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 1. TOP ROW: WELCOME & AUDIO BUTTON
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Bonjour $greetingName 👋",
-                              style: GoogleFonts.outfit(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? Colors.white70 : Colors.black54,
-                                letterSpacing: -0.2,
-                              ),
-                            ),
-                            const SizedBox(height: 3),
-                            SizedBox(
-                              height: 34,
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      _displayedSlogan,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 23,
-                                        fontWeight: FontWeight.w900,
-                                        color: isDark ? Colors.white : Colors.black87,
-                                        height: 1.1,
-                                        letterSpacing: -0.6,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.fade,
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 2.5,
-                                    height: 20,
-                                    color: isDark 
-                                        ? Colors.white.withValues(alpha: 0.8) 
-                                        : Colors.black.withValues(alpha: 0.8),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
+        final activeGlowColor = _activeAnnouncements.isNotEmpty
+            ? _activeAnnouncements[_currentPageIndex].gradientColors.first
+            : const Color(0xFFF39C12);
+
+        return TweenAnimationBuilder<Color?>(
+          duration: const Duration(milliseconds: 1000),
+          curve: Curves.easeInOut,
+          tween: ColorTween(end: activeGlowColor),
+          builder: (context, glowColor, child) {
+            final currentColor = glowColor ?? const Color(0xFFF39C12);
+            return AnimatedBuilder(
+              animation: _pulseController,
+              builder: (context, child) {
+                final pulseValue = _pulseController.value;
+                final glowRadius = 15.0 + (pulseValue * 15.0);
+                final glowSpread = 1.0 + (pulseValue * 3.0);
+
+                return Container(
+                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0x3D000000) : Colors.white.withValues(alpha: 0.65),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.6),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      // Shifting glowing neon aura
+                      BoxShadow(
+                        color: currentColor.withValues(alpha: isDark ? 0.18 : 0.12),
+                        blurRadius: glowRadius,
+                        spreadRadius: glowSpread,
+                        offset: const Offset(0, 0),
                       ),
-                      const SizedBox(width: 10),
-                      // Audio narrator (TTS or MP3 streaming)
-                      if (hasAudio)
-                        GestureDetector(
-                          onTap: _toggleAudio,
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: isCurrentlyPlaying
-                                  ? TranSenColors.primaryGreen
-                                  : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isCurrentlyPlaying) ...[
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: List.generate(_soundwaveHeights.length, (index) {
-                                      return AnimatedContainer(
-                                        duration: const Duration(milliseconds: 100),
-                                        margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                                        width: 2.5,
-                                        height: _soundwaveHeights[index],
-                                        decoration: BoxDecoration(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                      );
-                                    }),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.stop_rounded, color: Colors.white, size: 16),
-                                ] else ...[
-                                  Icon(
-                                    Icons.volume_up_rounded,
-                                    color: isDark ? Colors.white : Colors.black87,
-                                    size: 16,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  Text(
-                                    "ÉCOUTER",
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: isDark ? Colors.white : Colors.black87,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                ]
-                              ],
-                            ),
-                          ),
-                        ),
+                      BoxShadow(
+                        color: isDark ? Colors.black38 : Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 16,
+                        spreadRadius: 0,
+                        offset: const Offset(0, 8),
+                      ),
                     ],
                   ),
-                  
-                  const SizedBox(height: 20),
-                  
-                  // 2. CAROUSEL OF ANNOUNCEMENTS
-                  if (_activeAnnouncements.isNotEmpty)
-                    SizedBox(
-                      height: 145,
-                      child: PageView.builder(
-                        controller: _pageController,
-                        onPageChanged: (index) {
-                          setState(() {
-                            _currentPageIndex = index;
-                          });
-                          _stopAllAudio(); // Stop playing when switching slides
-                        },
-                        itemCount: _activeAnnouncements.length,
-                        itemBuilder: (context, index) {
-                          final item = _activeAnnouncements[index];
-                          return Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 2),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: item.gradientColors,
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(22),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: item.gradientColors.first.withValues(alpha: 0.3),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 4),
-                                )
-                              ],
-                            ),
-                            child: Stack(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                      child: Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // 1. TOP ROW: WELCOME & AUDIO BUTTON
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Positioned(
-                                  right: -20,
-                                  bottom: -20,
-                                  child: Opacity(
-                                    opacity: 0.12,
-                                    child: Icon(
-                                      item.icon,
-                                      size: 140,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.all(18),
+                                Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            item.icon,
-                                            color: item.accentColor,
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Expanded(
-                                            child: Text(
-                                              item.title,
-                                              style: GoogleFonts.outfit(
-                                                color: Colors.white,
-                                                fontSize: 12,
-                                                fontWeight: FontWeight.w900,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Expanded(
-                                        child: Text(
-                                          item.description,
-                                          style: GoogleFonts.outfit(
-                                            color: Colors.white.withValues(alpha: 0.9),
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w500,
-                                            height: 1.25,
-                                            letterSpacing: -0.1,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
+                                      Text(
+                                        "Bonjour $greetingName 👋",
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white70 : Colors.black54,
+                                          letterSpacing: -0.2,
                                         ),
                                       ),
-                                      const SizedBox(height: 10),
-                                      Align(
-                                        alignment: Alignment.bottomLeft,
-                                        child: Material(
-                                          color: Colors.white,
-                                          borderRadius: BorderRadius.circular(14),
-                                          child: InkWell(
-                                            onTap: item.onTap,
-                                            borderRadius: BorderRadius.circular(14),
-                                            child: Padding(
-                                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                      const SizedBox(height: 3),
+                                      SizedBox(
+                                        height: 34,
+                                        child: Row(
+                                          crossAxisAlignment: CrossAxisAlignment.center,
+                                          children: [
+                                            Expanded(
                                               child: Text(
-                                                item.buttonLabel,
+                                                _displayedSlogan,
                                                 style: GoogleFonts.outfit(
-                                                  color: item.gradientColors.first,
-                                                  fontSize: 11,
+                                                  fontSize: 23,
                                                   fontWeight: FontWeight.w900,
-                                                  letterSpacing: 0.5,
+                                                  color: isDark ? Colors.white : Colors.black87,
+                                                  height: 1.1,
+                                                  letterSpacing: -0.6,
                                                 ),
+                                                maxLines: 1,
+                                                overflow: TextOverflow.fade,
                                               ),
                                             ),
-                                          ),
+                                            Container(
+                                              width: 2.5,
+                                              height: 20,
+                                              color: isDark 
+                                                  ? Colors.white.withValues(alpha: 0.8) 
+                                                  : Colors.black.withValues(alpha: 0.8),
+                                            ),
+                                          ],
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 10),
+                                // Audio narrator (TTS or MP3 streaming)
+                                if (hasAudio)
+                                  GestureDetector(
+                                    onTap: _toggleAudio,
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 300),
+                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                      decoration: BoxDecoration(
+                                        color: isCurrentlyPlaying
+                                            ? TranSenColors.primaryGreen
+                                            : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          if (isCurrentlyPlaying) ...[
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: List.generate(_soundwaveHeights.length, (index) {
+                                                return AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 100),
+                                                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
+                                                  width: 2.5,
+                                                  height: _soundwaveHeights[index],
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(10),
+                                                  ),
+                                                );
+                                              }),
+                                            ),
+                                            const SizedBox(width: 8),
+                                            const Icon(Icons.stop_rounded, color: Colors.white, size: 16),
+                                          ] else ...[
+                                            Icon(
+                                              Icons.volume_up_rounded,
+                                              color: isDark ? Colors.white : Colors.black87,
+                                              size: 16,
+                                            ),
+                                            const SizedBox(width: 5),
+                                            Text(
+                                              "ÉCOUTER",
+                                              style: GoogleFonts.outfit(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                                color: isDark ? Colors.white : Colors.black87,
+                                                letterSpacing: 0.5,
+                                              ),
+                                            ),
+                                          ]
+                                        ],
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
-                          );
-                        },
+                            
+                            const SizedBox(height: 20),
+                            
+                            // 2. CAROUSEL OF ANNOUNCEMENTS
+                            if (_activeAnnouncements.isNotEmpty)
+                              SizedBox(
+                                height: 145,
+                                child: PageView.builder(
+                                  controller: _pageController,
+                                  onPageChanged: (index) {
+                                    setState(() {
+                                      _currentPageIndex = index;
+                                    });
+                                    _stopAllAudio(); // Stop playing when switching slides
+                                  },
+                                  itemCount: _activeAnnouncements.length,
+                                  itemBuilder: (context, index) {
+                                    final item = _activeAnnouncements[index];
+                                    return Container(
+                                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: item.gradientColors,
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(22),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: item.gradientColors.first.withValues(alpha: 0.3),
+                                            blurRadius: 10,
+                                            offset: const Offset(0, 4),
+                                          )
+                                        ],
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Positioned(
+                                            right: -20,
+                                            bottom: -20,
+                                            child: Opacity(
+                                              opacity: 0.12,
+                                              child: Icon(
+                                                item.icon,
+                                                size: 140,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                          Padding(
+                                            padding: const EdgeInsets.all(18),
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Icon(
+                                                      item.icon,
+                                                      color: item.accentColor,
+                                                      size: 18,
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Expanded(
+                                                      child: Text(
+                                                        item.title,
+                                                        style: GoogleFonts.outfit(
+                                                          color: Colors.white,
+                                                          fontSize: 12,
+                                                          fontWeight: FontWeight.w900,
+                                                          letterSpacing: 0.5,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Expanded(
+                                                  child: Text(
+                                                    item.description,
+                                                    style: GoogleFonts.outfit(
+                                                      color: Colors.white.withValues(alpha: 0.9),
+                                                      fontSize: 14,
+                                                      fontWeight: FontWeight.w500,
+                                                      height: 1.25,
+                                                      letterSpacing: -0.1,
+                                                    ),
+                                                    maxLines: 2,
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 10),
+                                                Align(
+                                                  alignment: Alignment.bottomLeft,
+                                                  child: Material(
+                                                    color: Colors.white,
+                                                    borderRadius: BorderRadius.circular(14),
+                                                    child: InkWell(
+                                                      onTap: item.onTap,
+                                                      borderRadius: BorderRadius.circular(14),
+                                                      child: Padding(
+                                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                                        child: Text(
+                                                          item.buttonLabel,
+                                                          style: GoogleFonts.outfit(
+                                                            color: item.gradientColors.first,
+                                                            fontSize: 11,
+                                                            fontWeight: FontWeight.w900,
+                                                            letterSpacing: 0.5,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            
+                            const SizedBox(height: 12),
+                            
+                            // 3. PAGE INDICATORS (DOTS)
+                            if (_activeAnnouncements.length > 1)
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: List.generate(_activeAnnouncements.length, (index) {
+                                  final isActive = _currentPageIndex == index;
+                                  return AnimatedContainer(
+                                    duration: const Duration(milliseconds: 300),
+                                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                                    width: isActive ? 16 : 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: isActive
+                                          ? (isDark ? Colors.white : Colors.black87)
+                                          : (isDark ? Colors.white24 : Colors.black12),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                  );
+                                }),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  
-                  const SizedBox(height: 12),
-                  
-                  // 3. PAGE INDICATORS (DOTS)
-                  if (_activeAnnouncements.length > 1)
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(_activeAnnouncements.length, (index) {
-                        final isActive = _currentPageIndex == index;
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(horizontal: 3),
-                          width: isActive ? 16 : 6,
-                          height: 6,
-                          decoration: BoxDecoration(
-                            color: isActive
-                                ? (isDark ? Colors.white : Colors.black87)
-                                : (isDark ? Colors.white24 : Colors.black12),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                        );
-                      }),
-                    ),
-                ],
-              ),
-            ),
-          ),
+                  ),
+                );
+              },
+            );
+          },
         );
       },
     );

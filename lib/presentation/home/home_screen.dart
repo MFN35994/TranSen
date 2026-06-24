@@ -445,7 +445,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     end: Alignment.bottomRight,
                     colors: isDark
                         ? [const Color(0xFF0D1B15), const Color(0xFF070B19)]
-                        : [const Color(0xFFE8F5E9), const Color(0xFFE3F2FD)],
+                        : [const Color(0xFFE4E9EC), const Color(0xFFD5DBDE)], // "blanc sombre" slate gradient for glassmorphism
                   ),
                 ),
                 child: CustomPaint(
