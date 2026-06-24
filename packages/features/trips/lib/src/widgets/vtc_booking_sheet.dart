@@ -5,6 +5,10 @@ import 'package:transen_core/transen_core.dart';
 import 'dart:async';
 import 'dart:math' as math;
 import 'package:dio/dio.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:transen_auth/transen_auth.dart';
+import '../data/repositories/trip_repository.dart';
 
 enum VtcSheetState { search, selectVehicle }
 
@@ -32,6 +36,7 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
   final TextEditingController _destinationController = TextEditingController();
   
   bool _isLoadingPrices = false;
+  bool _isOrdering = false;
   List<Map<String, dynamic>> _pricingEstimations = [];
   String _selectedVehicleClass = "CLASSIQUE";
   String _selectedPaymentMethod = "CASH"; // CASH, WALLET, WAVEM
@@ -646,52 +651,109 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: _isOrdering ? null : () async {
                       HapticFeedback.mediumImpact();
-                      
-                      final selectedEstimation = _pricingEstimations.firstWhere(
-                        (est) => est['vehicleClass'] == _selectedVehicleClass,
-                        orElse: () => {"price": 0.0},
-                      );
-                      final double price = (selectedEstimation['price'] as num).toDouble();
-                      
-                      // Simulation de la commande avec paiement à bord en direct
-                      showDialog(
-                        context: context,
-                        builder: (context) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                          title: Row(
-                            children: [
-                              Icon(Icons.check_circle_outline, color: TranSenColors.primaryGreen, size: 28),
-                              const SizedBox(width: 10),
-                              const Text("Course Commandée !", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      setState(() {
+                        _isOrdering = true;
+                      });
+
+                      try {
+                        final auth = ref.read(authProvider);
+                        final userId = auth?.userId ?? '';
+                        if (userId.isEmpty) {
+                          throw Exception("Utilisateur non connecté.");
+                        }
+
+                        // Charger les informations détaillées de l'utilisateur
+                        final firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+                        final userDataSnapshot = await firestore.collection('users').doc(userId).get();
+                        final userData = userDataSnapshot.data();
+
+                        final String userName = userData?['name'] ?? "Client ${userId.substring(0, 5)}";
+                        final String userPhone = userData?['phone'] ?? (userData?['phoneNumber'] ?? (auth?.phone ?? ''));
+
+                        final selectedEstimation = _pricingEstimations.firstWhere(
+                          (est) => est['vehicleClass'] == _selectedVehicleClass,
+                          orElse: () => {"price": 0.0},
+                        );
+                        final double price = (selectedEstimation['price'] as num).toDouble();
+
+                        final scheduledDateStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}";
+
+                        // Appeler le repository pour créer et enregistrer la course
+                        final tripRepo = ref.read(tripRepositoryProvider);
+                        await tripRepo.createTrip(TripModel(
+                          id: '',
+                          departure: _pickupController.text,
+                          destination: _destinationController.text,
+                          type: 'Course Urbaine VTC',
+                          price: price,
+                          status: 'pending',
+                          createdAt: DateTime.now(),
+                          scheduledDate: scheduledDateStr,
+                          clientName: userName,
+                          clientPhone: userPhone,
+                          clientId: userId,
+                          paymentMethod: _selectedPaymentMethod,
+                          departureLat: widget.userLatitude ?? 14.7167,
+                          departureLng: widget.userLongitude ?? -17.4677,
+                          routingType: 'PUBLIC', // Visible par tous les chauffeurs
+                        ));
+
+                        setState(() {
+                          _isOrdering = false;
+                        });
+
+                        if (!mounted) return;
+
+                        // Simulation / Alerte de confirmation avec règlement en direct
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => AlertDialog(
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                            title: const Row(
+                              children: [
+                                Icon(Icons.check_circle_outline, color: TranSenColors.primaryGreen, size: 28),
+                                SizedBox(width: 10),
+                                Text("Course Commandée !", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                              ],
+                            ),
+                            content: Text(
+                              "Votre demande de course en TranSen $_selectedVehicleClass a bien été enregistrée.\n\n"
+                              "Recherche d'un chauffeur à proximité...\n\n"
+                              "💳 Tarif estimé : ${price.toInt()} F CFA\n"
+                              "🤝 Règlement en direct : Le paiement se fera à bord à l'arrivée, directement auprès du chauffeur par ${_selectedPaymentMethod == "CASH" ? "espèces" : "Mobile Money (Wave / OM)"}.",
+                              style: const TextStyle(fontSize: 14),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  setState(() {
+                                    _currentState = VtcSheetState.search;
+                                    _destinationController.clear();
+                                    _loadDefaultSuggestions();
+                                  });
+                                  if (widget.onBackToHome != null) {
+                                    widget.onBackToHome!();
+                                  }
+                                },
+                                child: const Text("OK", style: TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold)),
+                              ),
                             ],
                           ),
-                          content: Text(
-                            "Votre demande de course en TranSen $_selectedVehicleClass a bien été enregistrée.\n\n"
-                            "Recherche d'un chauffeur à proximité...\n\n"
-                            "💳 Tarif estimé : ${price.toInt()} F CFA\n"
-                            "🤝 Règlement en direct : Le paiement se fera à bord à l'arrivée, directement auprès du chauffeur par ${_selectedPaymentMethod == "CASH" ? "espèces" : "Mobile Money (Wave / OM)"}.",
-                            style: const TextStyle(fontSize: 14),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(context);
-                                setState(() {
-                                  _currentState = VtcSheetState.search;
-                                  _destinationController.clear();
-                                  _loadDefaultSuggestions();
-                                });
-                                if (widget.onBackToHome != null) {
-                                  widget.onBackToHome!();
-                                }
-                              },
-                              child: const Text("OK", style: TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        ),
-                      );
+                        );
+                      } catch (e) {
+                        setState(() {
+                          _isOrdering = false;
+                        });
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text("Erreur lors de la création de la course : $e"), backgroundColor: Colors.red),
+                          );
+                        }
+                      }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: TranSenColors.primaryGreen,
@@ -700,10 +762,16 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                       elevation: 0,
                     ),
-                    child: const Text(
-                      "COMMANDER MA COURSE",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
-                    ),
+                    child: _isOrdering
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            "COMMANDER MA COURSE",
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, letterSpacing: 0.5),
+                          ),
                   ),
                 ),
               ],
