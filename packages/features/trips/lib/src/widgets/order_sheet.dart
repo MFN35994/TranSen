@@ -1637,11 +1637,17 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       } catch (e) {
         debugPrint('>>> Polling error: $e');
       }
-      // After max attempts (~90s), show ticket with pending status anyway
+      // After max attempts (~90s), stop polling but do NOT assume success
       if (_pollingAttempts >= _maxPollingAttempts) {
         timer.cancel();
-        if (mounted && _pendingBookingSnapshot != null) {
-          _handlePaymentSuccess(Map<String, dynamic>.from(_pendingBookingSnapshot!));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Attente de paiement prolongée. Si vous avez déjà payé, cliquez sur 'VÉRIFIER', sinon vous pouvez annuler."),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
         }
       }
     });
@@ -1662,13 +1668,11 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         } else if (status == 'CANCELLED') {
           _handlePaymentCancelledOrFailed();
         } else {
-          // Payment still pending — show pending ticket with trip info
-          if (mounted && _pendingBookingSnapshot != null) {
-            _handlePaymentSuccess(Map<String, dynamic>.from(_pendingBookingSnapshot!));
-          } else if (mounted) {
+          // Payment still pending — DO NOT show the ticket. Keep them on the sheet to pay or cancel
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Le paiement est en cours de traitement par SenePay. Patientez...'),
+                content: Text("Le paiement n'a pas encore été détecté. Veuillez finaliser la transaction sur SenePay ou cliquer sur 'ANNULER LA RÉSERVATION'."),
                 backgroundColor: Colors.orange,
               ),
             );
