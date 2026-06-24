@@ -25,6 +25,7 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen/presentation/widgets/profile_drawer.dart';
+import 'package:transen/presentation/widgets/smart_media_hub_card.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
 
@@ -582,39 +583,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       key: const ValueKey('serviceHub'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Premium greeting card
-        Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: isDark ? Colors.black38 : Colors.white70,
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: isDark ? Colors.white10 : Colors.black12,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Bonjour 👋",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: isDark ? Colors.white70 : Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                "Où allons-nous aujourd'hui ?",
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w900,
-                  color: isDark ? Colors.white : Colors.black87,
-                  height: 1.2,
-                ),
-              ),
-            ],
-          ),
+        // Premium Smart Media Hub card (Dynamic announcements, visual carousel & audio synthesis)
+        SmartMediaHubCard(
+          onNavigateToBus: () {
+            _setJourneyState(HomeJourneyState.selectTravelType);
+          },
         ),
         // Active Trips Section
         Consumer(builder: (context, ref, child) {

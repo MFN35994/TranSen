@@ -2,7 +2,7 @@ name: transen
 description: "A new Flutter project for transport and delivery."
 publish_to: 'none'
 
-version: 2026.6.24+2150
+version: 2026.6.24+2243
 
 environment:
   sdk: '>=3.3.0 <4.0.0'
@@ -48,6 +48,7 @@ dependencies:
   mask_text_input_formatter: ^2.9.0
   shimmer: ^3.0.0
   device_info_plus: ^13.1.0
+  flutter_tts: ^4.0.2
   mapbox_maps_flutter: ^2.0.0
 
 
