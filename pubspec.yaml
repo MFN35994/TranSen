@@ -49,6 +49,7 @@ dependencies:
   shimmer: ^3.0.0
   device_info_plus: ^13.1.0
   flutter_tts: ^4.0.2
+  audioplayers: ^6.0.0
   mapbox_maps_flutter: ^2.0.0
 
 
