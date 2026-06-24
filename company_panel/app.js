@@ -1025,7 +1025,7 @@ async function loadDashboardData() {
                                 <button onclick="window.toggleFavorite('trip', '${t.id}', '${(escapeHtml(t.departure) || "Inconnu").replace(/'/g, "\\'")} ➔ ${(escapeHtml(t.destination) || "Inconnu").replace(/'/g, "\\'")}')" style="border:none; background:none; cursor:pointer; color: ${typeof window.isFavorite === 'function' && window.isFavorite('trip', t.id) ? '#F59E0B' : 'var(--text-dim)'}; padding:0; display:inline-flex; align-items:center;" title="Épingler ce trajet">
                                     <i class="${typeof window.isFavorite === 'function' && window.isFavorite('trip', t.id) ? 'fas fa-star' : 'far fa-star'}" style="font-size:0.9rem;"></i>
                                 </button>
-                                <small><b>De:</b> ${escapeHtml(t.departure || "Inconnu")}<br><b>À:</b> ${escapeHtml(t.destination || "Inconnu")}</small>
+                                <small><b>De:</b> ${escapeHtml(t.departure || "Inconnu")}<br><b>À:</b> ${escapeHtml(t.destination || "Inconnu")}${t.relayPoint ? `<br><b>Relais:</b> ${escapeHtml(t.relayPoint)}` : ''}</small>
                             </div>
                         </td>
                         <td data-label="Prix"><b>${t.price} F</b></td>
@@ -1946,6 +1946,7 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
 
     const departure = document.getElementById('schDeparture').value;
     const destination = document.getElementById('schDestination').value;
+    const relayPoint = document.getElementById('schRelayPoint').value;
     const driverId = document.getElementById('schDriver').value;
     const scheduledTime = document.getElementById('schScheduledTime').value; // AAAA-MM-JJTHH:MM
     const price = document.getElementById('schPrice').value;
@@ -2009,6 +2010,7 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
             body: JSON.stringify({
                 departure: departure,
                 destination: destination,
+                relayPoint: relayPoint,
                 driverId: driverId,
                 price: parseFloat(price),
                 totalSeats: parseInt(totalSeats),

@@ -44,7 +44,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
               final userData = snapshot.data;
               debugPrint("ProfileScreen: UserID=$userId, DataExist=${userData != null}");
               
-              String name = userData?['name'] ?? '';
+              String name = userData?['fullName'] ?? (userData?['name'] ?? '');
               if (name.isEmpty && userData?['firstName'] != null) {
                 name = "${userData!['firstName']} ${userData['lastName'] ?? ''}";
               }
@@ -161,14 +161,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton(
-                        onPressed: () => _showEditPhoneDialog(context, ref, userId, phone),
+                        onPressed: () => _showEditProfileDialog(context, ref, userId, name, phone),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
                         ),
-                        child: const Text('MODIFIER LE NUMÉRO', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text('MODIFIER LE PROFIL', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -179,21 +179,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     );
   }
 
-  void _showEditPhoneDialog(BuildContext context, WidgetRef ref, String userId, String currentPhone) {
-    final controller = TextEditingController(text: currentPhone == 'Non renseigné' ? '' : currentPhone);
+  void _showEditProfileDialog(BuildContext context, WidgetRef ref, String userId, String currentName, String currentPhone) {
+    final nameController = TextEditingController(text: (currentName == 'Client TranSen' || currentName == 'Chauffeur TranSen') ? '' : currentName);
+    final phoneController = TextEditingController(text: currentPhone == 'Non renseigné' ? '' : currentPhone);
     
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Modifier le numéro'),
-        content: TextField(
-          controller: controller,
-          keyboardType: TextInputType.phone,
-          decoration: const InputDecoration(
-            labelText: 'Nouveau numéro',
-            hintText: '77 123 45 67',
-            prefixText: '',
-          ),
+        title: const Text('Modifier le profil'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              keyboardType: TextInputType.name,
+              textCapitalization: TextCapitalization.words,
+              decoration: const InputDecoration(
+                labelText: 'Nom complet',
+                hintText: 'Prénom et Nom',
+                prefixIcon: Icon(Icons.person_outline),
+              ),
+            ),
+            const SizedBox(height: 15),
+            TextField(
+              controller: phoneController,
+              keyboardType: TextInputType.phone,
+              decoration: const InputDecoration(
+                labelText: 'Téléphone',
+                hintText: '77 123 45 67',
+                prefixIcon: Icon(Icons.phone_outlined),
+              ),
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -202,7 +219,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           ),
           ElevatedButton(
             onPressed: () async {
-              String input = controller.text.trim().replaceAll(' ', '');
+              final newName = nameController.text.trim();
+              String input = phoneController.text.trim().replaceAll(' ', '');
               String digitsOnly = input.replaceAll(RegExp(r'\D'), '');
               
               // Normalisation Sénégal
@@ -211,23 +229,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 finalPhone = finalPhone.substring(3);
               }
 
+              if (newName.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text("Veuillez entrer votre nom complet")),
+                );
+                return;
+              }
+
               if (finalPhone.length < 9) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Numéro invalide (min 9 chiffres)")),
+                  const SnackBar(content: Text("Numéro de téléphone invalide (min 9 chiffres)")),
                 );
                 return;
               }
 
               try {
-                await ref.read(userRepositoryProvider).updateUserData({
-                  'phone': finalPhone,
-                });
+                await ref.read(authProvider.notifier).updateUserData(
+                  fullName: newName,
+                  phone: finalPhone,
+                );
                 if (context.mounted) Navigator.pop(context);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text("Numéro mis à jour avec succès !"), backgroundColor: Colors.green),
+                    const SnackBar(content: Text("Profil mis à jour avec succès !"), backgroundColor: Colors.green),
                   );
                 }
+                _triggerRefresh();
               } catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

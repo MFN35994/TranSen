@@ -16,12 +16,14 @@ class OrderSheet extends ConsumerStatefulWidget {
   final String? initialDeparture;
   final String? initialDestination;
   final String? driverId;
+  final String? initialRoutingType;
 
   const OrderSheet({
     super.key,
     this.initialDeparture,
     this.initialDestination,
     this.driverId,
+    this.initialRoutingType,
   });
 
   static void show(
@@ -29,6 +31,7 @@ class OrderSheet extends ConsumerStatefulWidget {
     String? departure,
     String? destination,
     String? driverId,
+    String? routingType,
   }) {
     showModalBottomSheet(
       context: context,
@@ -46,6 +49,7 @@ class OrderSheet extends ConsumerStatefulWidget {
             initialDeparture: departure,
             initialDestination: destination,
             driverId: driverId,
+            initialRoutingType: routingType,
           ),
         ),
       ),
@@ -117,6 +121,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     _selectedDeparture = widget.initialDeparture;
     _selectedDestination = widget.initialDestination;
     _preferredDriverId = widget.driverId;
+    _selectedRoutingType = widget.initialRoutingType;
 
     if (_preferredDriverId != null) {
       _fetchDriverName();
@@ -738,7 +743,19 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
         const SizedBox(height: 25),
         ElevatedButton(
           onPressed: (_selectedDeparture != null && _selectedDestination != null)
-              ? () => setState(() => _currentStep = 1)
+              ? () {
+                  setState(() {
+                    if (_selectedRoutingType != null) {
+                      if (_selectedRoutingType == 'COMPANY_ONLY') {
+                        _currentStep = 2;
+                      } else {
+                        _currentStep = 3;
+                      }
+                    } else {
+                      _currentStep = 1;
+                    }
+                  });
+                }
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: TranSenColors.primaryGreen,
@@ -1320,6 +1337,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               'destination': destination,
               'scheduledDate': _getFixedTimeDateString(),
               'price': finalPrice,
+              'relayPoint': _selectedScheduledTrip?['relayPoint'] ?? '',
             };
           });
 

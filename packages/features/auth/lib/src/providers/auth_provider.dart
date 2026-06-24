@@ -158,13 +158,14 @@ class AuthNotifier extends Notifier<AuthState?> {
   Future<void> updateUserData({
     String? firstName,
     String? lastName,
+    String? fullName,
     String? phone,
     String? email,
   }) async {
     try {
-      final name = (firstName != null && lastName != null)
+      final name = fullName ?? ((firstName != null && lastName != null)
           ? "$firstName $lastName"
-          : null;
+          : null);
       
       // 1. Mettre à jour sur le backend REST (met à jour Postgres et synchronise Firestore)
       try {

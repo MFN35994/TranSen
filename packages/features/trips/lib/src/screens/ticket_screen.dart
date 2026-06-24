@@ -110,6 +110,7 @@ class _TicketScreenState extends State<TicketScreen>
     final String passengerPhone = data['passengerPhone'] as String? ?? '';
     final dynamic priceRaw = data['price'];
     final String price = priceRaw != null ? '$priceRaw FCFA' : '';
+    final String relayPoint = data['relayPoint'] as String? ?? '';
 
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF0F4FF),
@@ -159,6 +160,7 @@ class _TicketScreenState extends State<TicketScreen>
                     boardingCode: _boardingCode,
                     qrData: _qrData,
                     isPaid: _isPaid,
+                    relayPoint: relayPoint,
                   ),
                 ),
 
@@ -296,6 +298,7 @@ class _TicketCard extends StatelessWidget {
   final String boardingCode;
   final String qrData;
   final bool isPaid;
+  final String relayPoint;
 
   const _TicketCard({
     required this.isDark,
@@ -311,6 +314,7 @@ class _TicketCard extends StatelessWidget {
     required this.boardingCode,
     required this.qrData,
     required this.isPaid,
+    required this.relayPoint,
   });
 
   @override
@@ -493,6 +497,15 @@ class _TicketCard extends StatelessWidget {
                     price,
                     valueColor: Colors.green,
                     bold: true,
+                  ),
+                ],
+                if (relayPoint.isNotEmpty) ...[
+                  Divider(color: dividerColor, height: 20),
+                  _infoRow(
+                    Icons.transfer_within_a_station_rounded,
+                    'Point de relais',
+                    relayPoint,
+                    valueColor: Colors.teal,
                   ),
                 ],
               ],

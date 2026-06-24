@@ -20,12 +20,22 @@ import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
+import 'package:transen_trips/src/widgets/vtc_booking_sheet.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen/presentation/widgets/profile_drawer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
+
+enum TransportMode { interurbain, urbain }
+
+enum HomeJourneyState {
+  selectService,
+  selectTravelType,
+  selectVtcDestination,
+  selectInterurbanType,
+}
 
 final activeDriversStreamProvider = StreamProvider<List<PointAnnotationOptions>>((ref) {
   return FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
@@ -71,6 +81,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   double? _userLng;
   double? _userLat;
   static bool _webRedirectChecked = false;
+  HomeJourneyState _journeyState = HomeJourneyState.selectService;
+  HomeJourneyState _previousJourneyState = HomeJourneyState.selectService;
+
+  void _setJourneyState(HomeJourneyState newState) {
+    if (newState == _journeyState) return;
+    setState(() {
+      _previousJourneyState = _journeyState;
+      _journeyState = newState;
+    });
+  }
+
+  int _getJourneyStateDepth(HomeJourneyState state) {
+    switch (state) {
+      case HomeJourneyState.selectService:
+        return 0;
+      case HomeJourneyState.selectTravelType:
+        return 1;
+      case HomeJourneyState.selectInterurbanType:
+        return 2;
+      case HomeJourneyState.selectVtcDestination:
+        return 3;
+    }
+  }
 
   @override
   void initState() {
@@ -346,6 +379,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final historyAsync = ref.watch(providers.tripHistoryProvider(userId));
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double statusBarHeight = MediaQuery.of(context).padding.top;
+    final double appBarHeight = AppBar().preferredSize.height;
+    final double mainHeight = screenHeight - statusBarHeight - appBarHeight;
+
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[100],
       appBar: AppBar(
@@ -361,235 +399,584 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       drawer: const ProfileDrawer(),
-      body: Column(
+      body: Stack(
         children: [
-          // MAP COMPACTE
-          SizedBox(
-            height: MediaQuery.of(context).size.height * 0.40,
-            child: MapWidget(
-              cameraOptions: _initialPosition,
-              onMapCreated: (MapboxMap mapboxMap) async {
-                _mapController = mapboxMap;
-                _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-                
-                // Add initial annotations if available
-                if (driverMarkers.isNotEmpty) {
-                  for (var annotation in driverMarkers) {
-                    _annotationManager!.create(annotation);
+          // 1. DYNAMIC BACKGROUND OR MAP
+          if (_journeyState == HomeJourneyState.selectVtcDestination)
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.fastOutSlowIn,
+              height: mainHeight,
+              child: MapWidget(
+                cameraOptions: _initialPosition,
+                onMapCreated: (MapboxMap mapboxMap) async {
+                  _mapController = mapboxMap;
+                  _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
+                  
+                  if (driverMarkers.isNotEmpty) {
+                    for (var annotation in driverMarkers) {
+                      _annotationManager!.create(annotation);
+                    }
                   }
-                }
 
-                try {
-                  geo.Position position = await geo.Geolocator.getCurrentPosition();
-                  _mapController?.setCamera(
-                    CameraOptions(
-                      center: Point(coordinates: Position(position.longitude, position.latitude)),
-                      zoom: 13.0,
-                    ),
-                  );
-                  _userLng = position.longitude;
-                  _userLat = position.latitude;
-                  _loadIsochrones(position.longitude, position.latitude);
-                  _loadMatrix(position.longitude, position.latitude, driverMarkers);
-                } catch (_) {}
-              },
-            ),
-          ),
-          
-          // ACTIONS & HISTORIQUE
-          Expanded(
-            child: Stack(
-              children: [
-                // Fond flou (Glassmorphism)
-                Positioned.fill(
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                    child: BackdropFilter(
-                      filter: ui.ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: isDark ? Colors.black.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.6),
-                          borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                          border: Border.all(
-                            color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.4),
-                            width: 1.5,
-                          ),
-                        ),
+                  try {
+                    geo.Position position = await geo.Geolocator.getCurrentPosition();
+                    _mapController?.setCamera(
+                      CameraOptions(
+                        center: Point(coordinates: Position(position.longitude, position.latitude)),
+                        zoom: 13.0,
                       ),
-                    ),
+                    );
+                    _userLng = position.longitude;
+                    _userLat = position.latitude;
+                    _loadIsochrones(position.longitude, position.latitude);
+                    _loadMatrix(position.longitude, position.latitude, driverMarkers);
+                  } catch (_) {}
+                },
+              ),
+            )
+          else
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: isDark
+                        ? [const Color(0xFF0D1B15), const Color(0xFF070B19)]
+                        : [const Color(0xFFE8F5E9), const Color(0xFFE3F2FD)],
                   ),
                 ),
-                
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
-                  child: CustomScrollView(
-                  slivers: [
-                    // ACTIVE TRIPS
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(20, 20, 20, 10),
-                        child: Consumer(builder: (context, ref, child) {
-                          final activePoolAsync = ref.watch(providers.activePoolProvider);
-                          final activeTripAsync = ref.watch(providers.activeTripProvider);
-                          final activeCompanyTripAsync = ref.watch(providers.activeCompanyTripProvider);
-                          return Column(
-                            children: [
-                              activePoolAsync.when(
-                                data: (pool) => pool == null ? const SizedBox.shrink() : _buildActiveTripCard(context, pool, cardType: 'pool'),
-                                loading: () => const SizedBox.shrink(),
-                                error: (_, __) => const SizedBox.shrink(),
-                              ),
-                              activeTripAsync.when(
-                                data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveTripCard(context, trip, cardType: 'yobante'),
-                                loading: () => const SizedBox.shrink(),
-                                error: (_, __) => const SizedBox.shrink(),
-                              ),
-                              activeCompanyTripAsync.when(
-                                data: (trip) => trip == null ? const SizedBox.shrink() : _buildActiveTripCard(context, trip, cardType: 'company'),
-                                loading: () => const SizedBox.shrink(),
-                                error: (_, __) => const SizedBox.shrink(),
-                              ),
-                            ],
-                          );
-                        }),
-                      ),
-                    ),
+                child: CustomPaint(
+                  painter: BackgroundWavePainter(isDark: isDark),
+                ),
+              ),
+            ),
 
-                    // GRID ACTIONS COMPACTE (Style Wave)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        child: Column(
-                          children: [
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: PremiumPulseCard(
-                                    label: 'Course',
-                                    sublabel: 'Commander un trajet',
-                                    icon: Icons.directions_car,
-                                    gradientColors: const [Color(0xFF1A3A2A), Color(0xFF2E7D32)],
-                                    iconColor: const Color(0xFF81C784),
-                                    onTap: () => OrderSheet.show(context),
-                                    animated: true,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: PremiumPulseCard(
-                                    label: 'Yobanté',
-                                    sublabel: 'Envoyer un colis',
-                                    icon: Icons.inventory_2,
-                                    gradientColors: const [Color(0xFF1A3A5C), Color(0xFF0D6EFD)],
-                                    iconColor: const Color(0xFF5BB8FF),
-                                    onTap: () => YobanteSheet.show(context),
-                                    animated: true,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: PremiumPulseCard(
-                                    label: 'Favoris',
-                                    sublabel: 'Lieux enregistrés',
-                                    icon: Icons.favorite,
-                                    gradientColors: const [Color(0xFF1A1A3A), Color(0xFF4527A0)],
-                                    iconColor: const Color(0xFFB39DDB),
-                                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen())),
-                                    animated: false,
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: PremiumPulseCard(
-                                    label: 'Parrainage',
-                                    sublabel: 'Gagner des points',
-                                    icon: Icons.card_giftcard,
-                                    gradientColors: const [Color(0xFF3A2A00), Color(0xFFF9A825)],
-                                    iconColor: const Color(0xFFFFD54F),
-                                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen())),
-                                    animated: false,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+          // 2. PROGRESSIVE SELECTION UI (Step 1, Step 2, Step 3 Interurbain)
+          if (_journeyState != HomeJourneyState.selectVtcDestination)
+            Positioned.fill(
+              child: ClipRRect(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 400),
+                    switchInCurve: Curves.fastOutSlowIn,
+                    switchOutCurve: Curves.fastOutSlowIn,
+                    transitionBuilder: (Widget child, Animation<double> animation) {
+                      bool isIncoming = false;
+                      if (child.key is ValueKey<String>) {
+                        final String keyVal = (child.key as ValueKey<String>).value;
+                        if (_journeyState == HomeJourneyState.selectService && keyVal == 'serviceHub') isIncoming = true;
+                        if (_journeyState == HomeJourneyState.selectTravelType && keyVal == 'travelType') isIncoming = true;
+                        if (_journeyState == HomeJourneyState.selectInterurbanType && keyVal == 'interurbanType') isIncoming = true;
+                      }
+                      
+                      final int currentDepth = _getJourneyStateDepth(_journeyState);
+                      final int previousDepth = _getJourneyStateDepth(_previousJourneyState);
+                      final bool isForward = currentDepth >= previousDepth;
+
+                      Offset startOffset;
+                      if (isIncoming) {
+                        startOffset = isForward ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
+                      } else {
+                        startOffset = isForward ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0);
+                      }
+
+                      final Tween<Offset> slideTween = Tween<Offset>(
+                        begin: startOffset,
+                        end: Offset.zero,
+                      );
+
+                      final curvedAnimation = CurvedAnimation(
+                        parent: animation,
+                        curve: Curves.fastOutSlowIn,
+                      );
+
+                      return SlideTransition(
+                        position: slideTween.animate(curvedAnimation),
+                        child: FadeTransition(
+                          opacity: animation,
+                          child: child,
                         ),
-                      ),
-                    ),
+                      );
+                    },
+                    child: _buildJourneyContent(isDark, historyAsync),
+                  ),
+                ),
+              ),
+            ),
 
-                    const SliverToBoxAdapter(child: Divider(height: 30, thickness: 1)),
+          // 3. VTC BOOKING SHEET OVERLAY (Step 3 Vtc)
+          if (_journeyState == HomeJourneyState.selectVtcDestination)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: VtcBookingSheet(
+                userLatitude: _userLat,
+                userLongitude: _userLng,
+                onRouteSelected: (destination, distance, duration) {
+                  // Tracer l'itinéraire sur la carte
+                },
+                onBackToHome: () {
+                  _setJourneyState(HomeJourneyState.selectService);
+                },
+              ),
+            ),
 
-                    // HISTORIQUE
-                    SliverPadding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      sliver: SliverToBoxAdapter(
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text("HISTORIQUE", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1)),
-                            TextButton(
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
-                              child: const Text("Plus d'historique", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen)),
-                            ),
-                          ],
-                        ),
-                      ),
+          // 4. FLOATING BACK BUTTON ON MAP (Step 3 Vtc)
+          if (_journeyState == HomeJourneyState.selectVtcDestination)
+            Positioned(
+              top: 16,
+              left: 16,
+              child: FloatingActionButton(
+                mini: true,
+                backgroundColor: Colors.white,
+                foregroundColor: TranSenColors.primaryGreen,
+                onPressed: () {
+                  _setJourneyState(HomeJourneyState.selectTravelType);
+                },
+                child: const Icon(Icons.arrow_back),
+              ),
+            ),
+        ],
+      ),
+      floatingActionButton: _journeyState == HomeJourneyState.selectVtcDestination
+          ? FloatingActionButton(
+              mini: true,
+              onPressed: () async {
+                try {
+                  geo.Position pos = await geo.Geolocator.getCurrentPosition();
+                  _mapController?.setCamera(
+                    CameraOptions(
+                      center: Point(coordinates: Position(pos.longitude, pos.latitude)),
+                      zoom: 15.0,
                     ),
+                  );
+                } catch (_) {}
+              },
+              backgroundColor: Colors.white,
+              foregroundColor: TranSenColors.primaryGreen,
+              child: const Icon(Icons.my_location),
+            )
+          : null,
+    );
+  }
 
-                    historyAsync.when(
-                      data: (trips) {
-                        final items = trips.take(12).toList();
-                        if (items.isEmpty) {
-                          return const SliverFillRemaining(
-                            hasScrollBody: false,
-                            child: Center(child: Text("Aucun trajet récent", style: TextStyle(color: Colors.grey))),
-                          );
-                        }
-                        return SliverList(
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => _buildHistoryItem(context, items[index]),
-                            childCount: items.length,
-                          ),
-                        );
-                      },
-                      loading: () => SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) => _buildHistoryShimmer(context),
-                          childCount: 5,
-                        ),
-                      ),
-                      error: (e, _) => SliverToBoxAdapter(child: Center(child: Text("Erreur: $e"))),
-                    ),
-                    
-                    const SliverToBoxAdapter(child: SizedBox(height: 50)),
-                  ],
+  Widget _buildJourneyContent(bool isDark, AsyncValue<List<TripModel>> historyAsync) {
+    switch (_journeyState) {
+      case HomeJourneyState.selectService:
+        return _buildServiceHub(isDark, historyAsync);
+      case HomeJourneyState.selectTravelType:
+        return _buildTravelTypeSelection(isDark);
+      case HomeJourneyState.selectInterurbanType:
+        return _buildInterurbanTypeSelection(isDark);
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildServiceHub(bool isDark, AsyncValue<List<TripModel>> historyAsync) {
+    return Column(
+      key: const ValueKey('serviceHub'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Premium greeting card
+        Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDark ? Colors.black38 : Colors.white70,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: isDark ? Colors.white10 : Colors.black12,
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Bonjour 👋",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white70 : Colors.black54,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Où allons-nous aujourd'hui ?",
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: isDark ? Colors.white : Colors.black87,
+                  height: 1.2,
                 ),
               ),
             ],
           ),
         ),
-      ],
-    ),
-      floatingActionButton: FloatingActionButton(
-        mini: true,
-        onPressed: () async {
-          try {
-            geo.Position pos = await geo.Geolocator.getCurrentPosition();
-            _mapController?.setCamera(
-              CameraOptions(
-                center: Point(coordinates: Position(pos.longitude, pos.latitude)),
-                zoom: 15.0,
+        // Active Trips Section
+        Consumer(builder: (context, ref, child) {
+          final activePoolAsync = ref.watch(providers.activePoolProvider);
+          final activeTripAsync = ref.watch(providers.activeTripProvider);
+          final activeCompanyTripAsync = ref.watch(providers.activeCompanyTripProvider);
+          return Column(
+            children: [
+              activePoolAsync.when(
+                data: (pool) => pool == null ? const SizedBox.shrink() : Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: _buildActiveTripCard(context, pool, cardType: 'pool'),
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
               ),
+              activeTripAsync.when(
+                data: (trip) => trip == null ? const SizedBox.shrink() : Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: _buildActiveTripCard(context, trip, cardType: 'yobante'),
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+              activeCompanyTripAsync.when(
+                data: (trip) => trip == null ? const SizedBox.shrink() : Padding(
+                  padding: const EdgeInsets.only(bottom: 15),
+                  child: _buildActiveTripCard(context, trip, cardType: 'company'),
+                ),
+                loading: () => const SizedBox.shrink(),
+                error: (_, __) => const SizedBox.shrink(),
+              ),
+            ],
+          );
+        }),
+        const SizedBox(height: 10),
+
+        // Grid Actions (Modern Glassmorphism)
+        Row(
+          children: [
+            Expanded(
+              child: PremiumPulseCard(
+                label: 'Me déplacer',
+                sublabel: 'Course ou Voyage',
+                icon: Icons.directions_car,
+                gradientColors: const [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+                iconColor: const Color(0xFF81C784),
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  _setJourneyState(HomeJourneyState.selectTravelType);
+                },
+                animated: true,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: PremiumPulseCard(
+                label: 'Yobanté',
+                sublabel: 'Envoyer un colis',
+                icon: Icons.inventory_2,
+                gradientColors: const [Color(0xFF0D47A1), Color(0xFF1976D2)],
+                iconColor: const Color(0xFF64B5F6),
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  YobanteSheet.show(context);
+                },
+                animated: true,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 15),
+        Row(
+          children: [
+            Expanded(
+              child: PremiumPulseCard(
+                label: 'Portefeuille',
+                sublabel: 'Gérer mon argent',
+                icon: Icons.account_balance_wallet,
+                gradientColors: const [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+                iconColor: const Color(0xFFE1BEE7),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                },
+                animated: false,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: PremiumPulseCard(
+                label: 'Parrainage',
+                sublabel: 'Gagner des points',
+                icon: Icons.card_giftcard,
+                gradientColors: const [Color(0xFFE65100), Color(0xFFF57C00)],
+                iconColor: const Color(0xFFFFE082),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                },
+                animated: false,
+              ),
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 30),
+        const Divider(height: 1, thickness: 1),
+        const SizedBox(height: 20),
+
+        // History Section
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "HISTORIQUE RÉCENT",
+              style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 1),
+            ),
+            TextButton(
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())),
+              child: const Text(
+                "Plus d'historique",
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        
+        // Render history
+        historyAsync.when(
+          data: (trips) {
+            final items = trips.take(3).toList();
+            if (items.isEmpty) {
+              return const Padding(
+                padding: EdgeInsets.symmetric(vertical: 20),
+                child: Center(child: Text("Aucun trajet récent", style: TextStyle(color: Colors.grey))),
+              );
+            }
+            return Column(
+              children: items.map((trip) => _buildHistoryItem(context, trip)).toList(),
             );
-          } catch (_) {}
-        },
-        backgroundColor: Colors.white,
-        foregroundColor: TranSenColors.primaryGreen,
-        child: const Icon(Icons.my_location),
+          },
+          loading: () => Column(
+            children: List.generate(3, (index) => _buildHistoryShimmer(context)),
+          ),
+          error: (e, _) => Center(child: Text("Erreur de chargement: $e")),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTravelTypeSelection(bool isDark) {
+    return Column(
+      key: const ValueKey('travelType'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios, color: isDark ? Colors.white70 : Colors.black87),
+              onPressed: () {
+                _setJourneyState(HomeJourneyState.selectService);
+              },
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "Type de déplacement",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 25),
+        
+        Text(
+          "Quel est votre type de déplacement ?",
+          style: TextStyle(
+            fontSize: 22,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black87,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 25),
+
+        _buildChoiceCard(
+          title: "Course Urbaine (VTC) 🟢",
+          subtitle: "Déplacement immédiat et rapide dans votre ville.",
+          icon: Icons.directions_car_filled,
+          gradient: const [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+          iconColor: const Color(0xFF81C784),
+          onTap: () {
+            _setJourneyState(HomeJourneyState.selectVtcDestination);
+          },
+        ),
+        const SizedBox(height: 20),
+
+        _buildChoiceCard(
+          title: "Voyage Interurbain 🔵",
+          subtitle: "Voyage planifié ou départ urgent entre les régions du Sénégal.",
+          icon: Icons.departure_board,
+          gradient: const [Color(0xFF0D47A1), Color(0xFF1976D2)],
+          iconColor: const Color(0xFF64B5F6),
+          onTap: () {
+            _setJourneyState(HomeJourneyState.selectInterurbanType);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInterurbanTypeSelection(bool isDark) {
+    return Column(
+      key: const ValueKey('interurbanType'),
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            IconButton(
+              icon: Icon(Icons.arrow_back_ios, color: isDark ? Colors.white70 : Colors.black87),
+              onPressed: () {
+                _setJourneyState(HomeJourneyState.selectTravelType);
+              },
+            ),
+            const SizedBox(width: 10),
+            Text(
+              "Voyage Interurbain",
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        
+        Text(
+          "Sélectionnez votre type de transport :",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.w900,
+            color: isDark ? Colors.white : Colors.black87,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 20),
+
+        _buildChoiceCard(
+          title: "Allo Dakar (Indépendant) 🚗",
+          subtitle: "Covoiturage partagé (3-4 places) économique avec un chauffeur indépendant.",
+          icon: Icons.people_outline,
+          gradient: const [Color(0xFF1B5E20), Color(0xFF2E7D32)],
+          iconColor: const Color(0xFF81C784),
+          onTap: () {
+            OrderSheet.show(context, routingType: 'INDEPENDENTS_ONLY');
+          },
+        ),
+        const SizedBox(height: 15),
+
+        _buildChoiceCard(
+          title: "Compagnie Partenaire (Bus) 🚌",
+          subtitle: "Voyage confortable planifié sur les lignes régulières de nos compagnies partenaires.",
+          icon: Icons.directions_bus_filled_outlined,
+          gradient: const [Color(0xFFE65100), Color(0xFFF57C00)],
+          iconColor: const Color(0xFFFFB74D),
+          onTap: () {
+            OrderSheet.show(context, routingType: 'COMPANY_ONLY');
+          },
+        ),
+        const SizedBox(height: 15),
+
+        _buildChoiceCard(
+          title: "Marché Public (Urgence) 🚨",
+          subtitle: "Besoin de partir immédiatement ? Votre demande est envoyée à tous les chauffeurs pour une prise en charge rapide !",
+          icon: Icons.electric_bolt,
+          gradient: const [Color(0xFF0D47A1), Color(0xFF1976D2)],
+          iconColor: const Color(0xFF64B5F6),
+          onTap: () {
+            OrderSheet.show(context, routingType: 'PUBLIC');
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildChoiceCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required List<Color> gradient,
+    required Color iconColor,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: gradient, begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: gradient.last.withValues(alpha: 0.3),
+            blurRadius: 12,
+            offset: const Offset(0, 5),
+          )
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            onTap();
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 32),
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_ios, color: Colors.white70, size: 20),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -845,6 +1232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
+
 }
 
 class PremiumActionCard extends StatefulWidget {
@@ -1294,4 +1682,52 @@ class _PremiumPulseCardState extends State<PremiumPulseCard> with TickerProvider
       ),
     );
   }
+}
+
+class BackgroundWavePainter extends CustomPainter {
+  final bool isDark;
+  BackgroundWavePainter({required this.isDark});
+
+  @override
+  void paint(ui.Canvas canvas, ui.Size size) {
+    final paint = Paint()
+      ..color = (isDark ? const Color(0xFF1B5E20) : const Color(0xFF81C784)).withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    final path1 = Path();
+    path1.moveTo(0, size.height * 0.2);
+    path1.quadraticBezierTo(
+      size.width * 0.35,
+      size.height * 0.1,
+      size.width * 0.7,
+      size.height * 0.4,
+    );
+    path1.quadraticBezierTo(
+      size.width * 0.85,
+      size.height * 0.55,
+      size.width,
+      size.height * 0.5,
+    );
+    canvas.drawPath(path1, paint);
+
+    final path2 = Path();
+    path2.moveTo(0, size.height * 0.8);
+    path2.quadraticBezierTo(
+      size.width * 0.4,
+      size.height * 0.9,
+      size.width * 0.75,
+      size.height * 0.65,
+    );
+    path2.quadraticBezierTo(
+      size.width * 0.9,
+      size.height * 0.55,
+      size.width,
+      size.height * 0.7,
+    );
+    canvas.drawPath(path2, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

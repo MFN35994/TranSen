@@ -1102,6 +1102,15 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                             label: 'Destination',
                             value: trip.destination,
                           ),
+                          if (trip.relayPoint != null && trip.relayPoint!.isNotEmpty) ...[
+                            const Divider(height: 20),
+                            _InfoRow(
+                              icon: Icons.transfer_within_a_station_rounded,
+                              iconColor: Colors.teal,
+                              label: "Point de relais (Embarquement)",
+                              value: trip.relayPoint!,
+                            ),
+                          ],
                         ],
                       ),
 
