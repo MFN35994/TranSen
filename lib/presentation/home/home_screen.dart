@@ -74,6 +74,8 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
   final CameraOptions _initialPosition = CameraOptions(
     center: Point(coordinates: Position(-17.4677, 14.7167)),
     zoom: 13.0,
@@ -388,6 +390,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final double mainHeight = screenHeight - statusBarHeight - appBarHeight;
 
     return Scaffold(
+      key: _scaffoldKey,
       backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[100],
       appBar: AppBar(
         title: const Text('TranSen', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
@@ -402,8 +405,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
       drawer: const ProfileDrawer(),
-      body: Stack(
-        children: [
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragEnd: (details) {
+          if (_journeyState != HomeJourneyState.selectVtcDestination) {
+            if (details.primaryVelocity != null && details.primaryVelocity! > 250) {
+              _scaffoldKey.currentState?.openDrawer();
+            }
+          }
+        },
+        child: Stack(
+          children: [
           // 1. DYNAMIC BACKGROUND OR MAP
           if (_journeyState == HomeJourneyState.selectVtcDestination)
             AnimatedContainer(
@@ -546,6 +558,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
         ],
       ),
+    ),
       floatingActionButton: _journeyState == HomeJourneyState.selectVtcDestination
           ? FloatingActionButton(
               mini: true,
