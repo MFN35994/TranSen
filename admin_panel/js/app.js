@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app-check.js";
-import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, getDocs, updateDoc, where } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, getDocs, updateDoc, where, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -216,6 +216,7 @@ function setupNavigation() {
             if (section === 'investments') syncInvestments();
             if (section === 'markets') syncMarketsSection();
             if (section === 'channels') syncChannelsSection();
+            if (section === 'media-hub') syncMediaHubSection();
         };
     });
 }
@@ -2206,6 +2207,685 @@ window.openInvestmentDetails = (item) => {
 // Hook up close buttons
 document.getElementById('closeInvestmentKycModal').onclick = () => {
     document.getElementById('investmentKycModal').style.display = "none";
+};
+
+// ── HUB MÉDIA ADMINISTRATION LOGIC ─────────────────────────────────────────
+
+let activeAnnouncements = [];
+let currentMediaFilter = 'all';
+let unsubscribeMediaHub = null;
+let currentPreviewAudio = null;
+let currentPreviewButton = null;
+let modalPreviewAudio = null;
+
+// Real-time synchronization
+window.syncMediaHubSection = function() {
+    console.log("Synchronizing Media Hub Section...");
+    
+    // Stop any existing listener
+    if (unsubscribeMediaHub) {
+        unsubscribeMediaHub();
+    }
+    
+    // Stop any playing audio
+    stopAllAudioPreview();
+    
+    const announcementsCol = collection(db, "announcements");
+    
+    unsubscribeMediaHub = onSnapshot(announcementsCol, (snapshot) => {
+        activeAnnouncements = [];
+        snapshot.forEach(doc => {
+            activeAnnouncements.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        // Update stats
+        updateMediaHubStats();
+        
+        // Render grid
+        renderMediaHubGrid();
+    }, (err) => {
+        console.error("Error listening to announcements:", err);
+        window.showNotificationDrawer('Erreur de Sync', 'Impossible de charger les annonces du Hub Média.', true);
+    });
+};
+
+function updateMediaHubStats() {
+    const total = activeAnnouncements.length;
+    const withAudio = activeAnnouncements.filter(a => a.audioUrl && a.audioUrl.trim() !== '').length;
+    const withTts = activeAnnouncements.filter(a => a.speakText && a.speakText.trim() !== '').length;
+    
+    document.getElementById('mediaTotalCount').innerText = total;
+    document.getElementById('mediaAudioCount').innerText = withAudio;
+    document.getElementById('mediaTtsCount').innerText = withTts;
+}
+
+function renderMediaHubGrid() {
+    const grid = document.getElementById('announcementsGrid');
+    grid.innerHTML = '';
+    
+    const filtered = activeAnnouncements.filter(a => {
+        if (currentMediaFilter === 'all') return true;
+        return a.icon === currentMediaFilter;
+    });
+    
+    if (filtered.length === 0) {
+        grid.innerHTML = `
+            <div class="glass-card" style="grid-column: 1 / -1; padding: 40px; text-align: center; color: var(--text-dim);">
+                <i class="fas fa-bullhorn" style="font-size: 2.5rem; color: var(--primary); margin-bottom: 15px;"></i>
+                <p style="margin: 0; font-size: 1.1rem; font-weight: bold;">Aucune annonce trouvée</p>
+                <p style="margin: 5px 0 0 0; font-size: 0.9rem;">Cliquez sur "Créer une Annonce" pour en ajouter une.</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const iconMap = {
+        'promo': 'fas fa-tags',
+        'bus': 'fas fa-bus',
+        'gift': 'fas fa-gift',
+        'delivery': 'fas fa-truck',
+        'info': 'fas fa-info-circle',
+        'warning': 'fas fa-exclamation-triangle'
+    };
+    
+    filtered.forEach(item => {
+        const hasAudio = item.audioUrl && item.audioUrl.trim() !== '';
+        const hasTts = item.speakText && item.speakText.trim() !== '';
+        
+        // Setup card visual properties
+        const startColor = (item.gradientColors && item.gradientColors[0]) ? item.gradientColors[0] : '#2C3E50';
+        const endColor = (item.gradientColors && item.gradientColors[1]) ? item.gradientColors[1] : '#3498DB';
+        const accent = item.accentColor || '#ffffff';
+        const iconClass = iconMap[item.icon] || 'fas fa-bullhorn';
+        
+        const card = document.createElement('div');
+        card.className = 'announcement-mini-card';
+        card.style.background = `linear-gradient(135deg, ${startColor}, ${endColor})`;
+        card.style.borderColor = `rgba(255,255,255,0.15)`;
+        
+        let audioIndicatorHtml = '';
+        if (hasAudio) {
+            audioIndicatorHtml = `
+                <div class="audio-badge-indicator">
+                    <i class="fas fa-volume-up"></i> MP3
+                </div>
+            `;
+        } else if (hasTts) {
+            audioIndicatorHtml = `
+                <div class="audio-badge-indicator" title="${item.speakText}">
+                    <i class="fas fa-comment-dots"></i> TTS
+                </div>
+            `;
+        }
+        
+        let playButtonHtml = '';
+        if (hasAudio) {
+            playButtonHtml = `
+                <button type="button" class="mini-card-play-btn" data-audio-url="${item.audioUrl}" style="background: rgba(255,255,255,0.25); border: none; border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: white; cursor: pointer; transition: all 0.2s ease;">
+                    <i class="fas fa-play"></i>
+                </button>
+            `;
+        }
+        
+        let actionLabel = '';
+        if (item.actionType === 'copy_promo') actionLabel = `Promo: ${item.actionValue || ''}`;
+        else if (item.actionType === 'navigate_bus') actionLabel = 'Bus Lines';
+        else if (item.actionType === 'navigate_referral') actionLabel = 'Parrainage';
+        else if (item.actionType === 'open_url') actionLabel = 'Ouvrir URL';
+        
+        card.innerHTML = `
+            <div class="mini-card-header">
+                <div class="mini-card-icon-wrapper" style="background: rgba(0,0,0,0.15); color: ${accent};">
+                    <i class="${iconClass}"></i>
+                </div>
+                <div class="mini-card-actions">
+                    <button class="edit-btn" title="Modifier"><i class="fas fa-edit"></i></button>
+                    <button class="delete-btn" title="Supprimer"><i class="fas fa-trash-alt"></i></button>
+                </div>
+            </div>
+            <div class="mini-card-body">
+                <h4 class="mini-card-title">${item.title || 'Annonce'}</h4>
+                <p class="mini-card-desc">${item.description || ''}</p>
+                <div class="media-badge-action">${actionLabel}</div>
+            </div>
+            <div class="mini-card-footer">
+                ${playButtonHtml}
+                ${audioIndicatorHtml}
+                <button class="mini-card-button" style="color: ${startColor}; border-color: ${accent};">${item.buttonLabel || 'Découvrir'}</button>
+            </div>
+        `;
+        
+        // Wire up play button
+        const playBtn = card.querySelector('.mini-card-play-btn');
+        if (playBtn) {
+            playBtn.onclick = (e) => {
+                e.stopPropagation();
+                toggleAudioPlayback(item.audioUrl, playBtn);
+            };
+        }
+        
+        // Wire up edit button
+        card.querySelector('.edit-btn').onclick = (e) => {
+            e.stopPropagation();
+            openMediaModal(item);
+        };
+        
+        // Wire up delete button
+        card.querySelector('.delete-btn').onclick = (e) => {
+            e.stopPropagation();
+            confirmDeleteAnnouncement(item);
+        };
+        
+        grid.appendChild(card);
+    });
+}
+
+// Scoped Audio Player
+function toggleAudioPlayback(url, btn) {
+    if (currentPreviewAudio && currentPreviewAudio.src === url) {
+        if (!currentPreviewAudio.paused) {
+            currentPreviewAudio.pause();
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+        } else {
+            currentPreviewAudio.play();
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
+        }
+    } else {
+        // Stop current
+        stopAllAudioPreview();
+        
+        // Create new
+        currentPreviewAudio = new Audio(url);
+        currentPreviewButton = btn;
+        
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        currentPreviewAudio.oncanplay = () => {
+            btn.innerHTML = '<i class="fas fa-pause"></i>';
+            currentPreviewAudio.play();
+        };
+        
+        currentPreviewAudio.onended = () => {
+            btn.innerHTML = '<i class="fas fa-play"></i>';
+            currentPreviewAudio = null;
+            currentPreviewButton = null;
+        };
+        
+        currentPreviewAudio.onerror = () => {
+            btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            window.showNotificationDrawer('Erreur Audio', 'Impossible de lire le fichier audio.', true);
+            currentPreviewAudio = null;
+            currentPreviewButton = null;
+        };
+    }
+}
+
+function stopAllAudioPreview() {
+    if (currentPreviewAudio) {
+        currentPreviewAudio.pause();
+        if (currentPreviewButton) {
+            currentPreviewButton.innerHTML = '<i class="fas fa-play"></i>';
+        }
+        currentPreviewAudio = null;
+        currentPreviewButton = null;
+    }
+    if (modalPreviewAudio) {
+        modalPreviewAudio.pause();
+        const modalPlayBtn = document.getElementById('btnModalPlayAudio');
+        if (modalPlayBtn) modalPlayBtn.innerHTML = '<i class="fas fa-play"></i>';
+        modalPreviewAudio = null;
+    }
+}
+
+// Category Chips click handler
+document.querySelectorAll('#mediaCategoryFilters button').forEach(btn => {
+    btn.onclick = () => {
+        document.querySelectorAll('#mediaCategoryFilters button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentMediaFilter = btn.getAttribute('data-media-filter');
+        renderMediaHubGrid();
+    };
+});
+
+// Modal Dialog Management
+const mediaModal = document.getElementById('mediaCreateModal');
+const mediaForm = document.getElementById('mediaForm');
+
+document.getElementById('addAnnouncementBtn').onclick = () => {
+    openMediaModal(null);
+};
+
+document.getElementById('closeMediaModal').onclick = () => {
+    closeMediaModalWindow();
+};
+
+document.getElementById('btnCancelMedia').onclick = () => {
+    closeMediaModalWindow();
+};
+
+function openMediaModal(item) {
+    mediaForm.reset();
+    stopAllAudioPreview();
+    
+    // Reset visual pickers
+    document.querySelectorAll('#mediaIconSelector .icon-option').forEach(opt => opt.classList.remove('selected'));
+    document.querySelectorAll('#mediaPresetsContainer .preset-gradient-option').forEach(opt => opt.classList.remove('selected'));
+    
+    // Set default visual choices
+    document.querySelector('#mediaIconSelector .icon-option[data-icon="promo"]').classList.add('selected');
+    document.querySelector('#mediaPresetsContainer .preset-gradient-option[data-start="#2C3E50"]').classList.add('selected');
+    
+    document.getElementById('mediaId').value = '';
+    document.getElementById('mediaAudioUrl').value = '';
+    document.getElementById('mediaAccentColor').value = '#ffffff';
+    document.getElementById('mediaGradStart').value = '#2C3E50';
+    document.getElementById('mediaGradEnd').value = '#3498DB';
+    
+    // Hide sub-containers
+    document.getElementById('mediaTtsContainer').style.display = 'none';
+    document.getElementById('mediaAudioFileContainer').style.display = 'none';
+    document.getElementById('audioPreviewPlayer').style.display = 'none';
+    document.getElementById('audioUploadStatus').style.display = 'none';
+    
+    if (item) {
+        // Edit mode
+        document.getElementById('mediaModalTitle').innerText = "Modifier l'Annonce";
+        document.getElementById('mediaId').value = item.id;
+        document.getElementById('mediaTitle').value = item.title || '';
+        document.getElementById('mediaDescription').value = item.description || '';
+        document.getElementById('mediaButtonLabel').value = item.buttonLabel || '';
+        document.getElementById('mediaActionType').value = item.actionType || 'copy_promo';
+        document.getElementById('mediaActionValue').value = item.actionValue || '';
+        document.getElementById('mediaAccentColor').value = item.accentColor || '#ffffff';
+        
+        if (item.gradientColors && item.gradientColors.length >= 2) {
+            document.getElementById('mediaGradStart').value = item.gradientColors[0];
+            document.getElementById('mediaGradEnd').value = item.gradientColors[1];
+            
+            // Try to match a preset
+            let foundPreset = false;
+            document.querySelectorAll('#mediaPresetsContainer .preset-gradient-option').forEach(opt => {
+                opt.classList.remove('selected');
+                if (opt.getAttribute('data-start').toUpperCase() === item.gradientColors[0].toUpperCase() &&
+                    opt.getAttribute('data-end').toUpperCase() === item.gradientColors[1].toUpperCase()) {
+                    opt.classList.add('selected');
+                    foundPreset = true;
+                }
+            });
+        }
+        
+        // Set icon
+        const iconOpt = document.querySelector(`#mediaIconSelector .icon-option[data-icon="${item.icon || 'promo'}"]`);
+        if (iconOpt) {
+            document.querySelectorAll('#mediaIconSelector .icon-option').forEach(opt => opt.classList.remove('selected'));
+            iconOpt.classList.add('selected');
+        }
+        
+        // Handle audio source
+        if (item.audioUrl && item.audioUrl.trim() !== '') {
+            document.querySelector('input[name="mediaAudioSource"][value="audio_file"]').checked = true;
+            document.getElementById('mediaAudioFileContainer').style.display = 'block';
+            document.getElementById('mediaAudioUrl').value = item.audioUrl;
+            
+            // Setup preview uploader
+            document.getElementById('previewAudioName').innerText = item.audioUrl.substring(item.audioUrl.lastIndexOf('/') + 1);
+            document.getElementById('previewAudioUrl').innerText = item.audioUrl;
+            document.getElementById('audioPreviewPlayer').style.display = 'flex';
+        } else if (item.speakText && item.speakText.trim() !== '') {
+            document.querySelector('input[name="mediaAudioSource"][value="tts"]').checked = true;
+            document.getElementById('mediaTtsContainer').style.display = 'block';
+            document.getElementById('mediaSpeakText').value = item.speakText;
+        } else {
+            document.querySelector('input[name="mediaAudioSource"][value="none"]').checked = true;
+        }
+    } else {
+        // Create mode
+        document.getElementById('mediaModalTitle').innerText = "Ajouter une Annonce";
+    }
+    
+    updateActionLabelAndPlaceholder();
+    mediaModal.style.display = 'block';
+}
+
+function closeMediaModalWindow() {
+    mediaModal.style.display = 'none';
+    stopAllAudioPreview();
+}
+
+// Action type dropdown details updater
+const actionTypeSelect = document.getElementById('mediaActionType');
+const actionValueInput = document.getElementById('mediaActionValue');
+const actionValueLabel = document.getElementById('mediaActionValueLabel');
+
+actionTypeSelect.onchange = () => {
+    updateActionLabelAndPlaceholder();
+};
+
+function updateActionLabelAndPlaceholder() {
+    const val = actionTypeSelect.value;
+    if (val === 'copy_promo') {
+        actionValueLabel.innerText = "Valeur de l'Action (Code Promo)";
+        actionValueInput.placeholder = "Ex: TRANSEN20";
+        actionValueInput.required = true;
+        actionValueInput.style.display = 'block';
+    } else if (val === 'open_url') {
+        actionValueLabel.innerText = "Valeur de l'Action (Lien URL)";
+        actionValueInput.placeholder = "Ex: https://transen.org/special";
+        actionValueInput.required = true;
+        actionValueInput.style.display = 'block';
+    } else {
+        actionValueLabel.innerText = "Valeur de l'Action (Non requise)";
+        actionValueInput.placeholder = "Aucune valeur requise pour cette action";
+        actionValueInput.required = false;
+        actionValueInput.value = '';
+        actionValueInput.style.display = 'none';
+    }
+}
+
+// Icon Selector Event
+document.querySelectorAll('#mediaIconSelector .icon-option').forEach(opt => {
+    opt.onclick = () => {
+        document.querySelectorAll('#mediaIconSelector .icon-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+    };
+});
+
+// Gradient Presets Event
+document.querySelectorAll('#mediaPresetsContainer .preset-gradient-option').forEach(opt => {
+    opt.onclick = () => {
+        document.querySelectorAll('#mediaPresetsContainer .preset-gradient-option').forEach(o => o.classList.remove('selected'));
+        opt.classList.add('selected');
+        
+        document.getElementById('mediaGradStart').value = opt.getAttribute('data-start');
+        document.getElementById('mediaGradEnd').value = opt.getAttribute('data-end');
+    };
+});
+
+// Sync gradient custom color pickers to deselect preset if they don't match
+document.getElementById('mediaGradStart').onchange = deselectPresets;
+document.getElementById('mediaGradEnd').onchange = deselectPresets;
+
+function deselectPresets() {
+    const start = document.getElementById('mediaGradStart').value.toUpperCase();
+    const end = document.getElementById('mediaGradEnd').value.toUpperCase();
+    
+    document.querySelectorAll('#mediaPresetsContainer .preset-gradient-option').forEach(opt => {
+        opt.classList.remove('selected');
+        if (opt.getAttribute('data-start').toUpperCase() === start && opt.getAttribute('data-end').toUpperCase() === end) {
+            opt.classList.add('selected');
+        }
+    });
+}
+
+// Audio Source Toggle logic
+document.querySelectorAll('input[name="mediaAudioSource"]').forEach(radio => {
+    radio.onchange = () => {
+        const val = radio.value;
+        document.getElementById('mediaTtsContainer').style.display = (val === 'tts') ? 'block' : 'none';
+        document.getElementById('mediaAudioFileContainer').style.display = (val === 'audio_file') ? 'block' : 'none';
+        
+        if (val !== 'tts') {
+            document.getElementById('mediaSpeakText').value = '';
+        }
+        if (val !== 'audio_file') {
+            document.getElementById('mediaAudioUrl').value = '';
+            document.getElementById('audioPreviewPlayer').style.display = 'none';
+            stopAllAudioPreview();
+        }
+    };
+});
+
+// Drag and Drop Audio Upload
+const dropZone = document.getElementById('audioDropZone');
+const fileInput = document.getElementById('audioFileInput');
+
+dropZone.onclick = () => {
+    fileInput.click();
+};
+
+fileInput.onchange = () => {
+    if (fileInput.files.length > 0) {
+        handleAudioFileUpload(fileInput.files[0]);
+    }
+};
+
+dropZone.ondragover = (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+};
+
+dropZone.ondragleave = () => {
+    dropZone.classList.remove('dragover');
+};
+
+dropZone.ondrop = (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length > 0) {
+        handleAudioFileUpload(e.dataTransfer.files[0]);
+    }
+};
+
+function handleAudioFileUpload(file) {
+    if (file.type !== 'audio/mp3' && file.type !== 'audio/mpeg' && !file.name.endsWith('.mp3')) {
+        window.showNotificationDrawer('Format Invalide', 'Veuillez sélectionner un fichier MP3 uniquement.', true);
+        return;
+    }
+    
+    if (file.size > 8 * 1024 * 1024) { // 8MB limit
+        window.showNotificationDrawer('Fichier Trop Volumineux', 'La taille maximale autorisée est de 8 Mo.', true);
+        return;
+    }
+    
+    // Setup progress bar UI
+    const progressStatus = document.getElementById('audioUploadStatus');
+    const progressBar = document.getElementById('audioUploadProgress');
+    const progressPercent = document.getElementById('audioUploadPercent');
+    const uploadText = document.getElementById('audioUploadText');
+    
+    progressStatus.style.display = 'block';
+    document.getElementById('audioPreviewPlayer').style.display = 'none';
+    progressBar.style.width = '0%';
+    progressPercent.innerText = '0%';
+    uploadText.innerText = 'Envoi du fichier vers le stockage LWS...';
+    
+    // Upload using XHR to track progress
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_HOST}/api/admin/media/upload`);
+    
+    const token = localStorage.getItem('adminToken');
+    if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            progressBar.style.width = percent + '%';
+            progressPercent.innerText = percent + '%';
+        }
+    };
+    
+    xhr.onload = () => {
+        if (xhr.status === 200) {
+            try {
+                const response = JSON.parse(xhr.responseText);
+                const fileUrl = response.url;
+                
+                document.getElementById('mediaAudioUrl').value = fileUrl;
+                document.getElementById('previewAudioName').innerText = file.name;
+                document.getElementById('previewAudioUrl').innerText = fileUrl;
+                
+                progressStatus.style.display = 'none';
+                document.getElementById('audioPreviewPlayer').style.display = 'flex';
+                window.showNotificationDrawer('Upload Réussi', 'Fichier audio téléchargé avec succès.', false);
+            } catch (err) {
+                console.error("Error parsing upload response:", err);
+                uploadFailed("Réponse du serveur incorrecte.");
+            }
+        } else {
+            let errMsg = "Erreur réseau";
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errMsg = response.error || errMsg;
+            } catch (e) {}
+            uploadFailed(errMsg);
+        }
+    };
+    
+    xhr.onerror = () => {
+        uploadFailed("Impossible de contacter le serveur.");
+    };
+    
+    xhr.send(formData);
+}
+
+function uploadFailed(message) {
+    document.getElementById('audioUploadStatus').style.display = 'none';
+    window.showNotificationDrawer('Échec de l\'Upload', message, true);
+}
+
+// Play Audio inside Modal preview
+const btnModalPlayAudio = document.getElementById('btnModalPlayAudio');
+btnModalPlayAudio.onclick = () => {
+    const url = document.getElementById('mediaAudioUrl').value;
+    if (!url) return;
+    
+    if (modalPreviewAudio) {
+        if (!modalPreviewAudio.paused) {
+            modalPreviewAudio.pause();
+            btnModalPlayAudio.innerHTML = '<i class="fas fa-play"></i>';
+        } else {
+            modalPreviewAudio.play();
+            btnModalPlayAudio.innerHTML = '<i class="fas fa-pause"></i>';
+        }
+    } else {
+        modalPreviewAudio = new Audio(url);
+        btnModalPlayAudio.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        
+        modalPreviewAudio.oncanplay = () => {
+            btnModalPlayAudio.innerHTML = '<i class="fas fa-pause"></i>';
+            modalPreviewAudio.play();
+        };
+        
+        modalPreviewAudio.onended = () => {
+            btnModalPlayAudio.innerHTML = '<i class="fas fa-play"></i>';
+            modalPreviewAudio = null;
+        };
+        
+        modalPreviewAudio.onerror = () => {
+            btnModalPlayAudio.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
+            window.showNotificationDrawer('Erreur Lecture', 'Impossible de lire le fichier audio temporaire.', true);
+            modalPreviewAudio = null;
+        };
+    }
+};
+
+// Delete Audio file within modal form
+document.getElementById('btnDeleteAudioFile').onclick = () => {
+    stopAllAudioPreview();
+    document.getElementById('mediaAudioUrl').value = '';
+    document.getElementById('audioPreviewPlayer').style.display = 'none';
+    fileInput.value = '';
+    window.showNotificationDrawer('Audio Supprimé', 'Le fichier audio a été détaché de l\'annonce.', false);
+};
+
+// Confirm and Delete announcement from Firestore
+function confirmDeleteAnnouncement(item) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer l'annonce "${item.title}" ?`)) {
+        stopAllAudioPreview();
+        deleteDoc(doc(db, "announcements", item.id))
+            .then(() => {
+                window.showNotificationDrawer('Annonce Supprimée', 'L\'annonce a été retirée du Hub Média.', false);
+            })
+            .catch(err => {
+                console.error("Error deleting announcement:", err);
+                window.showNotificationDrawer('Erreur', 'Impossible de supprimer l'annonce.', true);
+            });
+    }
+}
+
+// Save or Update Announcement in Firestore
+document.getElementById('btnSaveMedia').onclick = async () => {
+    // Validate
+    const title = document.getElementById('mediaTitle').value.trim();
+    const description = document.getElementById('mediaDescription').value.trim();
+    const buttonLabel = document.getElementById('mediaButtonLabel').value.trim();
+    const actionType = document.getElementById('mediaActionType').value;
+    const actionValue = document.getElementById('mediaActionValue').value.trim();
+    
+    if (!title || !description || !buttonLabel) {
+        window.showNotificationDrawer('Validation', 'Veuillez remplir tous les champs obligatoires.', true);
+        return;
+    }
+    
+    if ((actionType === 'copy_promo' || actionType === 'open_url') && !actionValue) {
+        window.showNotificationDrawer('Validation', 'La valeur de l\'action est requise pour ce type d\'action.', true);
+        return;
+    }
+    
+    const audioSource = document.querySelector('input[name="mediaAudioSource"]:checked').value;
+    let audioUrl = "";
+    let speakText = "";
+    
+    if (audioSource === 'audio_file') {
+        audioUrl = document.getElementById('mediaAudioUrl').value.trim();
+        if (!audioUrl) {
+            window.showNotificationDrawer('Validation', 'Veuillez télécharger un fichier audio MP3.', true);
+            return;
+        }
+    } else if (audioSource === 'tts') {
+        speakText = document.getElementById('mediaSpeakText').value.trim();
+        if (!speakText) {
+            window.showNotificationDrawer('Validation', 'Veuillez saisir le texte pour la synthèse vocale (TTS).', true);
+            return;
+        }
+    }
+    
+    const accentColor = document.getElementById('mediaAccentColor').value;
+    const gradStart = document.getElementById('mediaGradStart').value;
+    const gradEnd = document.getElementById('mediaGradEnd').value;
+    const icon = document.querySelector('#mediaIconSelector .icon-option.selected').getAttribute('data-icon');
+    
+    const data = {
+        title,
+        description,
+        buttonLabel,
+        actionType,
+        actionValue,
+        accentColor,
+        gradientColors: [gradStart, gradEnd],
+        icon,
+        audioUrl,
+        speakText,
+        updatedAt: new Date().toISOString()
+    };
+    
+    const mediaId = document.getElementById('mediaId').value;
+    
+    try {
+        stopAllAudioPreview();
+        if (mediaId) {
+            // Update
+            await updateDoc(doc(db, "announcements", mediaId), data);
+            window.showNotificationDrawer('Annonce Modifiée', 'L\'annonce a été mise à jour avec succès.', false);
+        } else {
+            // Create
+            data.createdAt = new Date().toISOString();
+            await addDoc(collection(db, "announcements"), data);
+            window.showNotificationDrawer('Annonce Créée', 'Nouvelle annonce publiée dans le Hub Média.', false);
+        }
+        closeMediaModalWindow();
+    } catch (err) {
+        console.error("Error saving announcement:", err);
+        window.showNotificationDrawer('Erreur Firestore', 'Impossible d\'enregistrer l\'annonce.', true);
+    }
 };
 
 

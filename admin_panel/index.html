@@ -8,6 +8,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script>
+        // Safeguard: only apply mock admin session during local development
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            localStorage.setItem('adminToken', 'mock-token-123');
+            localStorage.setItem('adminUser', JSON.stringify({ fullName: 'Administrateur Principal', email: 'mouhamadoufadiloundiaye@transen.org' }));
+        }
+    </script>
 </head>
 <body>
     <!-- Animated background orbs -->
@@ -61,6 +68,7 @@
                 <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
                 <a href="#" data-section="finance"><i class="fas fa-wallet"></i> Finances</a>
                 <a href="#" data-section="investments"><i class="fas fa-hand-holding-dollar"></i> Levée de fonds</a>
+                <a href="#" data-section="media-hub"><i class="fas fa-bullhorn"></i> Hub Média</a>
                 <a href="#" data-section="admins"><i class="fas fa-user-shield"></i> Admins</a>
             </nav>
             <div class="sidebar-footer">
@@ -876,6 +884,320 @@
                     </div>
                 </section>
             </div>
+
+            <!-- Hub Média Section -->
+            <div id="section-media-hub" class="admin-section" style="display: none;">
+                <style>
+                    .media-grid {
+                        display: grid;
+                        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                        gap: 25px;
+                        margin-top: 20px;
+                    }
+                    .announcement-mini-card {
+                        position: relative;
+                        border-radius: 20px;
+                        padding: 24px;
+                        color: white;
+                        overflow: hidden;
+                        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+                        border: 1px solid rgba(255, 255, 255, 0.15);
+                        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.3s ease;
+                        display: flex;
+                        flex-direction: column;
+                        justify-content: space-between;
+                        min-height: 220px;
+                    }
+                    .announcement-mini-card:hover {
+                        transform: translateY(-5px);
+                        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+                    }
+                    .announcement-mini-card::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: 0;
+                        right: 0;
+                        bottom: 0;
+                        background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+                        z-index: 1;
+                        pointer-events: none;
+                    }
+                    .mini-card-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        margin-bottom: 15px;
+                        z-index: 2;
+                        position: relative;
+                    }
+                    .mini-card-icon-wrapper {
+                        width: 45px;
+                        height: 45px;
+                        border-radius: 14px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.3rem;
+                        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+                        border: 1px solid rgba(255, 255, 255, 0.25);
+                    }
+                    .mini-card-actions {
+                        display: flex;
+                        gap: 8px;
+                    }
+                    .mini-card-actions button {
+                        background: rgba(255, 255, 255, 0.15);
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        width: 32px;
+                        height: 32px;
+                        border-radius: 50%;
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        font-size: 0.8rem;
+                        transition: all 0.2s ease;
+                    }
+                    .mini-card-actions button:hover {
+                        background: rgba(255, 255, 255, 0.3);
+                        transform: scale(1.1);
+                    }
+                    .mini-card-actions button.delete-btn:hover {
+                        background: rgba(231, 76, 60, 0.8);
+                    }
+                    .mini-card-body {
+                        z-index: 2;
+                        position: relative;
+                        margin-bottom: 20px;
+                        flex-grow: 1;
+                    }
+                    .mini-card-title {
+                        font-size: 1.1rem;
+                        font-weight: 700;
+                        margin: 0 0 8px 0;
+                        letter-spacing: 0.5px;
+                        text-shadow: 0 2px 4px rgba(0,0,0,0.15);
+                    }
+                    .mini-card-desc {
+                        font-size: 0.85rem;
+                        opacity: 0.9;
+                        margin: 0;
+                        line-height: 1.4;
+                        display: -webkit-box;
+                        -webkit-line-clamp: 3;
+                        -webkit-box-orient: vertical;
+                        overflow: hidden;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+                    }
+                    .mini-card-footer {
+                        z-index: 2;
+                        position: relative;
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: center;
+                        border-top: 1px solid rgba(255, 255, 255, 0.15);
+                        padding-top: 15px;
+                    }
+                    .mini-card-button {
+                        padding: 8px 16px;
+                        border-radius: 30px;
+                        font-weight: 700;
+                        font-size: 0.75rem;
+                        letter-spacing: 0.5px;
+                        border: 1px solid;
+                        cursor: pointer;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+                        transition: all 0.2s ease;
+                        background: white;
+                    }
+                    .mini-card-button:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 15px rgba(0,0,0,0.15);
+                    }
+                    .audio-badge-indicator {
+                        display: flex;
+                        align-items: center;
+                        gap: 5px;
+                        font-size: 0.75rem;
+                        font-weight: 600;
+                        background: rgba(0, 0, 0, 0.2);
+                        padding: 4px 10px;
+                        border-radius: 20px;
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                    }
+                    .audio-badge-indicator i {
+                        font-size: 0.7rem;
+                    }
+                    .preset-gradients-container {
+                        display: grid;
+                        grid-template-columns: repeat(4, 1fr);
+                        gap: 10px;
+                        margin-top: 8px;
+                    }
+                    .preset-gradient-option {
+                        height: 45px;
+                        border-radius: 10px;
+                        cursor: pointer;
+                        border: 2px solid transparent;
+                        transition: all 0.2s ease;
+                        position: relative;
+                    }
+                    .preset-gradient-option.selected {
+                        border-color: white;
+                        transform: scale(1.05);
+                        box-shadow: 0 0 10px rgba(255,255,255,0.3);
+                    }
+                    .preset-gradient-option span {
+                        position: absolute;
+                        bottom: 3px;
+                        left: 5px;
+                        font-size: 0.6rem;
+                        font-weight: bold;
+                        color: white;
+                        text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+                    }
+                    .drop-zone {
+                        border: 2px dashed rgba(255, 255, 255, 0.2);
+                        border-radius: 12px;
+                        padding: 25px;
+                        text-align: center;
+                        background: rgba(255, 255, 255, 0.02);
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        gap: 10px;
+                    }
+                    .drop-zone:hover, .drop-zone.dragover {
+                        border-color: var(--primary);
+                        background: rgba(255, 255, 255, 0.05);
+                    }
+                    .drop-zone i {
+                        font-size: 2rem;
+                        color: var(--primary);
+                    }
+                    .drop-zone p {
+                        margin: 0;
+                        font-size: 0.9rem;
+                        font-weight: 600;
+                    }
+                    .drop-zone small {
+                        color: var(--text-dim);
+                        font-size: 0.75rem;
+                    }
+                    .audio-preview-player {
+                        display: flex;
+                        align-items: center;
+                        gap: 15px;
+                        background: rgba(255, 255, 255, 0.05);
+                        border: 1px solid var(--glass-border);
+                        padding: 12px 18px;
+                        border-radius: 12px;
+                        margin-top: 10px;
+                    }
+                    .play-preview-btn {
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 50%;
+                        background: var(--primary);
+                        border: none;
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        transition: transform 0.2s ease;
+                    }
+                    .play-preview-btn:hover {
+                        transform: scale(1.1);
+                    }
+                    .icon-option {
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        padding: 10px;
+                        border-radius: 10px;
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid var(--glass-border);
+                        cursor: pointer;
+                        transition: all 0.2s ease;
+                        color: var(--text-dim);
+                    }
+                    .icon-option.selected {
+                        background: rgba(59, 130, 246, 0.15);
+                        border-color: var(--primary);
+                        color: white;
+                        transform: translateY(-2px);
+                    }
+                    .icon-option i {
+                        font-size: 1.4rem;
+                        margin-bottom: 5px;
+                    }
+                    .icon-option span {
+                        font-size: 0.75rem;
+                        font-weight: bold;
+                    }
+                    .media-badge-action {
+                        font-size: 0.75rem;
+                        padding: 4px 8px;
+                        border-radius: 6px;
+                        background: rgba(255, 255, 255, 0.15);
+                        font-weight: 600;
+                        margin-top: 5px;
+                        display: inline-block;
+                    }
+                </style>
+
+                <!-- Metrics Row -->
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-bullhorn"></i></div>
+                        <div class="stat-info">
+                            <p>Total Annonces</p>
+                            <h3 id="mediaTotalCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-volume-up"></i></div>
+                        <div class="stat-info">
+                            <p>Annonces avec Audio MP3</p>
+                            <h3 id="mediaAudioCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-comment-dots"></i></div>
+                        <div class="stat-info">
+                            <p>Annonces avec Synthèse (TTS)</p>
+                            <h3 id="mediaTtsCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters & Creation button -->
+                <div class="filters glass-card mb-20" style="display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; margin-top: 20px;">
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;" id="mediaCategoryFilters">
+                        <button class="filter-chip active" data-media-filter="all">Toutes</button>
+                        <button class="filter-chip" data-media-filter="promo">Promos</button>
+                        <button class="filter-chip" data-media-filter="bus">Lignes de Bus</button>
+                        <button class="filter-chip" data-media-filter="gift">Cadeaux</button>
+                        <button class="filter-chip" data-media-filter="delivery">Livraisons</button>
+                        <button class="filter-chip" data-media-filter="info">Infos</button>
+                        <button class="filter-chip" data-media-filter="warning">Alertes</button>
+                    </div>
+                    <button id="addAnnouncementBtn" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: var(--transition);">
+                        <i class="fas fa-plus"></i> Créer une Annonce
+                    </button>
+                </div>
+
+                <!-- Announcement Grid -->
+                <div class="media-grid" id="announcementsGrid">
+                    <!-- Dynamic cards inserted here -->
+                </div>
+            </div>
         </main>
     </div>
 
@@ -1448,6 +1770,149 @@
                         <i class="fas fa-trash-alt"></i> Supprimer
                     </button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Media Create/Edit Modal -->
+    <div id="mediaCreateModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 650px;">
+            <div class="modal-header">
+                <h2 id="mediaModalTitle">Ajouter une Annonce</h2>
+                <span class="close-modal" id="closeMediaModal">&times;</span>
+            </div>
+            <div class="modal-body" style="max-height: 75vh; overflow-y: auto; padding-right: 5px;">
+                <form id="mediaForm">
+                    <input type="hidden" id="mediaId">
+                    <input type="hidden" id="mediaAudioUrl">
+                    
+                    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);">Titre de l'annonce</label>
+                            <input type="text" id="mediaTitle" placeholder="Ex: WEEKEND PROMO VTC 🎟️" required style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);">Texte Bouton</label>
+                            <input type="text" id="mediaButtonLabel" placeholder="Ex: COPIER LE CODE" required style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);">Description / Message</label>
+                        <textarea id="mediaDescription" placeholder="Décrivez le contenu de l'annonce en détail..." required style="width: 100%; height: 80px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; padding: 12px; resize: none; outline:none; font-family:inherit; line-height: 1.4;"></textarea>
+                    </div>
+
+                    <!-- Visual Configuration (Icon & Gradient Presets) -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 15px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Icône de l'Annonce</label>
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;" id="mediaIconSelector">
+                                <div class="icon-option selected" data-icon="promo"><i class="fas fa-tags"></i><span>Promo</span></div>
+                                <div class="icon-option" data-icon="bus"><i class="fas fa-bus"></i><span>Bus</span></div>
+                                <div class="icon-option" data-icon="gift"><i class="fas fa-gift"></i><span>Cadeau</span></div>
+                                <div class="icon-option" data-icon="delivery"><i class="fas fa-truck"></i><span>Colis</span></div>
+                                <div class="icon-option" data-icon="info"><i class="fas fa-info-circle"></i><span>Info</span></div>
+                                <div class="icon-option" data-icon="warning"><i class="fas fa-exclamation-triangle"></i><span>Alerte</span></div>
+                            </div>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 8px; font-size: 0.85rem; color: var(--text-dim);">Couleurs & Accent</label>
+                            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.7rem; color: var(--text-dim); display: block; margin-bottom: 3px;">Accent</label>
+                                    <input type="color" id="mediaAccentColor" value="#ffffff" style="width: 100%; height: 35px; border: none; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); cursor: pointer; padding: 2px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.7rem; color: var(--text-dim); display: block; margin-bottom: 3px;">Début Grad.</label>
+                                    <input type="color" id="mediaGradStart" value="#2c3e50" style="width: 100%; height: 35px; border: none; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); cursor: pointer; padding: 2px;">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label style="font-size: 0.7rem; color: var(--text-dim); display: block; margin-bottom: 3px;">Fin Grad.</label>
+                                    <input type="color" id="mediaGradEnd" value="#3498db" style="width: 100%; height: 35px; border: none; border-radius: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); cursor: pointer; padding: 2px;">
+                                </div>
+                            </div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.75rem; color: var(--text-dim);">Presets de Dégradés</label>
+                            <div class="preset-gradients-container" id="mediaPresetsContainer">
+                                <div class="preset-gradient-option selected" data-start="#2C3E50" data-end="#3498DB" style="background: linear-gradient(135deg, #2C3E50, #3498DB);"><span>Midnight</span></div>
+                                <div class="preset-gradient-option" data-start="#F39C12" data-end="#D35400" style="background: linear-gradient(135deg, #F39C12, #D35400);"><span>Sunset</span></div>
+                                <div class="preset-gradient-option" data-start="#008080" data-end="#1E824C" style="background: linear-gradient(135deg, #008080, #1E824C);"><span>Emerald</span></div>
+                                <div class="preset-gradient-option" data-start="#8E44AD" data-end="#2C3E50" style="background: linear-gradient(135deg, #8E44AD, #2C3E50);"><span>Velvet</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Action Configuration -->
+                    <div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; margin-bottom: 15px; padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px;">
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);">Type d'Action</label>
+                            <select id="mediaActionType" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                                <option value="copy_promo" style="background:#202030; color:white;">Copier Code Promo</option>
+                                <option value="navigate_bus" style="background:#202030; color:white;">Ouvrir Lignes de Bus</option>
+                                <option value="navigate_referral" style="background:#202030; color:white;">Ouvrir Parrainage</option>
+                                <option value="open_url" style="background:#202030; color:white;">Ouvrir Lien Web (URL)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);" id="mediaActionValueLabel">Valeur de l'Action (Code Promo)</label>
+                            <input type="text" id="mediaActionValue" placeholder="Ex: TRANSEN20" required style="width: 100%; padding: 12px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; outline:none; font-family:inherit; font-weight: bold;">
+                        </div>
+                    </div>
+
+                    <!-- Audio Options -->
+                    <div style="margin-bottom: 10px; padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid var(--glass-border); border-radius: 12px;">
+                        <label style="display: block; margin-bottom: 10px; font-size: 0.9rem; font-weight: bold; color: white;"><i class="fas fa-music"></i> Option Audio / Synthèse Vocale</label>
+                        <div style="display: flex; gap: 20px; margin-bottom: 15px;">
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="mediaAudioSource" value="none" checked style="cursor: pointer;"> Aucun audio
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="mediaAudioSource" value="tts" style="cursor: pointer;"> Synthèse Vocale (TTS)
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                                <input type="radio" name="mediaAudioSource" value="audio_file" style="cursor: pointer;"> Fichier Audio MP3
+                            </label>
+                        </div>
+
+                        <!-- TTS Field -->
+                        <div id="mediaTtsContainer" style="display: none;">
+                            <label style="display: block; margin-bottom: 5px; font-size: 0.85rem; color: var(--text-dim);">Texte vocal (français) à lire par l'application</label>
+                            <textarea id="mediaSpeakText" placeholder="Ex: Profitez de vingt pour cent de réduction avec le code transen vingt..." style="width: 100%; height: 60px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); border-radius: 12px; color: white; padding: 12px; resize: none; outline:none; font-family:inherit; line-height: 1.4;"></textarea>
+                        </div>
+
+                        <!-- Audio File Field -->
+                        <div id="mediaAudioFileContainer" style="display: none;">
+                            <div id="audioDropZone" class="drop-zone">
+                                <i class="fas fa-cloud-upload-alt"></i>
+                                <p>Glissez-déposez un fichier audio (MP3) ou cliquez pour parcourir</p>
+                                <small>Format accepté : MP3 uniquement. Taille max : 8 Mo</small>
+                                <input type="file" id="audioFileInput" accept="audio/mp3,audio/mpeg" style="display: none;">
+                            </div>
+                            <!-- Live Upload Status -->
+                            <div id="audioUploadStatus" style="display: none; margin-top: 10px; font-size: 0.85rem;">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 5px;">
+                                    <span id="audioUploadText">Téléchargement du fichier...</span>
+                                    <span id="audioUploadPercent">0%</span>
+                                </div>
+                                <div style="background: rgba(255,255,255,0.05); height: 6px; border-radius: 3px; overflow: hidden;">
+                                    <div id="audioUploadProgress" style="background: var(--primary); height: 100%; width: 0%; transition: width 0.1s;"></div>
+                                </div>
+                            </div>
+                            <!-- Audio Play Preview inside Modal -->
+                            <div id="audioPreviewPlayer" class="audio-preview-player" style="display: none;">
+                                <button type="button" id="btnModalPlayAudio" class="play-preview-btn"><i class="fas fa-play"></i></button>
+                                <div style="flex: 1; min-width: 0; margin-left: 10px;">
+                                    <div style="font-size: 0.85rem; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: white;" id="previewAudioName">Fichier_Audio.mp3</div>
+                                    <div style="font-size: 0.75rem; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" id="previewAudioUrl">URL du fichier</div>
+                                </div>
+                                <button type="button" id="btnDeleteAudioFile" style="background: transparent; border: none; color: #e74c3c; cursor: pointer; font-size: 1rem;"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 15px; justify-content: flex-end; padding-top: 15px; border-top: 1px solid var(--glass-border);">
+                <button type="button" class="btn-reject" id="btnCancelMedia" style="padding: 12px 24px; background: var(--red); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer;">Annuler</button>
+                <button type="button" class="btn-approve" id="btnSaveMedia" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer;">Enregistrer l'Annonce</button>
             </div>
         </div>
     </div>

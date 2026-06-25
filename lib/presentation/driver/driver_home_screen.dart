@@ -535,9 +535,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 "Zones de forte demande",
-                                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: isDark ? Colors.white : Colors.black87,
+                                ),
                               ),
                               TextButton.icon(
                                 onPressed: () => setState(() => _isAutoFull = !_isAutoFull),
@@ -643,9 +647,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           'Demandes VTC',
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: isDark ? Colors.white : Colors.black87,
+                                          ),
                                         ),
                                         Text(
                                           '${vtcTrips.length} en attente',
@@ -701,9 +709,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                     child: Row(
                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                       children: [
-                                        const Text(
+                                        Text(
                                           "Livraisons Yobanté",
-                                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: Colors.white),
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 15,
+                                            color: isDark ? Colors.white : Colors.black87,
+                                          ),
                                         ),
                                         Text(
                                           "${deliveries.length} colis",
@@ -748,13 +760,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildOfflinePlaceholder() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(top: 10),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 35),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.08)),
       ),
       child: Column(
         children: [
@@ -767,15 +780,23 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
             child: const Icon(Icons.wifi_off_rounded, color: Colors.amber, size: 36),
           ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             "Vous êtes Hors Ligne",
-            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(
+              color: isDark ? Colors.white : Colors.black87,
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             "Activez votre statut 'En Ligne' en haut à droite pour commencer à recevoir des demandes de trajets et de colis en temps réel.",
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 12, height: 1.4),
+            style: TextStyle(
+              color: isDark ? Colors.white70 : Colors.black54,
+              fontSize: 12,
+              height: 1.4,
+            ),
           ),
         ],
       ),
@@ -783,17 +804,18 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildOnlineToggle(String currentUserId) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
         color: _isOnline
             ? Colors.green.withValues(alpha: 0.15)
-            : Colors.grey.withValues(alpha: 0.15),
+            : (isDark ? Colors.grey.withValues(alpha: 0.15) : Colors.black.withValues(alpha: 0.04)),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: _isOnline
               ? Colors.green.withValues(alpha: 0.3)
-              : Colors.grey.withValues(alpha: 0.3),
+              : (isDark ? Colors.grey.withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.08)),
         ),
       ),
       child: Row(
@@ -818,7 +840,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           Text(
             _isOnline ? 'En Ligne' : 'Hors Ligne',
             style: TextStyle(
-              color: _isOnline ? Colors.green.shade300 : Colors.grey.shade400,
+              color: _isOnline
+                  ? (isDark ? Colors.green.shade300 : Colors.green.shade700)
+                  : (isDark ? Colors.grey.shade400 : Colors.grey.shade700),
               fontSize: 11,
               fontWeight: FontWeight.bold,
             ),
@@ -845,6 +869,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildHeader(BuildContext context, String currentUserId, String driverName) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Row(
       children: [
         // Menu Button / Avatar
@@ -869,8 +894,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
             ),
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: Colors.grey.shade800,
-              child: const Icon(Icons.person, color: Colors.white, size: 20),
+              backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+              child: Icon(Icons.person, color: isDark ? Colors.white : Colors.black87, size: 20),
             ),
           ),
         ),
@@ -883,7 +908,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               Text(
                 "Bonjour 👋",
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: isDark ? Colors.white54 : Colors.black54,
                   fontSize: 11,
                   fontWeight: FontWeight.w500,
                 ),
@@ -891,8 +916,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               const SizedBox(height: 2),
               Text(
                 driverName,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -919,10 +944,11 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Widget _buildDailyRouteCard(BuildContext context, WidgetRef ref, String currentUserId) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
+        color: isDark
             ? Colors.white.withValues(alpha: 0.04)
             : Colors.black.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(16),
@@ -961,7 +987,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                   Text(
                     'Trajet du Jour',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: isDark ? Colors.white70 : Colors.black54,
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
                     ),
@@ -972,7 +998,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                         ? 'Définir mon trajet du jour...'
                         : '${_pubDeparture ?? '—'}  →  ${_pubDestination ?? '—'}',
                     style: TextStyle(
-                      color: _pubDeparture == null ? Colors.white60 : Colors.white,
+                      color: _pubDeparture == null
+                          ? (isDark ? Colors.white60 : Colors.black45)
+                          : (isDark ? Colors.white : Colors.black87),
                       fontWeight: FontWeight.bold,
                       fontSize: 12,
                     ),
@@ -984,7 +1012,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           ),
           if (_pubDeparture != null || _pubDestination != null) ...[
             IconButton(
-              icon: const Icon(Icons.close, color: Colors.white70, size: 16),
+              icon: Icon(Icons.close, color: isDark ? Colors.white70 : Colors.black54, size: 16),
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               onPressed: () {
@@ -1004,13 +1032,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
+                color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.black.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: const Text(
+              child: Text(
                 'Modifier',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: isDark ? Colors.white : Colors.black87,
                   fontSize: 10,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1470,93 +1498,109 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       enableDrag: true,
       useSafeArea: true,
       builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setModalState) => Container(
-          decoration: BoxDecoration(
-            color: Theme.of(ctx).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : Colors.white,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          padding: EdgeInsets.only(
-            left: 24, right: 24, top: 20,
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
-                  decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
+        builder: (ctx, setModalState) {
+          final isDarkTheme = Theme.of(ctx).brightness == Brightness.dark;
+          return Container(
+            decoration: BoxDecoration(
+              color: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+            ),
+            padding: EdgeInsets.only(
+              left: 24, right: 24, top: 20,
+              bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40, height: 4,
                     decoration: BoxDecoration(
-                      color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
+                      color: isDarkTheme ? Colors.white24 : Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    child: const Icon(Icons.route, color: TranSenColors.primaryGreen, size: 20),
-                  ),
-                  const SizedBox(width: 12),
-                  const Text('Mon trajet du jour',
-                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                ],
-              ),
-              const SizedBox(height: 20),
-              const Text('Ville de départ',
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    hint: const Text('Sélectionner le départ'),
-                    value: _pubDeparture,
-                    isExpanded: true,
-                    items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                    onChanged: (val) { setState(() => _pubDeparture = val); setModalState(() {}); },
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              const Text("Ville d'arrivée",
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    hint: const Text("Sélectionner l'arrivée"),
-                    value: _pubDestination,
-                    isExpanded: true,
-                    items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
-                    onChanged: (val) { setState(() => _pubDestination = val); setModalState(() {}); },
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: TranSenColors.primaryGreen.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.route, color: TranSenColors.primaryGreen, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('Mon trajet du jour',
+                        style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Ville de départ',
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDarkTheme ? const Color(0xFF2D2D2D) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      hint: const Text('Sélectionner le départ'),
+                      value: _pubDeparture,
+                      isExpanded: true,
+                      dropdownColor: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+                      items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                      onChanged: (val) { setState(() => _pubDeparture = val); setModalState(() {}); },
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 14),
-              const Text('Message aux passagers (optionnel)',
-                  style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12)),
-                child: TextField(
-                  controller: _noteController,
-                  decoration: const InputDecoration(
-                    hintText: 'Ex: Départ à 8h, Climatisé...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
-                    prefixIcon: Icon(Icons.chat_bubble_outline, size: 18),
+                const SizedBox(height: 14),
+                const Text("Ville d'arrivée",
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDarkTheme ? const Color(0xFF2D2D2D) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  style: const TextStyle(fontSize: 13),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      hint: const Text("Sélectionner l'arrivée"),
+                      value: _pubDestination,
+                      isExpanded: true,
+                      dropdownColor: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+                      items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
+                      onChanged: (val) { setState(() => _pubDestination = val); setModalState(() {}); },
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(height: 14),
+                const Text('Message aux passagers (optionnel)',
+                    style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  decoration: BoxDecoration(
+                    color: isDarkTheme ? const Color(0xFF2D2D2D) : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TextField(
+                    controller: _noteController,
+                    decoration: const InputDecoration(
+                      hintText: 'Ex: Départ à 8h, Climatisé...',
+                      border: InputBorder.none,
+                      hintStyle: TextStyle(fontSize: 13, color: Colors.grey),
+                      prefixIcon: Icon(Icons.chat_bubble_outline, size: 18),
+                    ),
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                ),
               const SizedBox(height: 24),
               SizedBox(
                 width: double.infinity,
@@ -1583,8 +1627,9 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
+        );
+      },
+    ),
+  );
+}
 }
