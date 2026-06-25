@@ -49,6 +49,7 @@ void main() async {
     ProviderScope(
       overrides: [
         localeProvider.overrideWith(() => LocaleNotifier()..init(prefs)),
+        themeProvider.overrideWith(() => ThemeNotifier()..init(prefs)),
       ],
       child: const MyApp(),
     ),

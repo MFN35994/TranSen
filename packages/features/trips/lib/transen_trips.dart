@@ -13,3 +13,4 @@ export 'src/utils/itinerary_optimizer.dart';
 export 'src/screens/chat_screen.dart';
 export 'src/widgets/favorites_sheet.dart';
 export 'src/widgets/referral_sheet.dart';
+export 'src/widgets/vtc_booking_sheet.dart';
