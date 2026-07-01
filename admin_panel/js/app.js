@@ -2335,6 +2335,16 @@ function renderMediaHubGrid() {
         else if (item.actionType === 'navigate_bus') actionLabel = 'Bus Lines';
         else if (item.actionType === 'navigate_referral') actionLabel = 'Parrainage';
         else if (item.actionType === 'open_url') actionLabel = 'Ouvrir URL';
+
+        const targetChannel = item.channel || 'all';
+        let channelIndicatorHtml = '';
+        if (targetChannel === 'client') {
+            channelIndicatorHtml = `<div class="audio-badge-indicator" style="background: rgba(46, 204, 113, 0.25); border: 1px solid rgba(46,204,113,0.4);" title="Clients uniquement"><i class="fas fa-user"></i> Clients</div>`;
+        } else if (targetChannel === 'driver') {
+            channelIndicatorHtml = `<div class="audio-badge-indicator" style="background: rgba(241, 196, 15, 0.25); border: 1px solid rgba(241,196,15,0.4);" title="Chauffeurs uniquement"><i class="fas fa-car"></i> Chauffeurs</div>`;
+        } else {
+            channelIndicatorHtml = `<div class="audio-badge-indicator" style="background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255,255,255,0.25);" title="Tout public"><i class="fas fa-users"></i> Tous</div>`;
+        }
         
         card.innerHTML = `
             <div class="mini-card-header">
@@ -2354,6 +2364,7 @@ function renderMediaHubGrid() {
             <div class="mini-card-footer">
                 ${playButtonHtml}
                 ${audioIndicatorHtml}
+                ${channelIndicatorHtml}
                 <button class="mini-card-button" style="color: ${startColor}; border-color: ${accent};">${item.buttonLabel || 'Découvrir'}</button>
             </div>
         `;
@@ -2483,6 +2494,7 @@ function openMediaModal(item) {
     document.getElementById('mediaAccentColor').value = '#ffffff';
     document.getElementById('mediaGradStart').value = '#2C3E50';
     document.getElementById('mediaGradEnd').value = '#3498DB';
+    document.getElementById('mediaChannel').value = 'all';
     
     // Hide sub-containers
     document.getElementById('mediaTtsContainer').style.display = 'none';
@@ -2500,6 +2512,7 @@ function openMediaModal(item) {
         document.getElementById('mediaActionType').value = item.actionType || 'copy_promo';
         document.getElementById('mediaActionValue').value = item.actionValue || '';
         document.getElementById('mediaAccentColor').value = item.accentColor || '#ffffff';
+        document.getElementById('mediaChannel').value = item.channel || 'all';
         
         if (item.gradientColors && item.gradientColors.length >= 2) {
             document.getElementById('mediaGradStart').value = item.gradientColors[0];
@@ -2819,6 +2832,7 @@ document.getElementById('btnSaveMedia').onclick = async () => {
     const buttonLabel = document.getElementById('mediaButtonLabel').value.trim();
     const actionType = document.getElementById('mediaActionType').value;
     const actionValue = document.getElementById('mediaActionValue').value.trim();
+    const channel = document.getElementById('mediaChannel').value;
     
     if (!title || !description || !buttonLabel) {
         window.showNotificationDrawer('Validation', 'Veuillez remplir tous les champs obligatoires.', true);
@@ -2864,6 +2878,7 @@ document.getElementById('btnSaveMedia').onclick = async () => {
         icon,
         audioUrl,
         speakText,
+        channel,
         updatedAt: new Date().toISOString()
     };
     

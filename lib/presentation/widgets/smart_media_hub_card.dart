@@ -10,10 +10,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_profile/transen_profile.dart';
-import 'package:transen/presentation/widgets/profile_drawer.dart';
 
 /// Dynamic announcement model supporting both local fallbacks and Firestore documents
 class HubAnnouncement {
@@ -45,7 +43,13 @@ class HubAnnouncement {
 class SmartMediaHubCard extends ConsumerStatefulWidget {
   final VoidCallback? onNavigateToBus;
   final ValueChanged<Color>? onColorChanged;
-  const SmartMediaHubCard({super.key, this.onNavigateToBus, this.onColorChanged});
+  final String channel;
+  const SmartMediaHubCard({
+    super.key,
+    required this.channel,
+    this.onNavigateToBus,
+    this.onColorChanged,
+  });
 
   @override
   ConsumerState<SmartMediaHubCard> createState() => _SmartMediaHubCardState();
@@ -469,18 +473,6 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    
-    // Get user's first name reactively
-    final auth = ref.watch(authProvider);
-    final userId = auth?.userId ?? '';
-    final userAsync = userId.isNotEmpty 
-        ? ref.watch(userFutureProvider(userId)) 
-        : const AsyncValue<Map<String, dynamic>?>.data(null);
-    
-    final userData = userAsync.value;
-    final String fullName = userData?['name'] ?? auth?.name ?? '';
-    final String firstName = fullName.split(' ').first;
-    final String greetingName = firstName.isNotEmpty ? firstName : 'Client';
 
     // Stream announcements in real-time from Firestore database 'transen'
     return StreamBuilder<QuerySnapshot>(
@@ -490,44 +482,54 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
       builder: (context, snapshot) {
         // Parse announcements
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-          _activeAnnouncements = snapshot.data!.docs.map((doc) {
+          final filteredDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            
-            // Parse colors
-            final colorsList = data['gradientColors'] as List?;
-            List<Color> gradients = [const Color(0xFF2C3E50), const Color(0xFF3498DB)]; // default
-            if (colorsList != null && colorsList.length >= 2) {
-              gradients = [
-                _parseHexColor(colorsList[0].toString(), gradients[0]),
-                _parseHexColor(colorsList[1].toString(), gradients[1]),
-              ];
-            } else if (colorsList != null && colorsList.isNotEmpty) {
-              gradients = [
-                _parseHexColor(colorsList[0].toString(), gradients[0]),
-                _parseHexColor(colorsList[0].toString(), gradients[0]),
-              ];
-            }
-
-            final accentColorStr = data['accentColor'] as String?;
-            final accentColor = _parseHexColor(accentColorStr, Colors.white);
-
-            return HubAnnouncement(
-              id: doc.id,
-              title: (data['title'] ?? 'NEWS TRANSEN').toString().toUpperCase(),
-              description: data['description'] ?? '',
-              speakText: data['speakText'],
-              audioUrl: data['audioUrl'],
-              icon: _mapIcon(data['icon'] as String?),
-              gradientColors: gradients,
-              accentColor: accentColor,
-              buttonLabel: (data['buttonLabel'] ?? 'EN SAVOIR PLUS').toString().toUpperCase(),
-              onTap: () {
-                final actionType = data['actionType'] ?? '';
-                final actionValue = data['actionValue'] ?? '';
-                _handleAction(actionType, actionValue, context);
-              },
-            );
+            final annChannel = data['channel']?.toString() ?? 'all';
+            return annChannel == 'all' || annChannel == widget.channel;
           }).toList();
+
+          if (filteredDocs.isNotEmpty) {
+            _activeAnnouncements = filteredDocs.map((doc) {
+              final data = doc.data() as Map<String, dynamic>;
+              
+              // Parse colors
+              final colorsList = data['gradientColors'] as List?;
+              List<Color> gradients = [const Color(0xFF2C3E50), const Color(0xFF3498DB)]; // default
+              if (colorsList != null && colorsList.length >= 2) {
+                gradients = [
+                  _parseHexColor(colorsList[0].toString(), gradients[0]),
+                  _parseHexColor(colorsList[1].toString(), gradients[1]),
+                ];
+              } else if (colorsList != null && colorsList.isNotEmpty) {
+                gradients = [
+                  _parseHexColor(colorsList[0].toString(), gradients[0]),
+                  _parseHexColor(colorsList[0].toString(), gradients[0]),
+                ];
+              }
+
+              final accentColorStr = data['accentColor'] as String?;
+              final accentColor = _parseHexColor(accentColorStr, Colors.white);
+
+              return HubAnnouncement(
+                id: doc.id,
+                title: (data['title'] ?? 'NEWS TRANSEN').toString().toUpperCase(),
+                description: data['description'] ?? '',
+                speakText: data['speakText'],
+                audioUrl: data['audioUrl'],
+                icon: _mapIcon(data['icon'] as String?),
+                gradientColors: gradients,
+                accentColor: accentColor,
+                buttonLabel: (data['buttonLabel'] ?? 'EN SAVOIR PLUS').toString().toUpperCase(),
+                onTap: () {
+                  final actionType = data['actionType'] ?? '';
+                  final actionValue = data['actionValue'] ?? '';
+                  _handleAction(actionType, actionValue, context);
+                },
+              );
+            }).toList();
+          } else {
+            _activeAnnouncements = _getLocalFallbackAnnouncements(context);
+          }
         } else {
           // Fallback if no database announcements exist
           _activeAnnouncements = _getLocalFallbackAnnouncements(context);
@@ -540,10 +542,6 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
 
         // Restart carousel autoplay
         _startCarouselAutoPlay();
-
-        final bool hasAudio = _activeAnnouncements.isNotEmpty &&
-            ((_activeAnnouncements[_currentPageIndex].audioUrl != null && _activeAnnouncements[_currentPageIndex].audioUrl!.isNotEmpty) ||
-             (_activeAnnouncements[_currentPageIndex].speakText != null && _activeAnnouncements[_currentPageIndex].speakText!.isNotEmpty));
 
         final bool isCurrentlyPlaying = _isSpeaking || _isPlayingAudio;
 
@@ -571,10 +569,10 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                 final glowSpread = 1.0 + (pulseValue * 3.0);
 
                 return Container(
-                  margin: const EdgeInsets.symmetric(vertical: 12),
+                  margin: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0x3D000000) : Colors.white.withValues(alpha: 0.65),
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(
                       color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.6),
                       width: 1.5,
@@ -596,129 +594,18 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                     ],
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(28),
+                    borderRadius: BorderRadius.circular(24),
                     child: BackdropFilter(
                       filter: ui.ImageFilter.blur(sigmaX: 14, sigmaY: 14),
                       child: Padding(
-                        padding: const EdgeInsets.all(22),
+                        padding: const EdgeInsets.all(10),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            // 1. TOP ROW: WELCOME & AUDIO BUTTON
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        "Bonjour $greetingName 👋",
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white70 : Colors.black54,
-                                          letterSpacing: -0.2,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 3),
-                                      SizedBox(
-                                        height: 34,
-                                        child: Row(
-                                          crossAxisAlignment: CrossAxisAlignment.center,
-                                          children: [
-                                            Expanded(
-                                              child: Text(
-                                                _displayedSlogan,
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: 23,
-                                                  fontWeight: FontWeight.w900,
-                                                  color: isDark ? Colors.white : Colors.black87,
-                                                  height: 1.1,
-                                                  letterSpacing: -0.6,
-                                                ),
-                                                maxLines: 1,
-                                                overflow: TextOverflow.fade,
-                                              ),
-                                            ),
-                                            Container(
-                                              width: 2.5,
-                                              height: 20,
-                                              color: isDark 
-                                                  ? Colors.white.withValues(alpha: 0.8) 
-                                                  : Colors.black.withValues(alpha: 0.8),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                const SizedBox(width: 10),
-                                // Audio narrator (TTS or MP3 streaming)
-                                if (hasAudio)
-                                  GestureDetector(
-                                    onTap: _toggleAudio,
-                                    child: AnimatedContainer(
-                                      duration: const Duration(milliseconds: 300),
-                                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                      decoration: BoxDecoration(
-                                        color: isCurrentlyPlaying
-                                            ? TranSenColors.primaryGreen
-                                            : (isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.05)),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          if (isCurrentlyPlaying) ...[
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: List.generate(_soundwaveHeights.length, (index) {
-                                                return AnimatedContainer(
-                                                  duration: const Duration(milliseconds: 100),
-                                                  margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                                                  width: 2.5,
-                                                  height: _soundwaveHeights[index],
-                                                  decoration: BoxDecoration(
-                                                    color: Colors.white,
-                                                    borderRadius: BorderRadius.circular(10),
-                                                  ),
-                                                );
-                                              }),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            const Icon(Icons.stop_rounded, color: Colors.white, size: 16),
-                                          ] else ...[
-                                            Icon(
-                                              Icons.volume_up_rounded,
-                                              color: isDark ? Colors.white : Colors.black87,
-                                              size: 16,
-                                            ),
-                                            const SizedBox(width: 5),
-                                            Text(
-                                              "ÉCOUTER",
-                                              style: GoogleFonts.outfit(
-                                                fontSize: 10,
-                                                fontWeight: FontWeight.w800,
-                                                color: isDark ? Colors.white : Colors.black87,
-                                                letterSpacing: 0.5,
-                                              ),
-                                            ),
-                                          ]
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            
-                            const SizedBox(height: 20),
-                            
                             // 2. CAROUSEL OF ANNOUNCEMENTS
                             if (_activeAnnouncements.isNotEmpty)
                               SizedBox(
-                                height: 145,
+                                height: 160,
                                 child: PageView.builder(
                                   controller: _pageController,
                                   onPageChanged: (index) {
@@ -730,6 +617,8 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                   itemCount: _activeAnnouncements.length,
                                   itemBuilder: (context, index) {
                                     final item = _activeAnnouncements[index];
+                                    final bool itemHasAudio = (item.audioUrl != null && item.audioUrl!.isNotEmpty) ||
+                                        (item.speakText != null && item.speakText!.isNotEmpty);
                                     return Container(
                                       margin: const EdgeInsets.symmetric(horizontal: 2),
                                       decoration: BoxDecoration(
@@ -738,7 +627,7 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
                                         ),
-                                        borderRadius: BorderRadius.circular(22),
+                                        borderRadius: BorderRadius.circular(18),
                                         boxShadow: [
                                           BoxShadow(
                                             color: item.gradientColors.first.withValues(alpha: 0.3),
@@ -762,7 +651,7 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                             ),
                                           ),
                                           Padding(
-                                            padding: const EdgeInsets.all(18),
+                                            padding: const EdgeInsets.all(14),
                                             child: Column(
                                               crossAxisAlignment: CrossAxisAlignment.start,
                                               children: [
@@ -785,6 +674,60 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                                         ),
                                                       ),
                                                     ),
+                                                    if (itemHasAudio)
+                                                      GestureDetector(
+                                                        onTap: _toggleAudio,
+                                                        child: AnimatedContainer(
+                                                          duration: const Duration(milliseconds: 300),
+                                                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                                          decoration: BoxDecoration(
+                                                            color: isCurrentlyPlaying
+                                                                ? TranSenColors.primaryGreen
+                                                                : Colors.white.withValues(alpha: 0.2),
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          child: Row(
+                                                            mainAxisSize: MainAxisSize.min,
+                                                            children: [
+                                                              if (isCurrentlyPlaying) ...[
+                                                                Row(
+                                                                  mainAxisSize: MainAxisSize.min,
+                                                                  children: List.generate(_soundwaveHeights.length, (index) {
+                                                                    return AnimatedContainer(
+                                                                      duration: const Duration(milliseconds: 100),
+                                                                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                                                                      width: 2,
+                                                                      height: _soundwaveHeights[index] * 0.7,
+                                                                      decoration: BoxDecoration(
+                                                                        color: Colors.white,
+                                                                        borderRadius: BorderRadius.circular(10),
+                                                                      ),
+                                                                    );
+                                                                  }),
+                                                                ),
+                                                                const SizedBox(width: 6),
+                                                                const Icon(Icons.stop_rounded, color: Colors.white, size: 14),
+                                                              ] else ...[
+                                                                const Icon(
+                                                                  Icons.volume_up_rounded,
+                                                                  color: Colors.white,
+                                                                  size: 14,
+                                                                ),
+                                                                const SizedBox(width: 4),
+                                                                Text(
+                                                                  "ÉCOUTER",
+                                                                  style: GoogleFonts.outfit(
+                                                                    fontSize: 9,
+                                                                    fontWeight: FontWeight.w800,
+                                                                    color: Colors.white,
+                                                                    letterSpacing: 0.5,
+                                                                  ),
+                                                                ),
+                                                              ]
+                                                            ],
+                                                          ),
+                                                        ),
+                                                      ),
                                                   ],
                                                 ),
                                                 const SizedBox(height: 8),
@@ -793,16 +736,16 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                                     item.description,
                                                     style: GoogleFonts.outfit(
                                                       color: Colors.white.withValues(alpha: 0.9),
-                                                      fontSize: 14,
+                                                      fontSize: 13,
                                                       fontWeight: FontWeight.w500,
                                                       height: 1.25,
                                                       letterSpacing: -0.1,
                                                     ),
-                                                    maxLines: 2,
+                                                    maxLines: 3,
                                                     overflow: TextOverflow.ellipsis,
                                                   ),
                                                 ),
-                                                const SizedBox(height: 10),
+                                                const SizedBox(height: 8),
                                                 Align(
                                                   alignment: Alignment.bottomLeft,
                                                   child: Material(
@@ -836,7 +779,7 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                                 ),
                               ),
                             
-                            const SizedBox(height: 12),
+                            const SizedBox(height: 10),
                             
                             // 3. PAGE INDICATORS (DOTS)
                             if (_activeAnnouncements.length > 1)

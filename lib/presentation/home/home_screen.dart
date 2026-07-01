@@ -387,24 +387,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     
     final double screenHeight = MediaQuery.of(context).size.height;
     final double statusBarHeight = MediaQuery.of(context).padding.top;
-    final double appBarHeight = AppBar().preferredSize.height;
-    final double mainHeight = screenHeight - statusBarHeight - appBarHeight;
+    final double mainHeight = screenHeight - statusBarHeight;
 
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('TranSen', style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1)),
-        backgroundColor: TranSenColors.primaryGreen,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none),
-            onPressed: () {},
-          ),
-        ],
-      ),
       drawer: const ProfileDrawer(),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -473,52 +460,54 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // 2. PROGRESSIVE SELECTION UI (Step 1, Step 2, Step 3 Interurbain)
           if (_journeyState != HomeJourneyState.selectVtcDestination)
             Positioned.fill(
-              child: ClipRRect(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 30),
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 400),
-                    switchInCurve: Curves.fastOutSlowIn,
-                    switchOutCurve: Curves.fastOutSlowIn,
-                    transitionBuilder: (Widget child, Animation<double> animation) {
-                      bool isIncoming = false;
-                      if (child.key is ValueKey<String>) {
-                        final String keyVal = (child.key as ValueKey<String>).value;
-                        if (_journeyState == HomeJourneyState.selectService && keyVal == 'serviceHub') isIncoming = true;
-                        if (_journeyState == HomeJourneyState.selectTravelType && keyVal == 'travelType') isIncoming = true;
-                        if (_journeyState == HomeJourneyState.selectInterurbanType && keyVal == 'interurbanType') isIncoming = true;
-                      }
-                      
-                      final int currentDepth = _getJourneyStateDepth(_journeyState);
-                      final int previousDepth = _getJourneyStateDepth(_previousJourneyState);
-                      final bool isForward = currentDepth >= previousDepth;
+              child: SafeArea(
+                child: ClipRRect(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 10, 20, 30),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 400),
+                      switchInCurve: Curves.fastOutSlowIn,
+                      switchOutCurve: Curves.fastOutSlowIn,
+                      transitionBuilder: (Widget child, Animation<double> animation) {
+                        bool isIncoming = false;
+                        if (child.key is ValueKey<String>) {
+                          final String keyVal = (child.key as ValueKey<String>).value;
+                          if (_journeyState == HomeJourneyState.selectService && keyVal == 'serviceHub') isIncoming = true;
+                          if (_journeyState == HomeJourneyState.selectTravelType && keyVal == 'travelType') isIncoming = true;
+                          if (_journeyState == HomeJourneyState.selectInterurbanType && keyVal == 'interurbanType') isIncoming = true;
+                        }
+                        
+                        final int currentDepth = _getJourneyStateDepth(_journeyState);
+                        final int previousDepth = _getJourneyStateDepth(_previousJourneyState);
+                        final bool isForward = currentDepth >= previousDepth;
 
-                      Offset startOffset;
-                      if (isIncoming) {
-                        startOffset = isForward ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
-                      } else {
-                        startOffset = isForward ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0);
-                      }
+                        Offset startOffset;
+                        if (isIncoming) {
+                          startOffset = isForward ? const Offset(1.0, 0.0) : const Offset(-1.0, 0.0);
+                        } else {
+                          startOffset = isForward ? const Offset(-1.0, 0.0) : const Offset(1.0, 0.0);
+                        }
 
-                      final Tween<Offset> slideTween = Tween<Offset>(
-                        begin: startOffset,
-                        end: Offset.zero,
-                      );
+                        final Tween<Offset> slideTween = Tween<Offset>(
+                          begin: startOffset,
+                          end: Offset.zero,
+                        );
 
-                      final curvedAnimation = CurvedAnimation(
-                        parent: animation,
-                        curve: Curves.fastOutSlowIn,
-                      );
+                        final curvedAnimation = CurvedAnimation(
+                          parent: animation,
+                          curve: Curves.fastOutSlowIn,
+                        );
 
-                      return SlideTransition(
-                        position: slideTween.animate(curvedAnimation),
-                        child: FadeTransition(
-                          opacity: animation,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: _buildJourneyContent(isDark, historyAsync),
+                        return SlideTransition(
+                          position: slideTween.animate(curvedAnimation),
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: _buildJourneyContent(isDark, historyAsync),
+                    ),
                   ),
                 ),
               ),
@@ -582,6 +571,75 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Widget _buildHeader(BuildContext context, String clientName) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Row(
+      children: [
+        // Menu Button / Avatar
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            _scaffoldKey.currentState?.openDrawer();
+          },
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _activeMediaGlowColor.withValues(alpha: 0.3),
+                width: 2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _activeMediaGlowColor.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              radius: 20,
+              backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
+              child: Icon(Icons.person, color: isDark ? Colors.white : Colors.black87, size: 20),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Welcome Text
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Bonjour 👋",
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : Colors.black54,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                clientName,
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black87,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+        // Notification Button
+        IconButton(
+          icon: Icon(Icons.notifications_none, color: isDark ? Colors.white : Colors.black87, size: 22),
+          onPressed: () {},
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildJourneyContent(bool isDark, AsyncValue<List<TripModel>> historyAsync) {
     switch (_journeyState) {
       case HomeJourneyState.selectService:
@@ -596,12 +654,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   Widget _buildServiceHub(bool isDark, AsyncValue<List<TripModel>> historyAsync) {
+    final clientName = ref.watch(authProvider)?.name ?? 'Passager';
     return Column(
       key: const ValueKey('serviceHub'),
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _buildHeader(context, clientName),
+        const SizedBox(height: 20),
         // Premium Smart Media Hub card (Dynamic announcements, visual carousel & audio synthesis)
         SmartMediaHubCard(
+          channel: 'client',
           onNavigateToBus: () {
             _setJourneyState(HomeJourneyState.selectTravelType);
           },

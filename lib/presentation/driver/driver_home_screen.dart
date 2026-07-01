@@ -377,6 +377,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
 
                       // 3. Smart Media Hub Card (Same as Client, synchronizes wave colors!)
                       SmartMediaHubCard(
+                        channel: 'driver',
                         onColorChanged: (color) {
                           setState(() {
                             _activeMediaGlowColor = color;

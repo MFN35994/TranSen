@@ -1,0 +1,19 @@
+Procédure de création d’une application de production sur le Portail
+développeur.
+Aller à l’adresse du Portail développeur https://developer.orange-sonatel.com/
+1. Se connecter avec ses identifiants et cliquer sur le menu « mes applications » en haut à
+droite.
+
+2. Choisir « créer une application »
+
+3. Cliquer sur le bouton « ICI »
+
+4. Renseigner les informations et charger vos documents :
+
+5. Une fois toutes les informations enregistrées, vous pouvez créer une application de
+production sur la page précédente en choisissant « production » dans le menu déroulante.
+
+Après la réception des documents et une phase de vérification côté OFMS, vos identifiants de
+PRODUCTION vous seront communiqués.
+
+

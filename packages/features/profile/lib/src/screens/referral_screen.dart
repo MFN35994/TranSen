@@ -159,8 +159,12 @@ class ReferralScreen extends ConsumerWidget {
                 
                 ElevatedButton.icon(
                   onPressed: () {
-                    Share.share(
-                      "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
+                    final box = context.findRenderObject() as RenderBox?;
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text: "🚗 TranSen : Le transport 5 étoiles au Sénégal !\n\nInscris-toi avec mon code parrainage ✨ $referralCode ✨ et gagne des bonus sur tes trajets.\n\n📲 Télécharge l'application maintenant !",
+                        sharePositionOrigin: box != null ? box.localToGlobal(Offset.zero) & box.size : null,
+                      ),
                     );
                   },
                   icon: const Icon(Icons.share),

@@ -1,0 +1,62 @@
+Procédure de test de l’API QR CODE / Deeplink Orange
+Money
+
+Liens utiles :
+Portail Developer Orange : https://developer.orange-sonatel.com/
+Endpoint Sandbox : https://api.sandbox.orange-sonatel.com
+Documentation QR CODE : https://developer.orangesonatel.com/documentation#operation/Generate%20Secure%20QR%20Code%20from%20O
+range%20Money()
+Collection QR CODE : https://developer.orange-sonatel.com/qr-code (onglet
+« Commencer »)
+
+1
+
+Sur le Portail Developer Orange
+1) Se connecter au Portail Developer
+
+2) Choisir le menu « Mes applications »
+
+2
+
+3) Créer une application de test (Sandbox)
+
+3
+
+4
+
+4) Récupérer les clés d’authentification
+a) Cliquer sur le titre de l’application créée
+
+b) Récupérer les clés d’authentification pour effectuer les tests en Sandbox
+
+5
+
+Dans Postman
+1) S’authentifier avec les clés d’authentification de l’application
+
+2) Générer un jeton (token) pour la suite des tests
+
+6
+
+3) Paiement Marchand par QR CODE/Deeplink
+a. QR code / Deeplink avec le montant (Method 1)
+
+7
+
+b. QR code / Deeplink sans le montant (Method 2)
+
+8
+
+c. Réponse de la requête
+
+4) Configuration du Callback
+
+9
+
+10
+
+5) Vérification du Callback
+
+11
+
+

@@ -24,8 +24,9 @@ class _UnifiedGridActionsContainerState extends State<UnifiedGridActionsContaine
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 5), // Loop every 5 seconds
-    )..repeat();
+      duration: const Duration(milliseconds: 2000), // Run the sweep once over 2 seconds
+    );
+    _controller.forward();
   }
 
   @override
@@ -73,15 +74,12 @@ class UnifiedGridBorderPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // We want the comets to sweep in the first 1.8 seconds of the 5-second cycle.
-    // 1.8s / 5.0s = 0.36
-    const sweepDurationPercent = 0.36;
+    final progress = animationValue;
     
-    if (animationValue > sweepDurationPercent) {
-      return; // Comets are finished and invisible during the rest of the cycle
+    // If the animation is finished, don't draw anything to save rendering cycles
+    if (progress >= 1.0) {
+      return;
     }
-    
-    final progress = animationValue / sweepDurationPercent;
     
     // Calculate fade opacity
     double opacity = 1.0;
