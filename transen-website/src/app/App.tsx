@@ -37,6 +37,16 @@ function AppContent() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+
+    // Mise à jour dynamique de la balise canonique pour le référencement (SEO)
+    let canonical = document.querySelector("link[rel='canonical']");
+    if (!canonical) {
+      canonical = document.createElement("link");
+      canonical.setAttribute("rel", "canonical");
+      document.head.appendChild(canonical);
+    }
+    const path = location.pathname === "/" ? "" : location.pathname;
+    canonical.setAttribute("href", `https://transen.org${path}`);
   }, [location.pathname]);
 
   return (
