@@ -30,6 +30,7 @@ class PremiumPulseCard extends StatefulWidget {
 class _PremiumPulseCardState extends State<PremiumPulseCard> with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -45,7 +46,7 @@ class _PremiumPulseCardState extends State<PremiumPulseCard> with SingleTickerPr
     );
 
     if (widget.animated) {
-      Timer.periodic(const Duration(seconds: 5), (timer) {
+      _timer = Timer.periodic(const Duration(seconds: 5), (timer) {
         if (mounted) {
           _pulseController.forward().then((value) => _pulseController.reverse());
         } else {
@@ -57,6 +58,7 @@ class _PremiumPulseCardState extends State<PremiumPulseCard> with SingleTickerPr
 
   @override
   void dispose() {
+    _timer?.cancel();
     _pulseController.dispose();
     super.dispose();
   }

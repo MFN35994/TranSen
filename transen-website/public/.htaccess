@@ -1,0 +1,15 @@
+# Redirections 301 pour préserver le référencement des anciennes pages HTML
+Redirect 301 /cgu.html /conditions
+Redirect 301 /politique.html /confidentialite
+Redirect 301 /mentions.html /mentions-legales
+Redirect 301 /contact.html /contact
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME} !-l
+  RewriteRule . /index.html [L]
+</IfModule>

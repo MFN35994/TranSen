@@ -30,6 +30,16 @@ jobs:
         
       - name: Build Web
         run: flutter build web --release
+
+      - name: Build Website
+        run: |
+          npm ci --legacy-peer-deps --prefix transen-website
+          npm run --prefix transen-website build
+
+      - name: Build Company Panel
+        run: |
+          npm ci --legacy-peer-deps --prefix company_panel
+          npm run --prefix company_panel build
         
       - uses: FirebaseExtended/action-hosting-deploy@v0
         with:

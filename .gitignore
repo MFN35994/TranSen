@@ -45,3 +45,9 @@ app.*.map.json
 /android/app/release
 
 *.hprof
+
+# Web Panel Builds & Node Modules
+/transen-website/dist/
+/transen-website/node_modules/
+/company_panel/dist/
+/company_panel/node_modules/

@@ -474,11 +474,19 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    // Safely check if Firebase has been initialized (prevents crashes in test environments)
+    FirebaseApp? firebaseApp;
+    try {
+      firebaseApp = Firebase.app();
+    } catch (_) {}
+
     // Stream announcements in real-time from Firestore database 'transen'
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
-          .collection('announcements')
-          .snapshots(),
+      stream: firebaseApp == null
+          ? const Stream<QuerySnapshot>.empty()
+          : FirebaseFirestore.instanceFor(app: firebaseApp, databaseId: 'transen')
+              .collection('announcements')
+              .snapshots(),
       builder: (context, snapshot) {
         // Parse announcements
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {

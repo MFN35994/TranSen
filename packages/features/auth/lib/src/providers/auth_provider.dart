@@ -58,11 +58,11 @@ class AuthState {
 
 class AuthNotifier extends Notifier<AuthState?> {
   late final AuthRepository _repository;
-  final FirebaseFirestore _firestore =
-      FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
+  late final FirebaseFirestore _firestore;
 
   @override
   AuthState? build() {
+    _firestore = FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen');
     _repository = ref.watch(authRepositoryProvider);
     
     // Vérification asynchrone du token local

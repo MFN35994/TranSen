@@ -1,0 +1,6 @@
+{
+  "name": "Allô Dakar",
+  "description": "A modern corporate website offering comprehensive transport and service details, transparent pricing, and easy navigation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

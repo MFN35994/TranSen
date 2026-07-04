@@ -14,6 +14,9 @@ class SplashScreen extends ConsumerStatefulWidget {
 }
 
 class _SplashScreenState extends ConsumerState<SplashScreen> {
+  Timer? _timer;
+  Timer? _authTimer;
+
   @override
   void initState() {
     super.initState();
@@ -21,7 +24,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   }
 
   void _startTimer() {
-    Timer(const Duration(seconds: 3), () {
+    _timer = Timer(const Duration(seconds: 3), () {
       _checkAuthAndNavigate();
     });
   }
@@ -37,7 +40,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
     } else {
       // Si on attend encore le rôle, on attend un peu
       if (auth.isLoading) {
-        Timer(const Duration(milliseconds: 500), _checkAuthAndNavigate);
+        _authTimer = Timer(const Duration(milliseconds: 500), _checkAuthAndNavigate);
         return;
       }
       
@@ -54,6 +57,13 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
         MaterialPageRoute(builder: (_) => nextScreen),
       );
     }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _authTimer?.cancel();
+    super.dispose();
   }
 
   @override
