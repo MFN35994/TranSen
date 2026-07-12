@@ -30,6 +30,7 @@ import 'package:transen/presentation/widgets/premium_pulse_card.dart';
 import 'package:transen/presentation/widgets/unified_grid_actions_container.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shimmer/shimmer.dart';
+import 'chat_assistant_screen.dart';
 
 enum TransportMode { interurbain, urbain }
 
@@ -567,7 +568,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               foregroundColor: TranSenColors.primaryGreen,
               child: const Icon(Icons.my_location),
             )
-          : null,
+          : (_journeyState == HomeJourneyState.selectService
+              ? FloatingActionButton.extended(
+                  onPressed: () {
+                    HapticFeedback.mediumImpact();
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const ChatAssistantScreen()),
+                    );
+                  },
+                  backgroundColor: TranSenColors.primaryGreen,
+                  foregroundColor: Colors.white,
+                  icon: const Icon(Icons.psychology),
+                  label: const Text("IA Assistant"),
+                  elevation: 6,
+                )
+              : null),
     );
   }
 

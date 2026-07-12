@@ -5,6 +5,7 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_trips/transen_trips.dart';
+import '../settings/support_ticket_screen.dart';
 
 final userFutureProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
   ref.watch(authProvider); // Re-run and refresh cache whenever the user details change
@@ -50,10 +51,13 @@ class ProfileDrawer extends ConsumerWidget {
                 _buildMenuItem(
                   context: context,
                   icon: Icons.support_agent,
-                  title: 'Assistance & Contact',
+                  title: 'Assistance & Contact (IA)',
                   onTap: () {
                     Navigator.pop(context);
-                    _showAssistanceDialog(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SupportTicketScreen()),
+                    );
                   },
                 ),
                 _buildMenuItem(
@@ -326,44 +330,4 @@ class ProfileDrawer extends ConsumerWidget {
     );
   }
 
-  void _showAssistanceDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Assistance TranSen'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Nous sommes là pour vous aider.'),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Icon(Icons.email_outlined, color: Colors.blue, size: 20),
-                SizedBox(width: 10),
-                Text('contact@transen.sn',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-            SizedBox(height: 10),
-            Row(
-              children: [
-                Icon(Icons.phone_outlined, color: Colors.green, size: 20),
-                SizedBox(width: 10),
-                Text('+221 77 000 00 00',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ],
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Fermer'),
-          ),
-        ],
-      ),
-    );
-  }
 }

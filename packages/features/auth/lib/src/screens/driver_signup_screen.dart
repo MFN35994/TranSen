@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../providers/auth_provider.dart';
 import '../providers/referral_provider.dart';
 
@@ -19,6 +20,106 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
   final _referralController = TextEditingController();
 
   bool _isLoading = false;
+  bool _isScanning = false;
+
+  Future<void> _showImagePickerSourceDialog() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt, color: TranSenColors.primaryGreen),
+                title: const Text("Prendre une photo de mon permis / CNI"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _scanDocument(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library, color: TranSenColors.primaryGreen),
+                title: const Text("Choisir depuis la galerie"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _scanDocument(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _scanDocument(ImageSource source) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(
+      source: source,
+      imageQuality: 70,
+    );
+
+    if (image == null) return;
+
+    setState(() => _isScanning = true);
+    
+    try {
+      final geminiService = ref.read(geminiServiceProvider);
+      if (!geminiService.isConfigured) {
+        throw Exception("La clé API Gemini n'est pas configurée dans l'application mobile.");
+      }
+
+      final imageBytes = await image.readAsBytes();
+      final String mimeType = image.path.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Analyse de votre document en cours... 🔍"),
+            backgroundColor: TranSenColors.primaryGreen,
+            duration: Duration(seconds: 4),
+          ),
+        );
+      }
+
+      final data = await geminiService.scanDriverLicense(imageBytes, mimeType);
+
+      if (mounted) {
+        final firstName = data['firstName']?.toString() ?? '';
+        final lastName = data['lastName']?.toString() ?? '';
+        
+        if (firstName.isNotEmpty) {
+          _firstNameController.text = firstName;
+        }
+        if (lastName.isNotEmpty) {
+          _lastNameController.text = lastName;
+        }
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("✅ Informations lues et remplies !"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Erreur de lecture du document : ${e.toString()}"),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isScanning = false);
+      }
+    }
+  }
 
   @override
   void dispose() {
@@ -109,7 +210,27 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 30),
+            OutlinedButton.icon(
+              onPressed: _isScanning ? null : _showImagePickerSourceDialog,
+              icon: _isScanning 
+                  ? const SizedBox(
+                      width: 20, 
+                      height: 20, 
+                      child: CircularProgressIndicator(strokeWidth: 2, color: TranSenColors.primaryGreen)
+                    )
+                  : const Icon(Icons.document_scanner, color: TranSenColors.primaryGreen),
+              label: Text(
+                _isScanning ? "Lecture du document..." : "Scanner mon permis ou CNI",
+                style: const TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: TranSenColors.primaryGreen, width: 2),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              ),
+            ),
+            const SizedBox(height: 25),
             
             _buildTextField(
               controller: _firstNameController,

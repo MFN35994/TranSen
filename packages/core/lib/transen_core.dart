@@ -4,6 +4,7 @@ export 'src/theme/transen_colors.dart';
 export 'src/utils/device_utils.dart';
 export 'src/utils/location_helper.dart';
 export 'src/services/notification_service.dart';
+export 'src/services/gemini_service.dart';
 export 'src/screens/legal_screen.dart';
 export 'src/providers/theme_provider.dart';
 export 'src/models/trip_model.dart';
