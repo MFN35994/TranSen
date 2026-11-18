@@ -18,9 +18,9 @@ function SeatMapDemo() {
     setSelected(s => s.includes(n) ? s.filter(x => x !== n) : [...s, n]);
   };
   return (
-    <div className="bg-white rounded-3xl p-6 shadow-xl border border-gray-100">
+    <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/10">
       <div className="text-center mb-4">
-        <div className="text-sm text-gray-500 mb-1">Plan des sièges · Minibus 15 places</div>
+        <div className="text-sm text-slate-400 mb-1">Plan des sièges · Minibus 15 places</div>
         <div className="flex justify-center gap-4 text-xs text-gray-400">
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-green-100 border border-green-400 inline-block" /> Libre</span>
           <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded bg-blue-200 inline-block" /> Réservé</span>
@@ -29,7 +29,7 @@ function SeatMapDemo() {
         </div>
       </div>
       <div className="flex justify-end mb-3 pr-1">
-        <div className="w-10 h-10 rounded-xl bg-gray-200 flex items-center justify-center text-lg">🚐</div>
+        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-lg">🚐</div>
       </div>
       {[0, 1, 2, 3, 4].map(row => (
         <div key={row} className="flex gap-2 mb-2 justify-center">
@@ -41,10 +41,10 @@ function SeatMapDemo() {
                 DEMO_BOARDED.includes(n)
                   ? "bg-violet-400 border-violet-500 text-white cursor-default"
                   : DEMO_OCCUPIED.includes(n)
-                  ? "bg-blue-100 border-blue-200 text-blue-400 cursor-not-allowed"
+                  ? "bg-slate-800/80 border-slate-700 text-blue-400 cursor-not-allowed"
                   : selected.includes(n)
-                  ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-gray-900"
-                  : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                  ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-slate-950"
+                  : "bg-emerald-500/15 border-green-300 text-emerald-300 hover:bg-emerald-500/25"
               }`}
             >
               {n}
@@ -61,10 +61,10 @@ function SeatMapDemo() {
                   DEMO_BOARDED.includes(n)
                     ? "bg-violet-400 border-violet-500 text-white cursor-default"
                     : DEMO_OCCUPIED.includes(n)
-                    ? "bg-blue-100 border-blue-200 text-blue-400 cursor-not-allowed"
+                    ? "bg-slate-800/80 border-slate-700 text-blue-400 cursor-not-allowed"
                     : selected.includes(n)
-                    ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-gray-900"
-                    : "bg-green-50 border-green-300 text-green-700 hover:bg-green-100"
+                    ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-slate-950"
+                    : "bg-emerald-500/15 border-green-300 text-emerald-300 hover:bg-emerald-500/25"
                 }`}
               >
                 {n}
@@ -91,12 +91,12 @@ function SeatMapDemo() {
 function Accord({ q, a }: { q: string; a: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-gray-100">
+    <div className="border-b border-white/10">
       <button
         onClick={() => setOpen(!open)}
         className="w-full flex items-center justify-between py-4 text-left gap-3"
       >
-        <span className="text-gray-800 text-sm">{q}</span>
+        <span className="text-slate-100 text-sm">{q}</span>
         <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       <AnimatePresence>
@@ -107,7 +107,7 @@ function Accord({ q, a }: { q: string; a: string }) {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <p className="text-gray-500 text-sm pb-4 leading-relaxed">{a}</p>
+            <p className="text-slate-400 text-sm pb-4 leading-relaxed">{a}</p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -166,7 +166,7 @@ export function Services() {
       </section>
 
       {/* ── Service Selector Tabs ────────────────────────────────────────── */}
-      <section className="py-16 bg-white">
+      <section className="py-16 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Tab Nav */}
           <div className="flex flex-wrap gap-3 justify-center mb-14">
@@ -175,7 +175,7 @@ export function Services() {
                 key={tab.id}
                 onClick={() => setActiveService(tab.id)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-2xl border-2 transition-all ${
-                  activeService === tab.id ? "text-white shadow-lg" : "text-gray-600 bg-white hover:bg-gray-50"
+                  activeService === tab.id ? "text-white shadow-lg" : "text-slate-300 bg-[#071a12]/90 backdrop-blur-xl hover:bg-white/[0.06]"
                 }`}
                 style={
                   activeService === tab.id
@@ -209,7 +209,7 @@ export function Services() {
                     <h2 className="text-3xl mb-4" style={{ color: "var(--brand-green)" }}>
                       Compagnies Partenaires
                     </h2>
-                    <p className="text-gray-500 leading-relaxed mb-6">
+                    <p className="text-slate-400 leading-relaxed mb-6">
                       Réservez votre siège sur un bus d'une compagnie certifiée TranSen.
                       Horaires fixes, paiement SenePay en ligne et ticket QR Code à présenter à bord.
                       Le chauffeur valide votre embarquement en scannant votre code.
@@ -223,7 +223,7 @@ export function Services() {
                         "Annulation ou modification depuis l'application",
                         "Compagnies vérifiées KYC (RCCM, NINEA)",
                       ].map(f => (
-                        <li key={f} className="flex items-start gap-3 text-sm text-gray-600">
+                        <li key={f} className="flex items-start gap-3 text-sm text-slate-300">
                           <CheckCircle className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
                           {f}
                         </li>
@@ -235,9 +235,9 @@ export function Services() {
                         { Icon: CreditCard, label: "SenePay obligatoire" },
                         { Icon: Shield, label: "Compagnies certifiées" },
                       ].map(({ Icon, label }) => (
-                        <div key={label} className="bg-gray-50 rounded-2xl p-4 text-center">
+                        <div key={label} className="bg-white/[0.04] rounded-2xl p-4 text-center">
                           <Icon className="w-6 h-6 mx-auto mb-2" style={{ color: "var(--brand-green)" }} />
-                          <p className="text-xs text-gray-500">{label}</p>
+                          <p className="text-xs text-slate-400">{label}</p>
                         </div>
                       ))}
                     </div>
@@ -249,7 +249,7 @@ export function Services() {
                 </div>
 
                 {/* Journey flow */}
-                <div className="bg-gray-50 rounded-3xl p-8">
+                <div className="bg-white/[0.04] rounded-3xl p-8">
                   <h3 className="text-xl mb-8 text-center" style={{ color: "var(--brand-green)" }}>
                     Comment fonctionne une réservation ?
                   </h3>
@@ -264,15 +264,15 @@ export function Services() {
                         <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 relative"
                           style={{ backgroundColor: "var(--brand-gold)" }}
                         >
-                          <s.Icon className="w-6 h-6 text-gray-900" />
+                          <s.Icon className="w-6 h-6 text-white" />
                           <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center text-xs text-white"
-                            style={{ backgroundColor: "var(--brand-green)" }}
+                            style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                           >
                             {s.step}
                           </div>
                         </div>
                         <h4 className="text-sm mb-2" style={{ color: "#1a1a1a" }}>{s.title}</h4>
-                        <p className="text-xs text-gray-500 leading-relaxed">{s.desc}</p>
+                        <p className="text-xs text-slate-400 leading-relaxed">{s.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -299,7 +299,7 @@ export function Services() {
                     <h2 className="text-3xl mb-4" style={{ color: "#1a7a40" }}>
                       Allô Dakar – Chauffeurs Indépendants
                     </h2>
-                    <p className="text-gray-500 leading-relaxed mb-6">
+                    <p className="text-slate-400 leading-relaxed mb-6">
                       Commandez une course directe avec un chauffeur indépendant vérifié TranSen.
                       Idéal pour les départs rapides, 1 à 4 passagers, paiement à bord.
                       Les chauffeurs sont géolocalisés en temps réel via l'application.
@@ -313,17 +313,17 @@ export function Services() {
                         "Bourse publique ouverte à tous les chauffeurs qualifiés",
                         "Évaluation du chauffeur après chaque course",
                       ].map(f => (
-                        <li key={f} className="flex items-start gap-3 text-sm text-gray-600">
+                        <li key={f} className="flex items-start gap-3 text-sm text-slate-300">
                           <CheckCircle className="w-4 h-4 text-[#1a7a40] shrink-0 mt-0.5" />
                           {f}
                         </li>
                       ))}
                     </ul>
-                    <div className="bg-gray-50 rounded-2xl p-5">
+                    <div className="bg-white/[0.04] rounded-2xl p-5">
                       <p className="text-xs text-gray-400 mb-3 uppercase tracking-wide">Types de paiement acceptés</p>
                       <div className="flex gap-3 flex-wrap">
                         {["Espèces", "Wave", "Orange Money"].map(m => (
-                          <span key={m} className="px-3 py-1.5 rounded-xl text-sm bg-white border border-gray-200 text-gray-700 shadow-sm">{m}</span>
+                          <span key={m} className="px-3 py-1.5 rounded-xl text-sm bg-[#071a12]/90 backdrop-blur-xl border border-white/15 text-slate-200 shadow-sm">{m}</span>
                         ))}
                       </div>
                     </div>
@@ -345,14 +345,14 @@ export function Services() {
                     { Icon: Star, title: "Évalués 4.8/5", desc: "Chaque chauffeur est noté par les passagers après chaque course." },
                     { Icon: Shield, title: "Identité vérifiée", desc: "Permis de conduire, pièce d'identité et véhicule tous vérifiés." },
                   ].map(({ Icon, title, desc }) => (
-                    <div key={title} className="bg-gray-50 rounded-2xl p-6 text-center">
+                    <div key={title} className="bg-white/[0.04] rounded-2xl p-6 text-center">
                       <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4"
                         style={{ backgroundColor: "#1a7a4020" }}
                       >
                         <Icon className="w-6 h-6" style={{ color: "#1a7a40" }} />
                       </div>
-                      <h4 className="mb-2 text-gray-800">{title}</h4>
-                      <p className="text-sm text-gray-500 leading-relaxed">{desc}</p>
+                      <h4 className="mb-2 text-slate-100">{title}</h4>
+                      <p className="text-sm text-slate-400 leading-relaxed">{desc}</p>
                     </div>
                   ))}
                 </div>
@@ -378,7 +378,7 @@ export function Services() {
                     <h2 className="text-3xl mb-4" style={{ color: "#cc8800" }}>
                       Yobante – Transport de Colis
                     </h2>
-                    <p className="text-gray-500 leading-relaxed mb-6">
+                    <p className="text-slate-400 leading-relaxed mb-6">
                       Envoyez vos colis d'une ville à l'autre de manière sécurisée et rapide.
                       Suivi GPS en temps réel, assurance incluse et confirmation de réception
                       par le destinataire.
@@ -392,7 +392,7 @@ export function Services() {
                         "Tarifs compétitifs, calculés selon le poids",
                         "Service disponible sur toutes les régions desservies",
                       ].map(f => (
-                        <li key={f} className="flex items-start gap-3 text-sm text-gray-600">
+                        <li key={f} className="flex items-start gap-3 text-sm text-slate-300">
                           <CheckCircle className="w-4 h-4 shrink-0 mt-0.5" style={{ color: "#cc8800" }} />
                           {f}
                         </li>
@@ -416,10 +416,10 @@ export function Services() {
                     { label: "Large", weight: "5 – 20 kg", price: "4 500", delay: "Même jour" },
                     { label: "Express", weight: "Tout poids", price: "6 000", delay: "< 2 heures" },
                   ].map(p => (
-                    <div key={p.label} className="bg-gray-50 rounded-2xl p-6 border border-gray-100">
+                    <div key={p.label} className="bg-white/[0.04] rounded-2xl p-6 border border-white/10">
                       <div className="text-xs mb-3" style={{ color: "#cc8800" }}>{p.delay}</div>
-                      <h4 className="mb-1 text-gray-800">Colis {p.label}</h4>
-                      <p className="text-sm text-gray-500 mb-4">Jusqu'à {p.weight}</p>
+                      <h4 className="mb-1 text-slate-100">Colis {p.label}</h4>
+                      <p className="text-sm text-slate-400 mb-4">Jusqu'à {p.weight}</p>
                       <div className="text-2xl mb-1" style={{ color: "#cc8800" }}>{p.price} FCFA</div>
                       <p className="text-xs text-gray-400">Assurance incluse</p>
                     </div>
@@ -432,7 +432,7 @@ export function Services() {
       </section>
 
       {/* ── Common Features ─────────────────────────────────────────────── */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp>
             <h2 className="text-3xl md:text-4xl text-center mb-12" style={{ color: "var(--brand-green)" }}>
@@ -449,14 +449,14 @@ export function Services() {
               { Icon: Star, title: "Avis vérifiés", desc: "Chaque chauffeur et compagnie est évalué par les vrais passagers." },
             ].map((f, i) => (
               <FadeUp key={f.title} delay={i * 0.08}>
-                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-all h-full">
+                <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 shadow-sm border border-white/10 hover:shadow-md transition-all h-full">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4"
                     style={{ backgroundColor: "var(--brand-gold)" + "25" }}
                   >
                     <f.Icon className="w-6 h-6" style={{ color: "var(--brand-green)" }} />
                   </div>
-                  <h3 className="mb-2 text-gray-900">{f.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+                  <h3 className="mb-2 text-white">{f.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{f.desc}</p>
                 </div>
               </FadeUp>
             ))}
@@ -465,7 +465,7 @@ export function Services() {
       </section>
 
       {/* ── FAQ ─────────────────────────────────────────────────────────── */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp>
             <h2 className="text-3xl text-center mb-10" style={{ color: "var(--brand-green)" }}>
@@ -494,7 +494,7 @@ export function Services() {
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────────────────── */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeUp>
             <h2 className="text-3xl md:text-4xl text-white mb-5">Prêt à voyager avec TranSen ?</h2>

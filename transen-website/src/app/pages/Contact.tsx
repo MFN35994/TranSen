@@ -68,7 +68,7 @@ export function Contact() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -87,7 +87,7 @@ export function Contact() {
       </section>
 
       {/* Contact Info Cards */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
             {contactInfo.map((info, index) => (
@@ -100,18 +100,18 @@ export function Contact() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow"
+                className="bg-white/[0.04] rounded-2xl p-6 hover:shadow-lg transition-shadow"
               >
                 <div
                   className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
-                  style={{ backgroundColor: "var(--brand-green)" }}
+                  style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                 >
                   <info.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="mb-2" style={{ color: "var(--brand-green)" }}>
                   {info.title}
                 </h3>
-                <p className="text-gray-600">{info.value}</p>
+                <p className="text-slate-300">{info.value}</p>
               </motion.a>
             ))}
           </div>
@@ -212,13 +212,13 @@ export function Contact() {
                 <h2 className="text-3xl mb-6" style={{ color: "var(--brand-green)" }}>
                   Notre localisation
                 </h2>
-                <div className="rounded-2xl overflow-hidden shadow-lg h-80 bg-gray-100 flex items-center justify-center">
+                <div className="rounded-2xl overflow-hidden shadow-lg h-80 bg-white/[0.06] flex items-center justify-center">
                   <div className="text-center p-8">
                     <MapPin className="w-16 h-16 mx-auto mb-4" style={{ color: "var(--brand-green)" }} />
                     <h3 className="text-xl mb-2" style={{ color: "var(--brand-green)" }}>
                       Dakar, Sénégal
                     </h3>
-                    <p className="text-gray-600">
+                    <p className="text-slate-300">
                       Visitez-nous à notre siège à Dakar
                     </p>
                   </div>
@@ -253,7 +253,7 @@ export function Contact() {
       </section>
 
       {/* Quick Actions */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -265,7 +265,7 @@ export function Contact() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Actions Rapides
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-slate-300">
               Besoin d'aide immédiate ? Choisissez l'option qui vous convient
             </p>
           </motion.div>
@@ -297,16 +297,16 @@ export function Contact() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-white rounded-2xl p-8 text-center shadow-lg"
+                className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-8 text-center shadow-lg"
               >
                 <h3 className="text-xl mb-3" style={{ color: "var(--brand-green)" }}>
                   {item.title}
                 </h3>
-                <p className="text-gray-600 mb-6">{item.description}</p>
+                <p className="text-slate-300 mb-6">{item.description}</p>
                 <a
                   href={item.link}
                   className="inline-block px-6 py-3 rounded-full text-white transition-all hover:shadow-lg"
-                  style={{ backgroundColor: "var(--brand-green)" }}
+                  style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                 >
                   {item.action}
                 </a>

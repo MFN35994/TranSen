@@ -33,7 +33,7 @@ export function Team() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -52,7 +52,7 @@ export function Team() {
       </section>
 
       {/* Team Members */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12">
             {teamMembers.map((member, index) => (
@@ -62,7 +62,7 @@ export function Team() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-gray-50 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
+                className="bg-white/[0.04] rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow"
               >
                 <div className="aspect-square overflow-hidden">
                   <ImageWithFallback
@@ -81,21 +81,21 @@ export function Team() {
                   >
                     {member.role}
                   </div>
-                  <p className="text-gray-600 mb-6">
+                  <p className="text-slate-300 mb-6">
                     {member.bio}
                   </p>
                   <div className="flex gap-4">
                     <a
                       href="#"
                       className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
-                      style={{ backgroundColor: "var(--brand-green)" }}
+                      style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                     >
                       <Linkedin className="w-5 h-5 text-white" />
                     </a>
                     <a
                       href="#"
                       className="w-10 h-10 rounded-full flex items-center justify-center transition-colors hover:opacity-80"
-                      style={{ backgroundColor: "var(--brand-green)" }}
+                      style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                     >
                       <Mail className="w-5 h-5 text-white" />
                     </a>
@@ -108,7 +108,7 @@ export function Team() {
       </section>
 
       {/* Join Us CTA */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -135,7 +135,7 @@ export function Team() {
       </section>
 
       {/* Culture & Values */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -147,7 +147,7 @@ export function Team() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Notre Culture
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
               Les valeurs qui unissent notre équipe
             </p>
           </motion.div>
@@ -173,12 +173,12 @@ export function Team() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-gray-50 rounded-2xl p-8 text-center"
+                className="bg-white/[0.04] rounded-2xl p-8 text-center"
               >
                 <h3 className="text-2xl mb-4" style={{ color: "var(--brand-green)" }}>
                   {value.title}
                 </h3>
-                <p className="text-gray-600">{value.description}</p>
+                <p className="text-slate-300">{value.description}</p>
               </motion.div>
             ))}
           </div>

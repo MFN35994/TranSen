@@ -56,10 +56,10 @@ export function Compagnies() {
   ];
 
   return (
-    <div className="bg-slate-50 min-h-screen">
+    <div className="bg-[#03100b] min-h-screen text-slate-100">
       {/* ── Visual Premium Header ────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-28 text-white"
-        style={{ background: "linear-gradient(135deg, #052315 0%, #0d562b 50%, #10a34b 100%)" }}
+        style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)" }}
       >
         <div className="absolute inset-0 bg-grid-white opacity-5 pointer-events-none" />
         <div className="absolute -bottom-10 right-10 w-96 h-96 rounded-full bg-amber-400 opacity-10 blur-3xl pointer-events-none" />
@@ -87,7 +87,7 @@ export function Compagnies() {
                   href="https://compagnie.transen.org"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-gray-900 font-bold bg-amber-400 hover:bg-amber-300 hover:scale-[1.03] transition-all shadow-lg hover:shadow-amber-500/25 active:scale-[0.98] cursor-pointer"
+                  className="inline-flex items-center gap-2 px-7 py-4 rounded-xl text-slate-950 font-bold bg-amber-400 hover:bg-amber-300 hover:scale-[1.03] transition-all shadow-lg hover:shadow-amber-500/25 active:scale-[0.98] cursor-pointer"
                 >
                   Accéder au Portail Compagnie <ExternalLink className="w-4.5 h-4.5" />
                 </a>
@@ -105,7 +105,7 @@ export function Compagnies() {
                 {/* Simulated live telemetry overlay */}
                 <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500/150"></span>
                 </span>
                 
                 <div className="flex gap-2 items-center mb-6">
@@ -156,44 +156,44 @@ export function Compagnies() {
       </section>
 
       {/* ── Key Highlights Highlights ───────────────────────────────────── */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="text-emerald-800 text-xs font-bold uppercase tracking-widest bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+            <span className="text-emerald-800 text-xs font-bold uppercase tracking-widest bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-100">
               Pourquoi nous rejoindre ?
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-gray-900 mt-3 leading-tight">
+            <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
               L'outil de commercialisation le plus rentable pour les transporteurs
             </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-slate-50 border border-gray-100 relative group hover:shadow-xl transition-all duration-300">
+            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-amber-400/20 flex items-center justify-center text-amber-700 font-black text-xl mb-6">
                 2%
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Taux de commission minimal</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Taux de commission minimal</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
                 Gardez 98% de vos revenus de billetterie. Notre modèle à seulement 2% s'applique équitablement sur toutes les lignes, sans frais cachés ni abonnements coûteux.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-slate-50 border border-gray-100 relative group hover:shadow-xl transition-all duration-300">
+            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-800 mb-6">
                 <Bus className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Jusqu'à 60 Sièges par Bus</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Jusqu'à 60 Sièges par Bus</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
                 Prenez en charge l'ensemble de votre flotte d'autocars de grande capacité limités réglementairement à 60 fauteuils. Plan complet de réservation de sièges interactif libre.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-slate-50 border border-gray-100 relative group hover:shadow-xl transition-all duration-300">
+            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-800 mb-6">
                 <Database className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Souveraineté des données</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3">Souveraineté des données</h3>
+              <p className="text-slate-400 text-sm leading-relaxed">
                 Accédez à l'intégralité du fichier passagers, des historiques de trajets et de vos flux financiers pour une transparence totale de votre comptabilité.
               </p>
             </div>
@@ -202,13 +202,13 @@ export function Compagnies() {
       </section>
 
       {/* ── Interactive Workflow Timeline ─────────────────────────────────── */}
-      <section className="py-24 bg-slate-100/60 border-t border-b border-gray-100">
+      <section className="py-24 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-12 gap-12 items-center">
             {/* Left: Interactive Timeline switcher */}
             <div className="lg:col-span-5">
               <span className="text-xs uppercase font-bold tracking-widest text-[#10a34b]">Fiches Pratiques</span>
-              <h2 className="text-3xl font-extrabold text-gray-900 mt-2 mb-8 leading-snug">
+              <h2 className="text-3xl font-extrabold text-white mt-2 mb-8 leading-snug">
                 Comment s'opère votre transition numérique ?
               </h2>
 
@@ -220,11 +220,11 @@ export function Compagnies() {
                     className={`w-full text-left p-4.5 rounded-2xl border transition-all flex items-center gap-4 ${
                       activeStep === idx
                         ? "bg-emerald-800 text-white border-transparent shadow-lg"
-                        : "bg-white text-gray-700 border-gray-200/80 hover:bg-gray-50"
+                        : "bg-[#071a12]/90 backdrop-blur-xl text-slate-200 border-white/15 hover:bg-white/[0.06]"
                     }`}
                   >
                     <span className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold font-mono ${
-                      activeStep === idx ? "bg-amber-400 text-gray-900" : "bg-gray-100 text-gray-500"
+                      activeStep === idx ? "bg-amber-400 text-slate-950" : "bg-white/[0.06] text-slate-400"
                     }`}>
                       {idx + 1}
                     </span>
@@ -235,7 +235,7 @@ export function Compagnies() {
             </div>
 
             {/* Right: Flow Detail Display */}
-            <div className="lg:col-span-7 bg-white p-8 md:p-10 rounded-3xl border border-gray-200/50 shadow-xl relative min-h-[360px] flex flex-col justify-between">
+            <div className="lg:col-span-7 bg-[#071a12]/90 backdrop-blur-xl p-8 md:p-10 rounded-3xl border border-white/10 shadow-xl relative min-h-[360px] flex flex-col justify-between">
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeStep}
@@ -252,18 +252,18 @@ export function Compagnies() {
                         return <IconComponent className="w-6 h-6" />;
                       })()}
                     </div>
-                    <h3 className="text-2xl font-extrabold text-gray-900">{COMPANY_FLOWS[activeStep].title}</h3>
+                    <h3 className="text-2xl font-extrabold text-white">{COMPANY_FLOWS[activeStep].title}</h3>
                   </div>
 
-                  <p className="text-gray-500 leading-relaxed text-sm">
+                  <p className="text-slate-400 leading-relaxed text-sm">
                     {COMPANY_FLOWS[activeStep].desc}
                   </p>
 
-                  <div className="border-t border-gray-100 pt-6">
+                  <div className="border-t border-white/10 pt-6">
                     <p className="text-[11px] uppercase tracking-wider font-bold text-gray-400 mb-3.5">Points de conformité garantis</p>
                     <div className="grid sm:grid-cols-2 gap-2.5">
                       {COMPANY_FLOWS[activeStep].features.map((f) => (
-                        <div key={f} className="flex gap-2.5 text-xs text-gray-600 font-medium">
+                        <div key={f} className="flex gap-2.5 text-xs text-slate-300 font-medium">
                           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                           <span>{f}</span>
                         </div>
@@ -274,7 +274,7 @@ export function Compagnies() {
               </AnimatePresence>
 
               {/* Redirection trigger helper */}
-              <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="mt-8 pt-6 border-t border-white/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div className="text-xs text-gray-400">
                   Prêt à configurer ? Les outils complets sont hébergés sur compagnie.transen.org
                 </div>
@@ -294,21 +294,21 @@ export function Compagnies() {
       </section>
 
       {/* ── FAQ Section ─────────────────────────────────────────────────── */}
-      <section className="py-24 bg-white">
+      <section className="py-24 section-dark">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <span className="text-xs font-bold uppercase text-amber-500 tracking-widest">Une question ?</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 mt-2">Questions des Transporteurs</h2>
+            <h2 className="text-3xl font-extrabold text-white mt-2">Questions des Transporteurs</h2>
           </div>
 
           <div className="space-y-6">
             {FREQUENT_QUESTIONS.map((faq) => (
-              <div key={faq.q} className="p-6 rounded-2xl bg-slate-50 border border-slate-100 hover:border-emerald-600/30 transition-all">
-                <h4 className="font-bold text-gray-900 text-base flex gap-2 items-start">
+              <div key={faq.q} className="p-6 rounded-2xl bg-white/[0.04] border border-slate-100 hover:border-emerald-600/30 transition-all">
+                <h4 className="font-bold text-white text-base flex gap-2 items-start">
                   <HelpCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
                   <span>{faq.q}</span>
                 </h4>
-                <p className="text-gray-500 text-sm mt-3.5 leading-relaxed pl-7">
+                <p className="text-slate-400 text-sm mt-3.5 leading-relaxed pl-7">
                   {faq.a}
                 </p>
               </div>

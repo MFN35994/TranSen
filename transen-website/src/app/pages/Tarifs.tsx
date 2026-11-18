@@ -51,13 +51,13 @@ function CitySelect({ label, value, onChange, exclude }: {
   const cities = SENEGAL_CITIES.filter(c => c !== exclude);
   return (
     <div className="relative">
-      <label className="block text-sm text-gray-600 mb-1">{label}</label>
+      <label className="block text-sm text-slate-300 mb-1">{label}</label>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 border border-gray-200 rounded-xl px-4 py-3 text-left bg-white hover:border-green-300 transition-all"
+        className="w-full flex items-center gap-2 border border-white/15 rounded-xl px-4 py-3 text-left bg-[#071a12]/90 backdrop-blur-xl hover:border-green-300 transition-all"
       >
         <MapPin className="w-4 h-4 text-gray-400 shrink-0" />
-        <span className={`flex-1 text-sm ${value ? "text-gray-800" : "text-gray-400"}`}>
+        <span className={`flex-1 text-sm ${value ? "text-slate-100" : "text-gray-400"}`}>
           {value || label}
         </span>
         <ChevronDown className={`w-4 h-4 text-gray-400 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
@@ -69,12 +69,12 @@ function CitySelect({ label, value, onChange, exclude }: {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto border border-gray-100"
+            className="absolute top-full mt-1 left-0 right-0 bg-[#071a12]/90 backdrop-blur-xl rounded-xl shadow-xl z-50 max-h-52 overflow-y-auto border border-white/10"
           >
             {value && (
               <button
                 onClick={() => { onChange(""); setOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-sm text-gray-400 hover:bg-gray-50 border-b border-gray-100"
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-400 hover:bg-white/[0.06] border-b border-white/10"
               >
                 Toutes les villes
               </button>
@@ -83,8 +83,8 @@ function CitySelect({ label, value, onChange, exclude }: {
               <button
                 key={c}
                 onClick={() => { onChange(c); setOpen(false); }}
-                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-gray-50 transition-colors ${
-                  value === c ? "text-[var(--brand-green)]" : "text-gray-700"
+                className={`w-full text-left px-4 py-2.5 text-sm hover:bg-white/[0.06] transition-colors ${
+                  value === c ? "text-[var(--brand-green)]" : "text-slate-200"
                 }`}
               >
                 {c}
@@ -175,11 +175,11 @@ export function Tarifs() {
       </section>
 
       {/* ── Search & Filter ──────────────────────────────────────────────── */}
-      <section className="py-12 bg-white border-b border-gray-100">
+      <section className="py-12 section-alt">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp>
-            <div className="bg-gray-50 rounded-3xl p-6">
-              <p className="text-sm text-gray-500 mb-5 flex items-center gap-2">
+            <div className="bg-white/[0.04] rounded-3xl p-6">
+              <p className="text-sm text-slate-400 mb-5 flex items-center gap-2">
                 <Filter className="w-4 h-4" />
                 Filtrer les tarifs par trajet et type de service
               </p>
@@ -196,7 +196,7 @@ export function Tarifs() {
                     key={t.id}
                     onClick={() => setTypeFilter(t.id)}
                     className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm border transition-all ${
-                      typeFilter === t.id ? "text-white shadow-sm" : "bg-white text-gray-600 border-gray-200 hover:border-gray-300"
+                      typeFilter === t.id ? "text-white shadow-sm" : "bg-[#071a12]/90 backdrop-blur-xl text-slate-300 border-white/15 hover:border-white/20"
                     }`}
                     style={typeFilter === t.id ? { backgroundColor: "var(--brand-green)", borderColor: "var(--brand-green)" } : {}}
                   >
@@ -213,7 +213,7 @@ export function Tarifs() {
                   <div className="flex flex-col justify-end gap-2">
                     <button
                       onClick={handleSearch}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm text-gray-900 transition-all hover:shadow-lg"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm text-white transition-all hover:shadow-lg"
                       style={{ backgroundColor: "var(--brand-gold)" }}
                     >
                       <Search className="w-4 h-4" />
@@ -222,7 +222,7 @@ export function Tarifs() {
                     {searched && (
                       <button
                         onClick={handleReset}
-                        className="text-xs text-gray-400 hover:text-gray-600 text-center"
+                        className="text-xs text-gray-400 hover:text-slate-300 text-center"
                       >
                         Réinitialiser
                       </button>
@@ -236,7 +236,7 @@ export function Tarifs() {
       </section>
 
       {/* ── Route Table ────────────────────────────────────────────────── */}
-      <section className="py-16 bg-white">
+      <section className="py-16 section-dark">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           {typeFilter !== "colis" && (
             <FadeUp>
@@ -253,7 +253,7 @@ export function Tarifs() {
                   </p>
                 </div>
                 {typeFilter === "bus" || typeFilter === "all" ? (
-                  <div className="text-xs text-gray-400 bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-100">
+                  <div className="text-xs text-gray-400 bg-white/[0.04] px-3 py-1.5 rounded-lg border border-white/10">
                     Paiement SenePay en ligne
                   </div>
                 ) : null}
@@ -266,10 +266,10 @@ export function Tarifs() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="rounded-2xl overflow-hidden border border-gray-100 shadow-sm"
+                    className="rounded-2xl overflow-hidden border border-white/10 shadow-sm"
                   >
                     <table className="w-full">
-                      <thead style={{ backgroundColor: "var(--brand-green)" }}>
+                      <thead style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
                         <tr>
                           <th className="px-5 py-4 text-left text-sm text-white">Départ</th>
                           <th className="px-5 py-4 text-left text-sm text-white">Destination</th>
@@ -285,18 +285,18 @@ export function Tarifs() {
                             initial={{ opacity: 0, x: -10 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: i * 0.04 }}
-                            className="border-t border-gray-50 hover:bg-gray-50 transition-colors"
+                            className="border-t border-white/5 hover:bg-white/[0.06] transition-colors"
                           >
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2">
                                 <MapPin className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="text-sm text-gray-800">{route.from}</span>
+                                <span className="text-sm text-slate-100">{route.from}</span>
                               </div>
                             </td>
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-2">
                                 <ArrowRight className="w-3.5 h-3.5 text-gray-400" />
-                                <span className="text-sm text-gray-800">{route.to}</span>
+                                <span className="text-sm text-slate-100">{route.to}</span>
                                 {route.popular && route.type === "bus" && (
                                   <span className="text-xs px-2 py-0.5 rounded-full text-white"
                                     style={{ backgroundColor: "var(--brand-gold)", color: "#111" }}
@@ -307,7 +307,7 @@ export function Tarifs() {
                               </div>
                             </td>
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                              <div className="flex items-center gap-1.5 text-sm text-slate-400">
                                 <Clock className="w-3.5 h-3.5" />
                                 {route.duration}
                               </div>
@@ -318,7 +318,7 @@ export function Tarifs() {
                             <td className="px-5 py-4">
                               <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${
                                 route.type === "bus"
-                                  ? "bg-green-50 text-green-700"
+                                  ? "bg-emerald-500/15 text-emerald-300"
                                   : "bg-blue-50 text-blue-700"
                               }`}>
                                 {route.type === "bus" ? <Bus className="w-3 h-3" /> : <Car className="w-3 h-3" />}
@@ -354,7 +354,7 @@ export function Tarifs() {
           {/* Colis rates */}
           {showColis && (
             <FadeUp delay={typeFilter === "colis" ? 0 : 0.4}>
-              <div className={typeFilter !== "colis" ? "mt-12 pt-12 border-t border-gray-100" : ""}>
+              <div className={typeFilter !== "colis" ? "mt-12 pt-12 border-t border-white/10" : ""}>
                 <div className="mb-6">
                   <h2 className="text-2xl mb-1" style={{ color: "var(--brand-green)" }}>
                     Tarifs Yobante – Envoi de Colis
@@ -369,10 +369,10 @@ export function Tarifs() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true }}
                       transition={{ delay: i * 0.1 }}
-                      className="bg-gray-50 rounded-2xl p-6 border border-gray-100 hover:shadow-md transition-all"
+                      className="bg-white/[0.04] rounded-2xl p-6 border border-white/10 hover:shadow-md transition-all"
                     >
                       <div className="text-xs mb-2" style={{ color: "#cc8800" }}>{r.delay}</div>
-                      <h3 className="mb-3 text-gray-800">{r.label}</h3>
+                      <h3 className="mb-3 text-slate-100">{r.label}</h3>
                       <div className="text-2xl mb-1" style={{ color: "var(--brand-green)" }}>
                         {r.price.toLocaleString("fr-FR")} FCFA
                       </div>
@@ -390,7 +390,7 @@ export function Tarifs() {
       </section>
 
       {/* ── Value Props ─────────────────────────────────────────────────── */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp>
             <h2 className="text-3xl text-center mb-12" style={{ color: "var(--brand-green)" }}>
@@ -404,14 +404,14 @@ export function Tarifs() {
               { Icon: Shield, title: "Valeur garantie", desc: "Assurance, suivi GPS et chauffeurs certifiés inclus dans chaque tarif." },
             ].map((p, i) => (
               <FadeUp key={p.title} delay={i * 0.1}>
-                <div className="bg-white rounded-2xl p-7 shadow-sm border border-gray-100">
+                <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-7 shadow-sm border border-white/10">
                   <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-5"
                     style={{ backgroundColor: "rgba(255,215,0,0.25)" }}
                   >
                     <p.Icon className="w-6 h-6" style={{ color: "var(--brand-green)" }} />
                   </div>
-                  <h3 className="mb-3 text-gray-900">{p.title}</h3>
-                  <p className="text-sm text-gray-500 leading-relaxed">{p.desc}</p>
+                  <h3 className="mb-3 text-white">{p.title}</h3>
+                  <p className="text-sm text-slate-400 leading-relaxed">{p.desc}</p>
                 </div>
               </FadeUp>
             ))}
@@ -420,7 +420,7 @@ export function Tarifs() {
       </section>
 
       {/* ── Driver Commission, Subscription & Routing Logic ────────────────── */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeUp>
             <div className="text-center mb-12">
@@ -430,7 +430,7 @@ export function Tarifs() {
               <h2 className="text-3xl md:text-4xl font-bold mt-4" style={{ color: "var(--brand-green)" }}>
                 Règles de Commission et de Routage
               </h2>
-              <p className="text-gray-500 mt-2 max-w-2xl mx-auto text-sm">
+              <p className="text-slate-400 mt-2 max-w-2xl mx-auto text-sm">
                 Une architecture conçue pour la flexibilité des chauffeurs indépendants et la sécurité financière des compagnies de transport.
               </p>
             </div>
@@ -439,14 +439,14 @@ export function Tarifs() {
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Prérecommandation Check Card */}
             <FadeUp delay={0.1}>
-              <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col justify-between h-full">
+              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
                 <div>
-                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-green-700 mb-4 font-bold text-sm">✓</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Le "Check" Système Chauffeur</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-emerald-300 mb-4 font-bold text-sm">✓</div>
+                  <h3 className="text-lg font-bold text-white mb-2">Le "Check" Système Chauffeur</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
                     Avant de pouvoir accepter toute course interurbaine, le backend Spring Boot exécute une double vérification stricte :
                   </p>
-                  <ul className="space-y-2.5 text-xs text-gray-600">
+                  <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex gap-2">
                       <span className="text-emerald-500 font-bold shrink-0">1.</span>
                       <span><strong>Abonnement Actif :</strong> Si le chauffeur a souscrit un forfait pro, il accepte la course immédiatement sans frais.</span>
@@ -457,7 +457,7 @@ export function Tarifs() {
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
                   <span>Vérification Spring Boot</span>
                   <span className="text-emerald-500 font-bold">Actif</span>
                 </div>
@@ -466,14 +466,14 @@ export function Tarifs() {
 
             {/* Chauffeurs Indépendants Card */}
             <FadeUp delay={0.2}>
-              <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col justify-between h-full">
+              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
                 <div>
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 mb-4 font-bold text-sm">🚕</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Chauffeurs Allô Dakar</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  <h3 className="text-lg font-bold text-white mb-2">Chauffeurs Allô Dakar</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
                     Dédiée aux chauffeurs de véhicules de 4 places maximum (plafond de covoiturage strict à 4 passagers) :
                   </p>
-                  <ul className="space-y-2.5 text-xs text-gray-600">
+                  <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex gap-2">
                       <span className="text-emerald-500 shrink-0">✔</span>
                       <span>Paiement systématique en <strong>espèces</strong> par le passager à l'embarquement.</span>
@@ -484,23 +484,23 @@ export function Tarifs() {
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
                   <span>Capacité max</span>
-                  <span className="text-gray-700 font-semibold">4 passagers</span>
+                  <span className="text-slate-200 font-semibold">4 passagers</span>
                 </div>
               </div>
             </FadeUp>
 
             {/* Compagnies Card */}
             <FadeUp delay={0.3}>
-              <div className="bg-gray-50 rounded-3xl p-6 border border-gray-100 flex flex-col justify-between h-full">
+              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
                 <div>
                   <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 mb-4 font-bold text-lg">🏢</div>
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Compagnies Partenaires</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed mb-4">
+                  <h3 className="text-lg font-bold text-white mb-2">Compagnies Partenaires</h3>
+                  <p className="text-xs text-slate-400 leading-relaxed mb-4">
                     Pour les flottes de bus et minibus (capacités dynamiques allant jusqu'à 60 places par bus) gérées via <code className="bg-gray-150 p-0.5 rounded font-mono">compagnie.transen.org</code> :
                   </p>
-                  <ul className="space-y-2.5 text-xs text-gray-600">
+                  <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex gap-2">
                       <span className="text-emerald-500 shrink-0">✔</span>
                       <span><strong>Demande Spécifique:</strong> Le client paye par SenePay (OM, Wave, Free). 98% crédités sur le dashboard compagnie, 2% retenus par TranSen.</span>
@@ -511,9 +511,9 @@ export function Tarifs() {
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-gray-200/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
                   <span>Capacité bus</span>
-                  <span className="text-gray-700 font-semibold">10 à 60 places</span>
+                  <span className="text-slate-200 font-semibold">10 à 60 places</span>
                 </div>
               </div>
             </FadeUp>
@@ -522,16 +522,16 @@ export function Tarifs() {
       </section>
 
       {/* ── CTA ─────────────────────────────────────────────────────────── */}
-      <section className="py-16 bg-gray-50">
+      <section className="py-16 section-alt">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeUp>
             <h2 className="text-3xl mb-4" style={{ color: "var(--brand-green)" }}>Des questions sur nos tarifs ?</h2>
-            <p className="text-gray-500 mb-8">Notre équipe vous répond rapidement sur WhatsApp.</p>
+            <p className="text-slate-400 mb-8">Notre équipe vous répond rapidement sur WhatsApp.</p>
             <a
               href="https://wa.me/221781386405"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-gray-900 transition-all hover:shadow-xl"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-white transition-all hover:shadow-xl"
               style={{ backgroundColor: "var(--brand-gold)" }}
             >
               Contactez-nous sur WhatsApp

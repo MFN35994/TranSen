@@ -1,16 +1,18 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@400;600;700;800&display=swap');
+
 :root {
-    --bg-dark: #050811;
-    --bg-card: rgba(13, 18, 30, 0.72);
-    --primary-gold: #F59E0B;
-    --primary-gold-bright: #FBBF24;
-    --primary-gold-hover: #D97706;
+    --bg-dark: #03100b;
+    --bg-card: rgba(7, 26, 18, 0.84);
+    --primary-gold: #F5B83D;
+    --primary-gold-bright: #FDE68A;
+    --primary-gold-hover: #FCD34D;
     --accent-emerald: #10B981;
-    --accent-cyan: #06B6D4;
-    --glass-border: rgba(245, 158, 11, 0.16);
-    --text-main: #F8FAFC;
+    --accent-cyan: #22D3EE;
+    --glass-border: rgba(245, 184, 61, 0.28);
+    --text-main: #F0FDF7;
     --text-dim: #94A3B8;
-    --shadow-premium: 0 22px 50px rgba(0, 0, 0, 0.52);
-    --transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    --shadow-premium: 0 28px 70px -15px rgba(0, 0, 0, 0.82), 0 0 36px rgba(245, 184, 61, 0.12);
+    --transition: all 0.24s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -780,4 +782,180 @@ body::before {
     .btn-portfolio {
         padding: 10px 14px;
     }
+}
+
+
+/* ============================================================================
+   TRANSEN INVEST — PRIVATE BANKING & GOLD AURORA FINTECH DESIGN SYSTEM
+   ============================================================================ */
+body {
+    font-family: 'Inter', 'Outfit', system-ui, sans-serif !important;
+    background:
+        radial-gradient(1100px 550px at 12% -5%, rgba(245, 184, 61, 0.22), transparent 60%),
+        radial-gradient(950px 500px at 92% 8%, rgba(16, 185, 129, 0.2), transparent 60%),
+        radial-gradient(850px 550px at 50% 108%, rgba(34, 211, 238, 0.12), transparent 65%),
+        #03100b !important;
+    color: #f0fdf7 !important;
+}
+
+h1, h2, h3, h4, .logo span, .metric-value {
+    font-family: 'Sora', 'Outfit', sans-serif !important;
+    letter-spacing: -0.025em;
+}
+
+.orb-gold {
+    opacity: 0.28 !important;
+    background: radial-gradient(circle, rgba(245, 184, 61, 0.85), rgba(16, 185, 129, 0.25) 60%, transparent 75%) !important;
+}
+
+.orb-purple {
+    opacity: 0.26 !important;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.8), rgba(34, 211, 238, 0.3) 60%, transparent 75%) !important;
+}
+
+.glass {
+    background: linear-gradient(160deg, rgba(10, 34, 25, 0.86), rgba(4, 16, 11, 0.88)) !important;
+    border: 1px solid rgba(245, 184, 61, 0.26) !important;
+    border-radius: 24px !important;
+    backdrop-filter: blur(24px) saturate(150%) !important;
+    -webkit-backdrop-filter: blur(24px) saturate(150%) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.12),
+        0 25px 65px -20px rgba(0, 0, 0, 0.82),
+        0 0 32px -12px rgba(16, 185, 129, 0.22) !important;
+}
+
+.header.glass {
+    border-color: rgba(52, 211, 153, 0.32) !important;
+    position: sticky;
+    top: 16px;
+    z-index: 100;
+}
+
+.logo img {
+    border-radius: 12px;
+    background: #ffffff;
+    padding: 3px;
+    box-shadow: 0 0 22px rgba(245, 184, 61, 0.35);
+    border: 1.5px solid rgba(245, 184, 61, 0.6);
+}
+
+.logo span {
+    background: linear-gradient(100deg, #ffffff 0%, #fde68a 55%, #34d399 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    font-weight: 800 !important;
+}
+
+.badge-gold {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.75rem !important;
+    letter-spacing: 0.16em !important;
+    background: linear-gradient(90deg, rgba(245, 184, 61, 0.18), rgba(16, 185, 129, 0.14)) !important;
+    border: 1px solid rgba(245, 184, 61, 0.45) !important;
+    color: #fde68a !important;
+    box-shadow: 0 0 28px rgba(245, 184, 61, 0.28);
+    padding: 8px 16px !important;
+}
+
+.info-section h1 {
+    font-size: clamp(2.4rem, 4.6vw, 3.6rem) !important;
+    line-height: 1.08 !important;
+    background: linear-gradient(105deg, #ffffff 15%, #fde68a 50%, #34d399 88%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+.metric-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(52, 211, 153, 0.28) !important;
+    padding: 22px !important;
+}
+
+.metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: linear-gradient(90deg, #f5b83d, #34d399, #22d3ee);
+}
+
+.metric-card:hover {
+    transform: translateY(-6px) !important;
+    border-color: rgba(245, 184, 61, 0.6) !important;
+    box-shadow: 0 22px 45px -15px rgba(245, 184, 61, 0.28) !important;
+}
+
+.metric-title {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.14em !important;
+    color: #94a3b8 !important;
+}
+
+.metric-value {
+    font-size: 1.45rem !important;
+    font-weight: 800 !important;
+    background: linear-gradient(95deg, #fde68a 0%, #f5b83d 45%, #6ee7b7 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.form-card {
+    position: relative;
+    overflow: hidden;
+    border: 1.5px solid rgba(245, 184, 61, 0.42) !important;
+    box-shadow:
+        0 30px 80px -20px rgba(0, 0, 0, 0.85),
+        0 0 55px -12px rgba(245, 184, 61, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.16) !important;
+}
+
+.form-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5px;
+    background: linear-gradient(90deg, #fde68a, #f5b83d, #10b981, #22d3ee, #fde68a);
+}
+
+.btn-portfolio,
+.btn-submit {
+    background: linear-gradient(135deg, #fde68a 0%, #f5b83d 55%, #e9a21f 100%) !important;
+    color: #161002 !important;
+    font-weight: 800 !important;
+    border-radius: 999px !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.7),
+        0 14px 34px -8px rgba(245, 184, 61, 0.6) !important;
+    border: none !important;
+}
+
+.btn-portfolio:hover,
+.btn-submit:hover {
+    transform: translateY(-2px) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 20px 44px -8px rgba(245, 184, 61, 0.85) !important;
+}
+
+input, select, textarea {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    color: #f0fdf7 !important;
+    border-radius: 14px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: #f5b83d !important;
+    background: rgba(245, 184, 61, 0.07) !important;
+    box-shadow: 0 0 0 4px rgba(245, 184, 61, 0.16) !important;
 }

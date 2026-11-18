@@ -2663,13 +2663,13 @@ function initThemeMode() {
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     if (!themeToggleBtn) return;
     
-    const savedTheme = localStorage.getItem('theme-mode') || 'light';
+    const savedTheme = localStorage.getItem('aurora-theme-mode') || 'dark';
     window.applyTheme(savedTheme);
     
     themeToggleBtn.onclick = () => {
         const isDarkNow = document.body.classList.contains('dark-mode');
         const nextTheme = isDarkNow ? 'light' : 'dark';
-        localStorage.setItem('theme-mode', nextTheme);
+        localStorage.setItem('aurora-theme-mode', nextTheme);
         window.applyTheme(nextTheme);
         
         const activeFilter = document.querySelector('.chart-filters button.active');

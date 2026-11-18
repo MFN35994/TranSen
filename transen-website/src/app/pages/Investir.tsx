@@ -99,10 +99,10 @@ export function Investir() {
   ];
 
   return (
-    <div className="bg-gray-50 min-h-screen">
+    <div className="bg-[#03100b] min-h-screen text-slate-100">
       {/* ── Rich Investor Header ─────────────────────────────────────────── */}
       <section className="relative overflow-hidden py-24 text-white"
-        style={{ background: "linear-gradient(135deg, #052114 0%, #0c5228 50%, #14A44D 100%)" }}
+        style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)" }}
       >
         {/* Decorative Grid Accent */}
         <div className="absolute inset-0 bg-grid-white opacity-5 pointer-events-none" />
@@ -165,7 +165,7 @@ export function Investir() {
       </section>
 
       {/* ── Crucial commission highlighting ───────────────────────────────── */}
-      <section className="py-12 bg-white border-b border-gray-100">
+      <section className="py-12 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-3 gap-8 items-center">
             <div className="flex gap-4 items-start col-span-2">
@@ -176,17 +176,17 @@ export function Investir() {
                 <span className="text-[11px] font-bold tracking-wider text-amber-600 uppercase bg-amber-100/60 px-2.5 py-0.5 rounded">
                   OFFRE AGRESSIVE UNIQUE AU MONDE
                 </span>
-                <h3 className="text-2xl font-bold text-gray-900 mt-1">
+                <h3 className="text-2xl font-bold text-white mt-1">
                   2% de Commission Fixe sur l'Urbain & l'Interurbain
                 </h3>
-                <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
+                <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">
                   Contrairement aux géants du transport prélevant 20% à 25%, TranSen ne prélève que <strong className="text-emerald-700">2%</strong>. Ce taux ultra-bas favorise une adoption exhaustive et instantanée par 100% des chauffeurs et compagnies au Sénégal, créant un monopole d'adoption.
                 </p>
               </div>
             </div>
 
             <div className="bg-emerald-900/5 rounded-2xl p-6 border border-emerald-900/10 text-center">
-              <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Taux de Commission TranSen</div>
+              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Taux de Commission TranSen</div>
               <div className="text-5xl font-black text-emerald-800 my-2 animate-bounce">2.0%</div>
               <div className="text-xs text-emerald-700 font-bold">Uniquement, sur tout le Sénégal</div>
             </div>
@@ -199,13 +199,13 @@ export function Investir() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Tab buttons */}
           <div className="flex justify-center mb-10">
-            <div className="bg-white border rounded-2xl p-1.5 flex gap-2 shadow-sm">
+            <div className="bg-[#071a12]/90 backdrop-blur-xl border rounded-2xl p-1.5 flex gap-2 shadow-sm">
               <button
                 onClick={() => { setActiveTab("promise"); setHasSubmitted(false); }}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
                   activeTab === "promise"
                     ? "bg-emerald-800 text-white shadow-lg"
-                    : "text-gray-600 hover:text-emerald-800 hover:bg-gray-50"
+                    : "text-slate-300 hover:text-emerald-300 hover:bg-white/[0.06]"
                 }`}
               >
                 <DollarSign className="w-4.5 h-4.5" />
@@ -216,7 +216,7 @@ export function Investir() {
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
                   activeTab === "portfolio"
                     ? "bg-emerald-800 text-white shadow-lg"
-                    : "text-gray-600 hover:text-emerald-800 hover:bg-gray-50"
+                    : "text-slate-300 hover:text-emerald-300 hover:bg-white/[0.06]"
                 }`}
               >
                 <PieChart className="w-4.5 h-4.5" />
@@ -237,7 +237,7 @@ export function Investir() {
                 className="grid lg:grid-cols-12 gap-8 items-start"
               >
                 {/* Left Side: Submission space form */}
-                <div className="lg:col-span-7 bg-white rounded-3xl p-8 border border-gray-100 shadow-xl">
+                <div className="lg:col-span-7 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-xl">
                   {hasSubmitted ? (
                     <motion.div 
                       initial={{ scale: 0.95, opacity: 0 }} 
@@ -247,14 +247,14 @@ export function Investir() {
                       <div className="w-18 h-18 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6 text-emerald-600">
                         <CheckCircle2 className="w-10 h-10" />
                       </div>
-                      <h2 className="text-3xl font-extrabold text-gray-900 mb-3">Merci pour votre promesse !</h2>
-                      <p className="text-gray-500 max-w-md mx-auto mb-8">
+                      <h2 className="text-3xl font-extrabold text-white mb-3">Merci pour votre promesse !</h2>
+                      <p className="text-slate-400 max-w-md mx-auto mb-8">
                         Votre intention d'acquérir <strong className="text-emerald-700">{(amount / 500).toLocaleString("fr-FR")} actions</strong> (à 500 FCFA l'action) pour un total de <strong className="text-emerald-700">{amount.toLocaleString("fr-FR")} FCFA</strong> a été enregistrée à notre registre décentralisé. Retrouvez cette promesse listée sous statut <span className="text-amber-600 font-bold font-mono bg-amber-50 px-2 py-0.5 rounded">En attente</span> sur l'onglet Portefeuille !
                       </p>
                       <div className="flex justify-center gap-3">
                         <button
                           onClick={() => setHasSubmitted(false)}
-                          className="px-6 py-3 rounded-xl bg-gray-100 text-gray-700 text-sm font-semibold hover:bg-gray-200 transition-colors"
+                          className="px-6 py-3 rounded-xl bg-white/[0.06] text-slate-200 text-sm font-semibold hover:bg-white/10 transition-colors"
                         >
                           En soumettre une autre
                         </button>
@@ -269,7 +269,7 @@ export function Investir() {
                   ) : (
                     <form onSubmit={handleSubmitPromise} className="space-y-6">
                       <div>
-                        <h2 className="text-2xl font-bold text-gray-900 mb-1">
+                        <h2 className="text-2xl font-bold text-white mb-1">
                           Soumettre une promesse d'investissement
                         </h2>
                         <p className="text-sm text-gray-400">
@@ -279,46 +279,46 @@ export function Investir() {
 
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-gray-500">Nom Complet ou Entité</label>
+                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Nom Complet ou Entité</label>
                           <input
                             type="text"
                             required
                             placeholder="Ex: West Africa Capital / Dr. Diallo"
                             value={investorName}
                             onChange={(e) => setInvestorName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
+                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-gray-500">Adresse Email</label>
+                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Adresse Email</label>
                           <input
                             type="email"
                             required
                             placeholder="investisseur@example.com"
                             value={investorEmail}
                             onChange={(e) => setInvestorEmail(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
+                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
                           />
                         </div>
                       </div>
 
                       <div className="grid md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-gray-500">Téléphone (avec indicatif)</label>
+                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Téléphone (avec indicatif)</label>
                           <input
                             type="tel"
                             placeholder="+221 77..."
                             value={investorPhone}
                             onChange={(e) => setInvestorPhone(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
+                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
                           />
                         </div>
                         <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-gray-500">Type de Profil Financier</label>
+                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Type de Profil Financier</label>
                           <select
                             value={investorType}
                             onChange={(e) => setInvestorType(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-emerald-600 focus:outline-none bg-white transition-all"
+                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none bg-[#071a12]/90 backdrop-blur-xl transition-all"
                           >
                             <option value="Angel">Business Angel Privé</option>
                             <option value="VC">Société de Capital Risque (VC)</option>
@@ -329,9 +329,9 @@ export function Investir() {
                       </div>
 
                       {/* Interactive Amount Picker */}
-                      <div className="space-y-4 pt-4 border-t border-gray-100">
+                      <div className="space-y-4 pt-4 border-t border-white/10">
                         <div className="flex justify-between items-center">
-                          <label className="text-xs uppercase tracking-wider font-bold text-gray-500">
+                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">
                             Montant de la Promesse (FCFA)
                           </label>
                           <span className="text-xl font-black text-emerald-800">
@@ -345,7 +345,7 @@ export function Investir() {
                           step="100000"
                           value={amount}
                           onChange={(e) => setAmount(Number(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-700"
+                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-700"
                         />
                         <div className="flex justify-between text-[10px] text-gray-400 font-mono">
                           <span>100 000 FCFA Min</span>
@@ -354,9 +354,9 @@ export function Investir() {
                         </div>
                       </div>
 
-                      <div className="bg-emerald-50 rounded-2xl p-5 border border-emerald-100 flex items-start gap-3">
+                      <div className="bg-emerald-500/15 rounded-2xl p-5 border border-emerald-100 flex items-start gap-3">
                         <input type="checkbox" required className="mt-1 accent-emerald-700 cursor-pointer" />
-                        <p className="text-xs text-gray-600 leading-relaxed font-medium">
+                        <p className="text-xs text-slate-300 leading-relaxed font-medium">
                           Je confirme solennellement que ce montant de promesse n'est pas assorti de conditions suspensives d'origine criminelle et que s'il est validé d'une offre d'achat de parts, je recevrai le Term-Sheet officiel de TranSen en 2026. *
                         </p>
                       </div>
@@ -428,15 +428,15 @@ export function Investir() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-md">
-                    <h4 className="font-bold text-gray-900 text-sm mb-3">Statut Global de Financement 2026</h4>
+                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-md">
+                    <h4 className="font-bold text-white text-sm mb-3">Statut Global de Financement 2026</h4>
                     <div className="space-y-3">
                       <div>
-                        <div className="flex justify-between text-xs font-semibold text-gray-500 mb-1">
+                        <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1">
                           <span>Financement ciblé (25% du Capital)</span>
                           <span>50 000 000 FCFA</span>
                         </div>
-                        <div className="w-full h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="w-full h-2.5 bg-white/[0.06] rounded-full overflow-hidden">
                           <div className="h-full bg-emerald-600 rounded-full" style={{ width: "67%" }}></div>
                         </div>
                         <p className="text-[11px] text-emerald-800 mt-1 font-medium font-mono text-right">67% d'intentions confirmées (33 500 000 FCFA)</p>
@@ -459,19 +459,19 @@ export function Investir() {
               >
                 {/* Simulated dashboard banners */}
                 <div className="grid md:grid-cols-4 gap-4">
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
                     <div>
                       <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Total de vos Promesses</span>
-                      <div className="text-2xl font-black text-gray-900 mt-1">
+                      <div className="text-2xl font-black text-white mt-1">
                         {submittedPromises.reduce((acc, p) => acc + p.amount, 0).toLocaleString("fr-FR")} FCFA
                       </div>
                     </div>
-                    <span className="text-emerald-700 font-bold text-xs mt-3 bg-emerald-50 px-2.5 py-1 rounded self-start">
+                    <span className="text-emerald-700 font-bold text-xs mt-3 bg-emerald-500/15 px-2.5 py-1 rounded self-start">
                       {submittedPromises.length} Promesses enregistrées
                     </span>
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
                     <div>
                       <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Dont Montant validé</span>
                       <div className="text-2xl font-black text-emerald-800 mt-1">
@@ -483,10 +483,10 @@ export function Investir() {
                     </span>
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
                     <div>
                       <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Valorisation Estimée de vos parts</span>
-                      <div className="text-2xl font-black text-gray-900 mt-1">
+                      <div className="text-2xl font-black text-white mt-1">
                         - FCFA
                       </div>
                     </div>
@@ -495,7 +495,7 @@ export function Investir() {
                     </span>
                   </div>
 
-                  <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col justify-between">
+                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
                     <div>
                       <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Dividendes trimestriels projetés</span>
                       <div className="text-2xl font-black text-emerald-800 mt-1">
@@ -511,13 +511,13 @@ export function Investir() {
                 {/* Grid chart + list view */}
                 <div className="grid lg:grid-cols-12 gap-8 items-start">
                   {/* Left: Interactive growth chart */}
-                  <div className="lg:col-span-8 bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-md">
+                  <div className="lg:col-span-8 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-6 md:p-8 border border-white/10 shadow-md">
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
                       <div>
-                        <h3 className="text-lg font-bold text-gray-900">Projection de Croissance Financière</h3>
+                        <h3 className="text-lg font-bold text-white">Projection de Croissance Financière</h3>
                         <p className="text-xs text-gray-400">Simulation de rendements sur 5 ans basés sur votre allocation de promesses actuelles</p>
                       </div>
-                      <div className="bg-emerald-50 text-emerald-700 font-mono text-xs px-3 py-1 rounded-lg border border-emerald-100 font-semibold">
+                      <div className="bg-emerald-500/15 text-emerald-700 font-mono text-xs px-3 py-1 rounded-lg border border-emerald-100 font-semibold">
                         Modèle 2% Urbain & Interurbain
                       </div>
                     </div>
@@ -549,11 +549,11 @@ export function Investir() {
                   </div>
 
                   {/* Right: Submitted promises status tracker */}
-                  <div className="lg:col-span-4 bg-white rounded-3xl p-6 border border-gray-100 shadow-md space-y-4">
-                    <h3 className="font-bold text-gray-900 text-md">Registre de vos promesses</h3>
+                  <div className="lg:col-span-4 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-md space-y-4">
+                    <h3 className="font-bold text-white text-md">Registre de vos promesses</h3>
                     <div className="space-y-3">
                       {submittedPromises.map((p) => (
-                        <div key={p.id} className="p-4 rounded-xl bg-gray-50 border border-gray-100/80 flex flex-col gap-2">
+                        <div key={p.id} className="p-4 rounded-xl bg-white/[0.04] border border-white/10/80 flex flex-col gap-2">
                           <div className="flex justify-between items-center">
                             <span className="text-[10px] font-mono text-gray-400 font-bold">{p.id}</span>
                             <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
@@ -565,10 +565,10 @@ export function Investir() {
                             </span>
                           </div>
                           <div>
-                            <div className="text-sm font-bold text-gray-900">
+                            <div className="text-sm font-bold text-white">
                               {p.amount.toLocaleString("fr-FR")} FCFA
                             </div>
-                            <div className="text-[11px] text-gray-500 mt-0.5">
+                            <div className="text-[11px] text-slate-400 mt-0.5">
                               {p.type} · parts d'équité estimées : {p.equity}%
                             </div>
                           </div>

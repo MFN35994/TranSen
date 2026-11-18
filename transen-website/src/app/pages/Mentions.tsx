@@ -6,7 +6,7 @@ export function Mentions() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -28,13 +28,13 @@ export function Mentions() {
       </section>
 
       {/* Content */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.8, delay: 0.2 }}
-            className="prose prose-green max-w-none text-gray-600 space-y-12"
+            className="prose prose-green max-w-none text-slate-300 space-y-12"
           >
             <div>
               <h2 className="text-2xl font-bold mb-4" style={{ color: "var(--brand-green)" }}>
@@ -79,7 +79,7 @@ export function Mentions() {
               <Link
                 to="/"
                 className="inline-flex items-center gap-2 px-8 py-4 rounded-full text-white transition-all hover:shadow-xl hover:scale-105"
-                style={{ backgroundColor: "var(--brand-green)" }}
+                style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
               >
                 Retourner à l'accueil
               </Link>

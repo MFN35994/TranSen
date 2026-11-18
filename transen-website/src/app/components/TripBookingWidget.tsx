@@ -94,16 +94,16 @@ function CityPicker({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-2xl z-50 border border-gray-100 overflow-hidden"
+            className="absolute top-full mt-1 left-0 right-0 bg-[#071a12]/90 backdrop-blur-xl rounded-xl shadow-2xl z-50 border border-white/10 overflow-hidden"
           >
-            <div className="p-2 border-b border-gray-100">
+            <div className="p-2 border-b border-white/10">
               <input
                 type="text"
                 autoFocus
                 placeholder="Filtrer une ville..."
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                className="w-full px-3 py-1.5 text-xs text-gray-800 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-emerald-500"
+                className="w-full px-3 py-1.5 text-xs text-slate-100 bg-white/[0.04] rounded-lg border border-white/15 focus:outline-none focus:border-emerald-500"
               />
             </div>
             <div className="max-h-48 overflow-y-auto">
@@ -118,7 +118,7 @@ function CityPicker({
                       onChange(city);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors text-sm cursor-pointer"
+                    className="w-full text-left px-4 py-2.5 text-slate-200 hover:bg-emerald-500/150/15 hover:text-emerald-300 transition-colors text-sm cursor-pointer"
                   >
                     {city}
                   </button>
@@ -152,10 +152,10 @@ function SeatBtn({
       title={occupied ? "Occupé" : `Siège ${n}`}
       className={`w-9 h-9 rounded-lg text-xs transition-all border-2 ${
         occupied
-          ? "bg-blue-50 border-blue-200 text-blue-300 cursor-not-allowed"
+          ? "bg-blue-50 border-slate-700 text-blue-300 cursor-not-allowed"
           : selected
-          ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-gray-900 font-bold"
-          : "bg-green-50 border-green-300 text-green-700 hover:border-green-500 hover:bg-green-100 cursor-pointer"
+          ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-slate-950 font-bold"
+          : "bg-emerald-500/15 border-green-300 text-emerald-300 hover:border-green-500 hover:bg-emerald-500/25 cursor-pointer"
       }`}
     >
       {n}
@@ -178,14 +178,14 @@ function SeatMap({
 }) {
   if (loading) {
     return (
-      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[240px] flex flex-col justify-center gap-2 animate-pulse">
+      <div className="bg-white/[0.04] rounded-xl p-4 border border-white/10 h-[240px] flex flex-col justify-center gap-2 animate-pulse">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="flex gap-2 justify-center">
-            <div className="w-9 h-9 rounded-lg bg-gray-200" />
-            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+            <div className="w-9 h-9 rounded-lg bg-white/10" />
+            <div className="w-9 h-9 rounded-lg bg-white/10" />
             <div className="w-5" />
-            <div className="w-9 h-9 rounded-lg bg-gray-200" />
-            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+            <div className="w-9 h-9 rounded-lg bg-white/10" />
+            <div className="w-9 h-9 rounded-lg bg-white/10" />
           </div>
         ))}
       </div>
@@ -197,12 +197,12 @@ function SeatMap({
   const rows = Math.ceil(total / cols);
 
   return (
-    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 max-h-[300px] overflow-y-auto">
+    <div className="bg-white/[0.04] rounded-xl p-4 border border-white/10 max-h-[300px] overflow-y-auto">
       <div className="flex justify-between items-center mb-3">
         <span className="text-[10px] uppercase font-mono tracking-wider text-gray-400">
           Avant du véhicule
         </span>
-        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
+        <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-sm">
           🚐
         </div>
       </div>
@@ -231,12 +231,12 @@ function SeatMap({
           );
         })}
       </div>
-      <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t border-gray-200/50 justify-center text-[10px] text-gray-500 font-mono">
+      <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t border-white/10 justify-center text-[10px] text-slate-400 font-mono">
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded bg-green-50 border border-green-300 inline-block" /> Libre
+          <span className="w-2.5 h-2.5 rounded bg-emerald-500/15 border border-green-300 inline-block" /> Libre
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="w-2.5 h-2.5 rounded bg-blue-50 border border-blue-200 inline-block" /> Occupé
+          <span className="w-2.5 h-2.5 rounded bg-blue-50 border border-slate-700 inline-block" /> Occupé
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-2.5 h-2.5 rounded bg-[var(--brand-gold)] inline-block" /> Sélectionné
@@ -392,23 +392,23 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
   };
 
   return (
-    <motion.div layout className="bg-white rounded-2xl overflow-hidden shadow-md border border-gray-100">
+    <motion.div layout className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl overflow-hidden shadow-md border border-white/10">
       <div className="p-4 flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-0.5">
-            <span className="text-gray-900 font-bold truncate">{trip.company}</span>
+            <span className="text-white font-bold truncate">{trip.company}</span>
             <span className="flex items-center gap-0.5 text-xs shrink-0" style={{ color: "var(--brand-gold)" }}>
               <Star className="w-3 h-3 fill-[var(--brand-gold)]" />
               {trip.rating}
             </span>
           </div>
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-400">
             <Clock className="w-3.5 h-3.5" />
-            <span className="font-semibold text-gray-700">{trip.dep}</span>
+            <span className="font-semibold text-slate-200">{trip.dep}</span>
             <ArrowRight className="w-3 h-3 text-gray-400" />
-            <span className="font-semibold text-gray-700">{trip.arr}</span>
+            <span className="font-semibold text-slate-200">{trip.arr}</span>
             <span className="text-gray-300">·</span>
-            <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-100">
+            <span className="bg-emerald-500/15 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-100">
               {trip.vehicle}
             </span>
             {trip.relayPoint && (
@@ -419,7 +419,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
             {Array.from({ length: Math.min(trip.total, 60) }).map((_, i) => (
               <div
                 key={i}
-                className={`h-1 flex-1 rounded-full ${i < trip.available ? "bg-green-400" : "bg-gray-200"}`}
+                className={`h-1 flex-1 rounded-full ${i < trip.available ? "bg-green-400" : "bg-white/10"}`}
               />
             ))}
           </div>
@@ -434,11 +434,11 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
         </div>
       </div>
 
-      <div className="px-4 pb-4 flex flex-col sm:flex-row gap-2 bg-gray-50/50 pt-2 border-t border-gray-50">
+      <div className="px-4 pb-4 flex flex-col sm:flex-row gap-2 bg-[#061510]/85 pt-2 border-t border-white/5">
         <button
           type="button"
           onClick={() => setOpen(!open)}
-          className="flex-1 py-2 rounded-xl border text-sm font-semibold transition-all hover:bg-gray-50 cursor-pointer"
+          className="flex-1 py-2 rounded-xl border text-sm font-semibold transition-all hover:bg-white/[0.06] cursor-pointer"
           style={{ borderColor: "var(--brand-green)", color: "var(--brand-green)" }}
         >
           {open ? "Masquer les détails" : "Sélectionner mes places"}
@@ -448,7 +448,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
           disabled={isSubmitting}
           onClick={book}
           className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-lg cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-          style={{ backgroundColor: "var(--brand-green)" }}
+          style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
         >
           {isSubmitting ? (
             <>
@@ -469,11 +469,11 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-gray-100 bg-white"
+            className="overflow-hidden border-t border-white/10 bg-[#071a12]/90 backdrop-blur-xl"
           >
             <div className="p-4 grid md:grid-cols-12 gap-5">
               <div className="md:col-span-6">
-                <p className="text-xs text-gray-600 mb-2 font-medium">
+                <p className="text-xs text-slate-300 mb-2 font-medium">
                   Sélectionnez vos places ({selected.length}/{wantedSeats})
                 </p>
                 <SeatMap
@@ -487,7 +487,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
 
               <div className="md:col-span-6 flex flex-col justify-between">
                 <div>
-                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase font-mono">Informations Passager</p>
+                  <p className="text-xs text-slate-400 mb-2 font-medium uppercase font-mono">Informations Passager</p>
                   <div className="space-y-2 mb-3">
                     <input
                       type="text"
@@ -495,7 +495,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                       required
                       value={passengerName}
                       onChange={(e) => setPassengerName(e.target.value)}
-                      className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                      className="w-full bg-[#071a12]/90 backdrop-blur-xl border border-white/15 text-slate-100 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                     <div className="grid grid-cols-2 gap-2">
                       <input
@@ -504,7 +504,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                         required
                         value={passengerEmail}
                         onChange={(e) => setPassengerEmail(e.target.value)}
-                        className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        className="w-full bg-[#071a12]/90 backdrop-blur-xl border border-white/15 text-slate-100 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                       />
                       <input
                         type="tel"
@@ -512,20 +512,20 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                         required
                         value={passengerPhone}
                         onChange={(e) => setPassengerPhone(e.target.value)}
-                        className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
+                        className="w-full bg-[#071a12]/90 backdrop-blur-xl border border-white/15 text-slate-100 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                       />
                     </div>
                   </div>
 
-                  <p className="text-xs text-gray-500 mb-2 font-medium uppercase font-mono">Option de Routage & Paiement</p>
+                  <p className="text-xs text-slate-400 mb-2 font-medium uppercase font-mono">Option de Routage & Paiement</p>
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <button
                       type="button"
                       onClick={() => setRoutingType("specific")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "specific"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold"
-                          : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-950 font-semibold"
+                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/20"
                       }`}
                     >
                       <span>Demande Spécifique</span>
@@ -536,8 +536,8 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                       onClick={() => setRoutingType("public")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "public"
-                          ? "bg-emerald-50 border-emerald-500 text-emerald-950 font-semibold"
-                          : "bg-white border-gray-200 text-gray-500 hover:border-gray-300"
+                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-950 font-semibold"
+                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/20"
                       }`}
                     >
                       <span>Demande Publique</span>
@@ -545,16 +545,16 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                     </button>
                   </div>
 
-                  <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/50 space-y-1 text-xs">
+                  <div className="bg-white/[0.04] p-3 rounded-xl border border-white/10 space-y-1 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Tarif unitaire :</span>
-                      <span className="font-bold text-gray-800">{trip.price.toLocaleString("fr-FR")} FCFA</span>
+                      <span className="text-slate-400">Tarif unitaire :</span>
+                      <span className="font-bold text-slate-100">{trip.price.toLocaleString("fr-FR")} FCFA</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Places choisies :</span>
-                      <span className="font-bold text-gray-800">{selected.length || wantedSeats} place(s)</span>
+                      <span className="text-slate-400">Places choisies :</span>
+                      <span className="font-bold text-slate-100">{selected.length || wantedSeats} place(s)</span>
                     </div>
-                    <div className="flex justify-between pt-1 border-t border-dashed border-gray-200 text-gray-900 font-bold">
+                    <div className="flex justify-between pt-1 border-t border-dashed border-white/15 text-white font-bold">
                       <span>Total à payer :</span>
                       <span style={{ color: "var(--brand-green)" }}>{calculateTotalCost().toLocaleString("fr-FR")} FCFA</span>
                     </div>
@@ -567,7 +567,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                     disabled={isSubmitting}
                     onClick={book}
                     className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow hover:opacity-90 cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
-                    style={{ backgroundColor: "var(--brand-green)" }}
+                    style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                   >
                     {isSubmitting ? (
                       <>
@@ -595,15 +595,15 @@ function ResultsSkeleton() {
   return (
     <div className="mt-5 space-y-3">
       {[1, 2].map((i) => (
-        <div key={i} className="bg-white/95 rounded-2xl p-4 shadow-md animate-pulse">
+        <div key={i} className="bg-[#071a12]/95 rounded-2xl p-4 shadow-md animate-pulse">
           <div className="flex justify-between">
             <div className="space-y-2 flex-1 pr-4">
-              <div className="h-4 w-40 bg-gray-200 rounded" />
-              <div className="h-3 w-56 bg-gray-100 rounded" />
+              <div className="h-4 w-40 bg-white/10 rounded" />
+              <div className="h-3 w-56 bg-white/[0.06] rounded" />
             </div>
             <div className="h-6 w-24 bg-emerald-100 rounded" />
           </div>
-          <div className="h-2 w-full bg-gray-100 rounded-full mt-3" />
+          <div className="h-2 w-full bg-white/[0.06] rounded-full mt-3" />
         </div>
       ))}
     </div>
@@ -894,7 +894,7 @@ export function TripBookingWidget() {
                   {trackedTrip.driverPhone && (
                     <a
                       href={`tel:${trackedTrip.driverPhone}`}
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold"
+                      className="bg-emerald-600 hover:bg-emerald-500/150/150 text-white px-3 py-2 rounded-xl text-xs font-bold"
                     >
                       📞 {trackedTrip.driverPhone}
                     </a>
@@ -923,7 +923,7 @@ export function TripBookingWidget() {
       ) : (
         <>
           {/* Service Tabs */}
-          <div className="flex gap-1 bg-black/20 backdrop-blur rounded-2xl p-1 mb-5">
+          <div className="flex gap-1.5 bg-[#03100b]/80 border border-white/10 backdrop-blur-xl rounded-2xl p-1.5 mb-5">
             {SERVICES.map(({ id, label, sub, Icon }) => (
               <button
                 key={id}
@@ -933,17 +933,18 @@ export function TripBookingWidget() {
                   setResults(null);
                 }}
                 className={`flex-1 flex flex-col items-center py-3 px-2 rounded-xl transition-all cursor-pointer ${
-                  service === id ? "bg-white shadow-lg" : "hover:bg-white/10"
+                  service === id
+                    ? "bg-gradient-to-br from-emerald-500/30 via-teal-500/20 to-cyan-500/20 border border-emerald-400/50 shadow-[0_0_24px_rgba(16,185,129,0.28)]"
+                    : "border border-transparent hover:bg-white/5"
                 }`}
               >
-                <Icon className="w-5 h-5 mb-1" style={{ color: service === id ? "var(--brand-green)" : "white" }} />
+                <Icon className={`w-5 h-5 mb-1 ${service === id ? "text-emerald-300" : "text-slate-300"}`} />
                 <span
-                  className={`text-sm font-semibold ${service === id ? "" : "text-white"}`}
-                  style={service === id ? { color: "var(--brand-green)" } : {}}
+                  className={`text-sm font-bold ${service === id ? "text-white" : "text-slate-200"}`}
                 >
                   {label}
                 </span>
-                <span className={`text-[11px] ${service === id ? "text-gray-400" : "text-white/50"}`}>{sub}</span>
+                <span className={`text-[11px] ${service === id ? "text-emerald-200/80" : "text-white/50"}`}>{sub}</span>
               </button>
             ))}
           </div>
@@ -1160,7 +1161,7 @@ export function TripBookingWidget() {
               initial={{ scale: 0.9, opacity: 0, y: 30 }}
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.9, opacity: 0, y: 30 }}
-              className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col"
+              className="relative w-full max-w-md bg-[#071a12]/90 backdrop-blur-xl rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col"
             >
               <div className="bg-emerald-800 text-white p-6 pb-8 relative overflow-hidden">
                 <div className="flex justify-between items-center mb-4">
@@ -1193,35 +1194,35 @@ export function TripBookingWidget() {
                 </div>
               </div>
 
-              <div className="relative h-1 bg-gray-50 flex items-center justify-between">
+              <div className="relative h-1 bg-white/[0.04] flex items-center justify-between">
                 <div className="absolute -left-3 w-6 h-6 rounded-full bg-slate-950/80 backdrop-blur" />
-                <div className="w-full border-t border-dashed border-gray-300 mx-5" />
+                <div className="w-full border-t border-dashed border-white/20 mx-5" />
                 <div className="absolute -right-3 w-6 h-6 rounded-full bg-slate-950/80 backdrop-blur" />
               </div>
 
-              <div className="p-6 bg-white space-y-4 text-xs">
+              <div className="p-6 bg-[#071a12]/90 backdrop-blur-xl space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2 font-mono">
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Voyageur</span>
-                    <span className="text-gray-800 font-bold block truncate">{activeTicket.passengerName}</span>
+                    <span className="text-slate-100 font-bold block truncate">{activeTicket.passengerName}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Transporteur</span>
-                    <span className="text-gray-800 font-bold block truncate">{activeTicket.company}</span>
+                    <span className="text-slate-100 font-bold block truncate">{activeTicket.company}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Date de Départ</span>
-                    <span className="text-gray-800 font-bold block truncate">
+                    <span className="text-slate-100 font-bold block truncate">
                       {new Date(activeTicket.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
                     </span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Heure</span>
-                    <span className="text-gray-800 font-bold block truncate">{activeTicket.dep}</span>
+                    <span className="text-slate-100 font-bold block truncate">{activeTicket.dep}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Places Assises</span>
-                    <span className="text-gray-900 font-extrabold block text-sm">
+                    <span className="text-white font-extrabold block text-sm">
                       {activeTicket.seats.map((s: number) => `#${s}`).join(", ")}
                     </span>
                   </div>
@@ -1231,9 +1232,9 @@ export function TripBookingWidget() {
                   </div>
                 </div>
 
-                <div className="my-4 p-3.5 bg-gray-50 rounded-2xl border border-gray-200/60 flex items-center justify-between">
+                <div className="my-4 p-3.5 bg-white/[0.04] rounded-2xl border border-white/15/60 flex items-center justify-between">
                   <div>
-                    <span className="text-gray-500 font-mono text-[10px] block">Statut règlement :</span>
+                    <span className="text-slate-400 font-mono text-[10px] block">Statut règlement :</span>
                     <span className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${activeTicket.routingType === "specific" ? "text-emerald-600" : "text-amber-600"}`}>
                       <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
                       {activeTicket.routingType === "specific" ? "SenePay (Wave/OM)" : "Espèces à bord"}
@@ -1246,18 +1247,18 @@ export function TripBookingWidget() {
                 </div>
               </div>
 
-              <div className="bg-gray-50 p-4 border-t border-gray-100 flex gap-2">
+              <div className="bg-white/[0.04] p-4 border-t border-white/10 flex gap-2">
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500/150/150 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
                   🖨️ Imprimer / Sauver (PDF)
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTicket(null)}
-                  className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                  className="px-4 py-3 bg-white/10 hover:bg-gray-300 text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
                 >
                   Fermer
                 </button>

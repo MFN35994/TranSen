@@ -114,7 +114,7 @@ export function FAQ() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -133,7 +133,7 @@ export function FAQ() {
       </section>
 
       {/* FAQ Content */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="space-y-12">
             {faqCategories.map((category, categoryIndex) => (
@@ -155,14 +155,14 @@ export function FAQ() {
                     <AccordionItem
                       key={index}
                       value={`item-${categoryIndex}-${index}`}
-                      className="bg-gray-50 rounded-xl px-6 border-none"
+                      className="bg-white/[0.04] rounded-xl px-6 border-none"
                     >
                       <AccordionTrigger className="hover:no-underline">
                         <span style={{ color: "var(--brand-green)" }}>
                           {item.question}
                         </span>
                       </AccordionTrigger>
-                      <AccordionContent className="text-gray-600 pt-2">
+                      <AccordionContent className="text-slate-300 pt-2">
                         {item.answer}
                       </AccordionContent>
                     </AccordionItem>
@@ -175,7 +175,7 @@ export function FAQ() {
       </section>
 
       {/* Still Have Questions CTA */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -202,7 +202,7 @@ export function FAQ() {
                 href="https://wa.me/221781386405"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white text-white transition-all hover:bg-white hover:text-[var(--brand-green)] inline-block"
+                className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white text-white transition-all hover:bg-emerald-400 hover:text-slate-950 inline-block"
               >
                 WhatsApp
               </a>

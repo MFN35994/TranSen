@@ -109,7 +109,7 @@ export function Chauffeurs() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -133,7 +133,7 @@ export function Chauffeurs() {
       </section>
 
       {/* Advantages */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -145,7 +145,7 @@ export function Chauffeurs() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Pourquoi devenir partenaire ?
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
               Des avantages concrets pour développer votre activité
             </p>
           </motion.div>
@@ -158,18 +158,18 @@ export function Chauffeurs() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-gray-50 rounded-2xl p-6 hover:shadow-lg transition-shadow"
+                className="bg-white/[0.04] rounded-2xl p-6 hover:shadow-lg transition-shadow"
               >
                 <div
                   className="w-14 h-14 rounded-xl flex items-center justify-center mb-4"
-                  style={{ backgroundColor: "var(--brand-green)" }}
+                  style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                 >
                   <advantage.icon className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl mb-3" style={{ color: "var(--brand-green)" }}>
                   {advantage.title}
                 </h3>
-                <p className="text-gray-600">{advantage.description}</p>
+                <p className="text-slate-300">{advantage.description}</p>
               </motion.div>
             ))}
           </div>
@@ -177,7 +177,7 @@ export function Chauffeurs() {
       </section>
 
       {/* Requirements */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -189,7 +189,7 @@ export function Chauffeurs() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Conditions requises
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-slate-300">
               Assurez-vous de remplir ces critères avant de postuler
             </p>
           </motion.div>
@@ -199,7 +199,7 @@ export function Chauffeurs() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="bg-white rounded-2xl p-8 shadow-lg"
+            className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-8 shadow-lg"
           >
             <div className="grid md:grid-cols-2 gap-6">
               {requirements.map((requirement, index) => (
@@ -212,7 +212,7 @@ export function Chauffeurs() {
                   className="flex items-start gap-3"
                 >
                   <CheckCircle className="w-6 h-6 flex-shrink-0 mt-0.5" style={{ color: "var(--brand-green)" }} />
-                  <span className="text-gray-700">{requirement}</span>
+                  <span className="text-slate-200">{requirement}</span>
                 </motion.div>
               ))}
             </div>
@@ -221,7 +221,7 @@ export function Chauffeurs() {
       </section>
 
       {/* Registration Form & Live Badge Preview */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -233,7 +233,7 @@ export function Chauffeurs() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Formulaire d'inscription & Badge de Qualification
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-slate-300">
               Remplissez ce formulaire et visualisez en direct votre Carte Professionnelle Digitale
             </p>
           </motion.div>
@@ -245,7 +245,7 @@ export function Chauffeurs() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="lg:col-span-7 bg-gray-50 rounded-3xl p-6 sm:p-8 shadow-xl border border-gray-100"
+              className="lg:col-span-7 bg-white/[0.04] rounded-3xl p-6 sm:p-8 shadow-xl border border-white/10"
             >
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid md:grid-cols-2 gap-6">
@@ -295,7 +295,7 @@ export function Chauffeurs() {
                       required
                       value={formData.region}
                       onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-white text-sm"
+                      className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-[#071a12]/90 backdrop-blur-xl text-sm"
                     >
                       <option value="">Sélectionnez une région</option>
                       {regions.map((region) => (
@@ -312,7 +312,7 @@ export function Chauffeurs() {
                     required
                     value={formData.typeVehicule}
                     onChange={(e) => setFormData({ ...formData, typeVehicule: e.target.value })}
-                    className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-white text-sm"
+                    className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-[#071a12]/90 backdrop-blur-xl text-sm"
                   >
                     <option value="">Sélectionnez un type</option>
                     {vehicleTypes.map((type) => (
@@ -352,7 +352,7 @@ export function Chauffeurs() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-6 rounded-2xl text-gray-900 font-extrabold uppercase text-sm tracking-wider transition-all hover:shadow-xl disabled:opacity-50 cursor-pointer"
+                  className="w-full py-6 rounded-2xl text-white font-extrabold uppercase text-sm tracking-wider transition-all hover:shadow-xl disabled:opacity-50 cursor-pointer"
                   style={{ backgroundColor: "var(--brand-gold)" }}
                 >
                   {isSubmitting ? "Envoi de la candidature..." : "Soumettre mon dossier"}
@@ -367,7 +367,7 @@ export function Chauffeurs() {
             {/* Interactive Live Holographic Card Preview Column */}
             <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
               <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/150/10 rounded-full blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
                 <div className="flex items-center justify-between mb-4">
@@ -388,7 +388,7 @@ export function Chauffeurs() {
 
                   {/* Red/Yellow/Green Senegal stripe tag on right corner */}
                   <div className="absolute top-0 right-0 w-16 h-1 border-t-4 border-r-4 border-emerald-500 flex">
-                    <div className="w-1/3 h-1 bg-emerald-500" />
+                    <div className="w-1/3 h-1 bg-emerald-500/150" />
                     <div className="w-1/3 h-1 bg-yellow-500" />
                     <div className="w-1/3 h-1 bg-red-500" />
                   </div>
@@ -408,7 +408,7 @@ export function Chauffeurs() {
                   <div className="flex gap-4 my-4 items-center">
                     {/* Picture box with shiny indicator */}
                     <div className="w-16 h-16 rounded-xl bg-slate-800/80 border border-white/10 flex items-center justify-center shrink-0 relative overflow-hidden">
-                      <Users className="w-8 h-8 text-slate-600" />
+                      <Users className="w-8 h-8 text-slate-300" />
                       {formData.nom && (
                         <div className="absolute inset-0 bg-emerald-900/10 flex items-center justify-center">
                           <CheckCircle className="w-6 h-6 text-emerald-400 fill-emerald-950 animate-bounce" />

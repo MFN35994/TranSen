@@ -1,26 +1,28 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@400;600;700;800&display=swap');
+
 :root {
     --primary: #10B981; /* Emerald */
-    --primary-glow: rgba(16, 185, 129, 0.25);
-    --primary-hover: #059669;
-    --secondary: #06B6D4; /* Cyan */
-    --secondary-glow: rgba(6, 182, 212, 0.25);
+    --primary-glow: rgba(16, 185, 129, 0.28);
+    --primary-hover: #34D399;
+    --secondary: #22D3EE; /* Cyan */
+    --secondary-glow: rgba(34, 211, 238, 0.28);
     
-    --gold: #F59E0B; /* Amber */
-    --gold-glow: rgba(245, 158, 11, 0.15);
+    --gold: #F5B83D; /* Aurora Gold */
+    --gold-glow: rgba(245, 184, 61, 0.22);
     
-    --blue: #3B82F6; /* Blue */
-    --blue-glow: rgba(59, 130, 246, 0.15);
+    --blue: #38BDF8;
+    --blue-glow: rgba(56, 189, 248, 0.18);
     
-    --red: #EF4444; /* Rose/Red */
-    --red-glow: rgba(239, 68, 68, 0.15);
+    --red: #F43F5E;
+    --red-glow: rgba(244, 63, 94, 0.18);
     
-    --dark-bg: #060A13;
-    --dark-card: rgba(13, 19, 34, 0.78);
-    --glass: rgba(255, 255, 255, 0.035);
-    --glass-border: rgba(52, 211, 153, 0.14);
-    --text-main: #F3F4F6;
-    --text-dim: #9CA3AF;
-    --transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+    --dark-bg: #03100B;
+    --dark-card: rgba(7, 26, 18, 0.84);
+    --glass: rgba(10, 34, 25, 0.72);
+    --glass-border: rgba(52, 211, 153, 0.26);
+    --text-main: #F0FDF7;
+    --text-dim: #94A3B8;
+    --transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1026,3 +1028,86 @@ textarea:focus {
 
 
 
+
+
+/* ============================================================================
+   TRANSEN SUPER-ADMIN — NEURAL COMMAND CENTER (AURORA DESIGN SYSTEM)
+   ============================================================================ */
+body {
+    font-family: 'Inter', 'Outfit', system-ui, sans-serif !important;
+    background:
+        radial-gradient(1200px 600px at 10% -5%, rgba(16, 185, 129, 0.22), transparent 60%),
+        radial-gradient(950px 500px at 95% 5%, rgba(34, 211, 238, 0.15), transparent 60%),
+        radial-gradient(850px 550px at 50% 108%, rgba(245, 184, 61, 0.1), transparent 65%),
+        #03100b !important;
+    color: #f0fdf7 !important;
+}
+
+h1, h2, h3, h4, .login-logo h2 {
+    font-family: 'Sora', 'Outfit', sans-serif !important;
+    letter-spacing: -0.025em;
+}
+
+.login-overlay {
+    background:
+        radial-gradient(circle at 25% 20%, rgba(16, 185, 129, 0.2), transparent 55%),
+        radial-gradient(circle at 75% 80%, rgba(34, 211, 238, 0.15), transparent 55%),
+        rgba(3, 16, 11, 0.96) !important;
+}
+
+.login-card {
+    background: linear-gradient(160deg, rgba(10, 34, 25, 0.9), rgba(4, 16, 11, 0.92)) !important;
+    border: 1.5px solid rgba(52, 211, 153, 0.38) !important;
+    box-shadow:
+        0 30px 80px -20px rgba(0, 0, 0, 0.85),
+        0 0 60px -12px rgba(16, 185, 129, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.14) !important;
+    overflow: hidden;
+}
+
+.login-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3.5px;
+    background: linear-gradient(90deg, #10b981, #22d3ee, #f5b83d, #10b981);
+}
+
+.login-logo img {
+    border-radius: 18px;
+    background: #ffffff;
+    padding: 4px;
+    border: 2px solid rgba(52, 211, 153, 0.6);
+    box-shadow: 0 0 28px rgba(16, 185, 129, 0.35);
+}
+
+.login-logo h2 {
+    background: linear-gradient(100deg, #ffffff 15%, #6ee7b7 55%, #22d3ee 100%) !important;
+    -webkit-background-clip: text !important;
+    background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+    font-weight: 800 !important;
+}
+
+.glass-card {
+    background: linear-gradient(160deg, rgba(10, 34, 25, 0.84), rgba(4, 16, 11, 0.86)) !important;
+    border: 1px solid rgba(52, 211, 153, 0.26) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.08),
+        0 22px 55px -20px rgba(0, 0, 0, 0.78) !important;
+}
+
+.glass-card::before {
+    height: 2.5px !important;
+    background: linear-gradient(90deg, transparent, #10b981, #22d3ee, #f5b83d, transparent) !important;
+    opacity: 0.85 !important;
+}
+
+.glass-card:hover {
+    border-color: rgba(34, 211, 238, 0.5) !important;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.14),
+        0 26px 60px -18px rgba(16, 185, 129, 0.32) !important;
+}

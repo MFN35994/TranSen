@@ -26,9 +26,9 @@ function PageSkeleton() {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-8 animate-pulse">
       <div className="h-44 rounded-3xl bg-emerald-950/10" />
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="h-48 rounded-2xl bg-gray-100" />
-        <div className="h-48 rounded-2xl bg-gray-100" />
-        <div className="h-48 rounded-2xl bg-gray-100" />
+        <div className="h-48 rounded-2xl bg-white/[0.06]" />
+        <div className="h-48 rounded-2xl bg-white/[0.06]" />
+        <div className="h-48 rounded-2xl bg-white/[0.06]" />
       </div>
     </div>
   );

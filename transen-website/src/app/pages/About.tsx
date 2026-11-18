@@ -38,7 +38,7 @@ export function About() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="py-20" style={{ backgroundColor: "var(--brand-green)" }}>
+      <section className="py-20" style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -57,7 +57,7 @@ export function About() {
       </section>
 
       {/* Mission Section */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -68,20 +68,20 @@ export function About() {
             >
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-                style={{ backgroundColor: "var(--brand-green)" }}
+                style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
               >
                 <Target className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-3xl md:text-4xl mb-6" style={{ color: "var(--brand-green)" }}>
                 Notre Mission
               </h2>
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-slate-300 mb-4">
                 TranSen se lance officiellement en 2026 avec une mission claire : révolutionner le transport interurbain au Sénégal en le rendant plus accessible, plus sûr et plus fiable pour tous.
               </p>
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-slate-300 mb-4">
                 Nous croyons que chaque Sénégalais mérite de voyager dans des conditions optimales, avec la tranquillité d'esprit que procure un service moderne et professionnel.
               </p>
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-slate-300">
                 Grâce à la technologie, nous connectons les voyageurs avec des chauffeurs vérifiés et des véhicules certifiés, tout en garantissant une transparence totale sur les tarifs et les trajets.
               </p>
             </motion.div>
@@ -103,7 +103,7 @@ export function About() {
       </section>
 
       {/* Vision */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center">
             <motion.div
@@ -122,13 +122,13 @@ export function About() {
               <h2 className="text-3xl md:text-4xl mb-6" style={{ color: "var(--brand-green)" }}>
                 Notre Vision
               </h2>
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-slate-300 mb-4">
                 Devenir la plateforme de mobilité la plus fiable et la plus utilisée au Sénégal, en connectant toutes les régions du pays avec un service de qualité supérieure.
               </p>
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-slate-300 mb-4">
                 Nous aspirons à être le premier choix pour tous les déplacements interurbains, en combinant innovation technologique et service humain exceptionnel.
               </p>
-              <p className="text-lg text-gray-600">
+              <p className="text-lg text-slate-300">
                 À terme, nous voulons contribuer au développement économique du Sénégal en facilitant les déplacements et en créant des opportunités pour nos chauffeurs partenaires.
               </p>
             </motion.div>
@@ -150,7 +150,7 @@ export function About() {
       </section>
 
       {/* Values */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -162,7 +162,7 @@ export function About() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Nos Valeurs
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
               Les principes qui guident notre action au quotidien
             </p>
           </motion.div>
@@ -175,18 +175,18 @@ export function About() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.6, delay: index * 0.1 }}
-                className="bg-gray-50 rounded-2xl p-8 text-center"
+                className="bg-white/[0.04] rounded-2xl p-8 text-center"
               >
                 <div
                   className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                  style={{ backgroundColor: "var(--brand-green)" }}
+                  style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                 >
                   <value.icon className="w-8 h-8 text-white" />
                 </div>
                 <h3 className="text-2xl mb-4" style={{ color: "var(--brand-green)" }}>
                   {value.title}
                 </h3>
-                <p className="text-gray-600">{value.description}</p>
+                <p className="text-slate-300">{value.description}</p>
               </motion.div>
             ))}
           </div>
@@ -194,7 +194,7 @@ export function About() {
       </section>
 
       {/* Timeline */}
-      <section className="py-20 bg-gray-50">
+      <section className="py-20 section-alt">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -206,7 +206,7 @@ export function About() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Notre Feuille de Route
             </h2>
-            <p className="text-xl text-gray-600">
+            <p className="text-xl text-slate-300">
               Nos projections et perspectives d'avenir pour 2026 - 2029
             </p>
           </motion.div>
@@ -223,15 +223,15 @@ export function About() {
               >
                 <div
                   className="flex-shrink-0 w-20 h-20 rounded-full flex items-center justify-center text-white"
-                  style={{ backgroundColor: "var(--brand-green)" }}
+                  style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)", borderTop: "1px solid rgba(52,211,153,0.18)", borderBottom: "1px solid rgba(52,211,153,0.18)" }}
                 >
                   {milestone.year}
                 </div>
-                <div className="bg-white rounded-xl p-6 flex-1 shadow-lg">
+                <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-xl p-6 flex-1 shadow-lg">
                   <h3 className="text-xl mb-2" style={{ color: "var(--brand-green)" }}>
                     {milestone.title}
                   </h3>
-                  <p className="text-gray-600">{milestone.description}</p>
+                  <p className="text-slate-300">{milestone.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -240,7 +240,7 @@ export function About() {
       </section>
 
       {/* Coverage Map */}
-      <section className="py-20 bg-white">
+      <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -258,7 +258,7 @@ export function About() {
             <h2 className="text-3xl md:text-4xl mb-4" style={{ color: "var(--brand-green)" }}>
               Notre Couverture Nationale
             </h2>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            <p className="text-xl text-slate-300 max-w-2xl mx-auto">
               Nous desservons actuellement 14 régions du Sénégal
             </p>
           </motion.div>

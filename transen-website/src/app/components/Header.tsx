@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Menu, X, Bus } from "lucide-react";
+import { Menu, X, Sparkles, Download, UserPlus, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence, useScroll, useSpring } from "motion/react";
 
 const NAV_LINKS = [
@@ -24,107 +24,147 @@ export function Header() {
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
     damping: 30,
-    restDelta: 0.001
+    restDelta: 0.001,
   });
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 16);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => setMenuOpen(false), [location.pathname]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   const isActive = (path: string) => location.pathname === path;
 
   return (
     <header
-      className="sticky top-0 z-50 transition-all duration-200 border-b border-emerald-950/10"
+      className="sticky top-0 z-50 transition-all duration-300 border-b"
       style={
         scrolled
           ? {
-              backgroundColor: "rgba(255,255,255,0.88)",
-              backdropFilter: "blur(22px)",
-              WebkitBackdropFilter: "blur(22px)",
-              boxShadow: "0 10px 35px -10px rgba(6, 78, 59, 0.14)",
+              backgroundColor: "rgba(3, 16, 11, 0.86)",
+              backdropFilter: "blur(24px) saturate(160%)",
+              WebkitBackdropFilter: "blur(24px) saturate(160%)",
+              borderColor: "rgba(52, 211, 153, 0.22)",
+              boxShadow: "0 18px 50px -15px rgba(0, 0, 0, 0.75), 0 1px 0 rgba(52, 211, 153, 0.15) inset",
             }
           : {
-              backgroundColor: "rgba(255,255,255,0.96)",
-              backdropFilter: "blur(14px)",
-              WebkitBackdropFilter: "blur(14px)",
+              backgroundColor: "rgba(3, 16, 11, 0.68)",
+              backdropFilter: "blur(18px) saturate(140%)",
+              WebkitBackdropFilter: "blur(18px) saturate(140%)",
+              borderColor: "rgba(255, 255, 255, 0.08)",
             }
       }
     >
+      {/* Top micro luminous aura */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/50 to-transparent pointer-events-none" />
+
       {/* Futuristic Cyber-Emerald & Cyan Scroll Telemetry Bar */}
       <motion.div
-        className="absolute bottom-0 left-0 right-0 h-[3px] bg-gradient-to-r from-emerald-500 via-cyan-400 to-amber-400 origin-left z-50 shadow-[0_0_14px_rgba(6,182,212,0.55)]"
+        className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-gradient-to-r from-emerald-400 via-cyan-400 to-amber-400 origin-left z-50 shadow-[0_0_16px_rgba(34,211,238,0.75)]"
         style={{ scaleX }}
       />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center" style={{ height: "74px" }}>
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group focus-visible:outline-2 focus-visible:outline-emerald-600 rounded-xl">
-            <div className="relative p-0.5 rounded-xl bg-gradient-to-br from-emerald-500 to-cyan-500 shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform duration-200">
-              <img
-                src="/logo.png"
-                alt="TranSen Logo"
-                className="w-9 h-9 rounded-[10px] object-contain bg-white"
-              />
+        <div className="flex justify-between items-center h-[76px]">
+          {/* Brand Logo + Telemetry Wordmark */}
+          <Link
+            to="/"
+            className="flex items-center gap-3.5 group focus-visible:outline-2 focus-visible:outline-emerald-400 rounded-2xl"
+          >
+            <div className="relative p-[2px] rounded-2xl bg-gradient-to-br from-emerald-400 via-cyan-400 to-amber-400 shadow-[0_0_25px_rgba(16,185,129,0.35)] group-hover:shadow-[0_0_32px_rgba(34,211,238,0.55)] group-hover:scale-105 transition-all duration-300">
+              <div className="bg-slate-950 rounded-[14px] p-1">
+                <img
+                  src="/logo.png"
+                  alt="TranSen Logo"
+                  className="w-9 h-9 rounded-[10px] object-contain bg-white"
+                />
+              </div>
+              <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#03100b] animate-pulse" />
             </div>
             <div>
-              <div className="text-xl leading-none font-extrabold tracking-tight bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                TranSen
+              <div className="flex items-center gap-2">
+                <span className="text-xl leading-none font-extrabold tracking-tight text-white font-display">
+                  Tran<span className="text-gradient-aurora">Sen</span>
+                </span>
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+                  2%
+                </span>
               </div>
-              <div className="text-[11px] text-slate-500 font-medium leading-none mt-1 tracking-wide">
-                Mobilité Futuriste · 2%
+              <div className="text-[10px] text-slate-400 font-mono uppercase tracking-[0.16em] leading-none mt-1.5 flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                Mobilité Sénégal
               </div>
             </div>
           </Link>
 
-          {/* Desktop Nav */}
-          <nav className="hidden md:flex items-center gap-0.5 xl:gap-1" aria-label="Navigation principale">
-            {NAV_LINKS.map(link => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`relative px-2.5 py-2 xl:px-3.5 rounded-xl text-xs xl:text-sm font-semibold transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-emerald-600 ${
-                  isActive(link.path)
-                    ? "text-emerald-700 bg-emerald-50/80"
-                    : "text-slate-600 hover:text-emerald-700 hover:bg-emerald-50/50"
-                }`}
-              >
-                {link.name}
-                {isActive(link.path) && (
-                  <motion.div
-                    layoutId="nav-indicator"
-                    className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-5 h-0.5 rounded-full bg-gradient-to-r from-emerald-500 to-cyan-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
-                  />
-                )}
-              </Link>
-            ))}
+          {/* Desktop Navigation Pill Bar */}
+          <nav
+            className="hidden lg:flex items-center gap-0.5 p-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl shadow-inner"
+            aria-label="Navigation principale"
+          >
+            {NAV_LINKS.map((link) => {
+              const active = isActive(link.path);
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`relative px-3 xl:px-3.5 py-1.5 rounded-full text-xs xl:text-[13px] font-semibold transition-all duration-200 ${
+                    active
+                      ? "text-white"
+                      : "text-slate-300/85 hover:text-white hover:bg-white/[0.04]"
+                  }`}
+                >
+                  {active && (
+                    <motion.div
+                      layoutId="aurora-nav-pill"
+                      transition={{ type: "spring", stiffness: 380, damping: 32 }}
+                      className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500/25 via-cyan-500/20 to-emerald-500/25 border border-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.25)] -z-10"
+                    />
+                  )}
+                  <span className="relative z-10 flex items-center gap-1">
+                    {link.name}
+                    {link.path === "/investir" && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
           </nav>
 
-          {/* CTA */}
-          <div className="hidden md:flex items-center gap-2 xl:gap-3">
+          {/* Desktop Action CTAs */}
+          <div className="hidden md:flex items-center gap-2.5">
             <Link
               to="/chauffeurs"
-              className="px-3 py-2 xl:px-4 text-[11px] xl:text-sm rounded-xl border border-emerald-600/35 text-emerald-700 font-bold transition-all duration-150 hover:bg-emerald-50 hover:border-emerald-600 focus-visible:outline-2 focus-visible:outline-emerald-600"
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 xl:px-4 rounded-full text-xs xl:text-sm font-bold text-emerald-200 bg-emerald-500/10 border border-emerald-400/30 hover:bg-emerald-500/20 hover:border-emerald-300/60 hover:text-white transition-all duration-200 hover:-translate-y-0.5"
             >
-              Devenir Chauffeur
+              <UserPlus className="w-3.5 h-3.5 text-cyan-300" />
+              <span>Chauffeurs</span>
             </Link>
             <Link
               to="/contact"
-              className="px-3.5 py-2 xl:px-5 xl:py-2.5 rounded-xl text-[11px] xl:text-sm text-slate-950 font-extrabold transition-all duration-150 bg-gradient-to-r from-amber-400 to-yellow-400 hover:from-amber-300 hover:to-yellow-300 shadow-md shadow-amber-500/25 hover:shadow-lg hover:shadow-amber-500/35 hover:-translate-y-0.5 active:translate-y-0"
+              className="inline-flex items-center gap-1.5 px-4 py-2 xl:px-5 xl:py-2.5 rounded-full text-xs xl:text-sm text-slate-950 font-extrabold transition-all duration-200 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 hover:from-amber-200 hover:to-yellow-200 shadow-[0_8px_25px_-4px_rgba(245,184,61,0.55)] hover:shadow-[0_12px_32px_-4px_rgba(245,184,61,0.8)] hover:-translate-y-0.5"
             >
-              Télécharger l'App
+              <Download className="w-3.5 h-3.5" />
+              <span>Télécharger l'App</span>
             </Link>
           </div>
 
-          {/* Mobile Menu Button */}
+          {/* Mobile Menu Trigger */}
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="md:hidden p-2 rounded-xl text-emerald-700 hover:bg-emerald-50 transition-colors"
+            className="lg:hidden p-2.5 rounded-xl text-emerald-300 bg-white/[0.05] border border-white/10 hover:bg-emerald-500/15 hover:border-emerald-400/40 transition-colors"
             aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
             aria-expanded={menuOpen}
           >
@@ -133,42 +173,61 @@ export function Header() {
         </div>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Glass Drawer */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden overflow-hidden border-t border-emerald-100"
-            style={{ backgroundColor: "rgba(255,255,255,0.97)", backdropFilter: "blur(20px)" }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            className="lg:hidden overflow-hidden border-t border-emerald-500/20"
+            style={{
+              backgroundColor: "rgba(3, 16, 11, 0.96)",
+              backdropFilter: "blur(28px)",
+              WebkitBackdropFilter: "blur(28px)",
+            }}
           >
-            <nav className="max-w-7xl mx-auto px-4 py-4 flex flex-col gap-1" aria-label="Navigation mobile">
-              {NAV_LINKS.map(link => (
-                <Link
-                  key={link.path}
-                  to={link.path}
-                  className={`py-3 px-4 rounded-xl transition-colors text-sm font-semibold ${
-                    isActive(link.path)
-                      ? "bg-emerald-50 text-emerald-700"
-                      : "text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  {link.name}
-                </Link>
-              ))}
-              <div className="flex gap-3 mt-3 pt-3 border-t border-slate-100">
+            <nav
+              className="max-w-7xl mx-auto px-4 py-5 flex flex-col gap-1.5"
+              aria-label="Navigation mobile"
+            >
+              {NAV_LINKS.map((link) => {
+                const active = isActive(link.path);
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`flex items-center justify-between py-3 px-4 rounded-2xl transition-all text-sm font-semibold ${
+                      active
+                        ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/10 text-emerald-300 border border-emerald-400/35 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                        : "text-slate-300 hover:bg-white/[0.04] hover:text-white"
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      {link.name}
+                      {link.path === "/investir" && (
+                        <span className="px-2 py-0.5 text-[10px] font-mono rounded-full bg-amber-400/15 text-amber-300 border border-amber-400/30">
+                          Actionnariat
+                        </span>
+                      )}
+                    </span>
+                    <ChevronRight className={`w-4 h-4 ${active ? "text-emerald-300" : "text-slate-600"}`} />
+                  </Link>
+                );
+              })}
+              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-white/10">
                 <Link
                   to="/chauffeurs"
-                  className="flex-1 py-3 text-center rounded-xl border border-emerald-600 text-emerald-700 font-bold text-sm"
+                  className="py-3 text-center rounded-2xl border border-emerald-400/40 bg-emerald-500/10 text-emerald-200 font-bold text-sm"
                 >
                   Devenir Chauffeur
                 </Link>
                 <Link
                   to="/contact"
-                  className="flex-1 py-3 text-center rounded-xl text-sm text-slate-950 font-bold bg-gradient-to-r from-amber-400 to-yellow-400"
+                  className="py-3 text-center rounded-2xl text-sm text-slate-950 font-extrabold bg-gradient-to-r from-amber-300 to-yellow-400 shadow-[0_8px_24px_rgba(245,184,61,0.4)]"
                 >
-                  Télécharger
+                  Télécharger l'App
                 </Link>
               </div>
             </nav>
