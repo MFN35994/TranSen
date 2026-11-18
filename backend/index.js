@@ -28,12 +28,14 @@ if (serviceAccount) {
 const db = getFirestore('transen');
 const app = express();
 
-// Middleware pour capturer le rawBody pour la vérification de signature
+// Middleware pour capturer le rawBody pour la vérification de signature (limite augmentée pour l'OCR d'images)
 app.use(express.json({
+    limit: '15mb',
     verify: (req, res, buf) => {
         req.rawBody = buf;
     }
 }));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 app.use(cors());
 
 // CONFIGURATION SENEPAY
@@ -82,10 +84,14 @@ app.get('/', (req, res) => {
 });
 
 // WEBHOOK PAYIN (Dépôts)
-app.post('/webhook/senepay', async (req, res) => {
-    const { orderReference, status, amount, sessionToken } = req.body;
+app.post(['/webhook/senepay', '/api/payments/webhook/senepay'], async (req, res) => {
+    const { orderReference, status, amount, sessionToken } = req.body || {};
     console.log(`[SenePay] Webhook reçu: ${orderReference} - Status: ${status} - Montant: ${amount}`);
     console.log(`[SenePay] FULL Webhook Body:`, JSON.stringify(req.body));
+
+    if (!orderReference && !sessionToken) {
+        return res.status(400).send("orderReference ou sessionToken manquant");
+    }
 
     // VÉRIFICATION SÉCURISÉE VIA L'API SENEPAY DIRECTEMENT
     // On utilise le sessionToken s'il est fourni (plus sûr que orderReference)
@@ -135,6 +141,9 @@ app.post('/webhook/senepay', async (req, res) => {
 
     if (status === 'Completed' || status === 'Complete' || status === 'PAID' || isVerifiedByApi) {
         try {
+            if (!orderReference || typeof orderReference !== 'string') {
+                return res.status(400).send("Format orderReference invalide");
+            }
             const parts = orderReference.split('-');
             if (parts.length < 3) return res.status(400).send("Format orderReference invalide");
             const userId = parts.slice(2).join('-');
@@ -198,8 +207,16 @@ app.post('/webhook/payout', async (req, res) => {
         console.warn('[Payout Webhook] ⚠️ SENEPAY_WHSEC non configuré — aucune vérification');
     }
 
-    const payload = JSON.parse(rawBody);
-    const { event, external_id, disbursement_id, status, amount } = payload;
+    let payload = req.body;
+    if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
+        try {
+            payload = JSON.parse(rawBody);
+        } catch (e) {
+            console.error('[Payout Webhook] Erreur parsing JSON:', e.message);
+            return res.status(400).send('Corps de requête JSON invalide');
+        }
+    }
+    const { event, external_id, disbursement_id, status, amount } = payload || {};
     console.log(`[Payout Webhook] event=${event} external_id=${external_id} disbursement_id=${disbursement_id} status=${status} montant=${amount}`);
 
     // event peut être "disbursement.completed" ou "disbursement.failed"
@@ -261,7 +278,7 @@ app.post('/webhook/payout', async (req, res) => {
 });
 
 // PROXY ENDPOINTS
-app.post('/api/payment/create-session', async (req, res) => {
+app.post(['/api/payment/create-session', '/api/payments/create-session'], async (req, res) => {
     try {
         console.log(`[Proxy] create-session called with body:`, req.body);
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions`, {
@@ -311,10 +328,20 @@ const verifyFirebaseToken = async (req, res, next) => {
     }
 };
 
-app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => {
+const recentPayoutLocks = new Map();
+const PAYOUT_COOLDOWN_MS = 10000;
+
+app.post(['/api/payment/secure-payout', '/api/payments/secure-payout'], verifyFirebaseToken, async (req, res) => {
     const { amount, recipientPhone, recipientName, operator, description } = req.body;
     const userId = req.user.uid;
     const amountNum = Number(amount);
+
+    const nowMs = Date.now();
+    const lastPayoutMs = recentPayoutLocks.get(userId);
+    if (lastPayoutMs && (nowMs - lastPayoutMs) < PAYOUT_COOLDOWN_MS) {
+        return res.status(429).send({ error: "Un retrait vient d'être initié. Veuillez patienter quelques secondes." });
+    }
+    recentPayoutLocks.set(userId, nowMs);
 
     if (!amountNum || amountNum < 200) {
         return res.status(400).send({ error: "Le montant minimum de retrait est de 200 FCFA" });
@@ -424,7 +451,7 @@ app.post('/api/payment/secure-payout', verifyFirebaseToken, async (req, res) => 
     }
 });
 
-app.post('/api/payment/payout-estimate', async (req, res) => {
+app.post(['/api/payment/payout-estimate', '/api/payments/payout-estimate'], async (req, res) => {
     try {
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts/estimate`, {
             method: 'POST',
@@ -442,7 +469,7 @@ app.post('/api/payment/payout-estimate', async (req, res) => {
     }
 });
 
-app.get('/api/payment/check-status/:orderReference', async (req, res) => {
+app.get(['/api/payment/check-status/:orderReference', '/api/payments/check-status/:orderReference'], async (req, res) => {
     try {
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/checkout/sessions/${req.params.orderReference}`, {
             headers: {
@@ -571,7 +598,7 @@ app.post('/api/trips/accept', verifyFirebaseToken, async (req, res) => {
             }
 
             const price = tripData.price || 0;
-            const commission = price * 0.01; // 1%
+            const commission = price * 0.02; // 2%
 
             if (!isActive) {
                 const balance = driverData.walletBalance || 0;
@@ -690,7 +717,7 @@ app.post('/api/pools/accept', verifyFirebaseToken, async (req, res) => {
             }
 
             const price = poolData.price || 10000;
-            const commission = price * 0.01; // 1%
+            const commission = price * 0.02; // 2%
 
             if (!isActive && commission > 0) {
                 const balance = driverData.walletBalance || 0;
@@ -773,7 +800,7 @@ app.post('/api/pools/accept', verifyFirebaseToken, async (req, res) => {
     }
 });
 
-app.get('/api/payment/payout-status/:internalId', async (req, res) => {
+app.get(['/api/payment/payout-status/:internalId', '/api/payments/payout-status/:internalId'], async (req, res) => {
     try {
         const response = await fetch(`${SENEPAY_CONFIG.baseUrl}/api/v1/payouts/${req.params.internalId}`, {
             headers: {
@@ -1121,6 +1148,224 @@ app.post('/api/internal/send-notification', async (req, res) => {
     } catch (error) {
         console.error("❌ Erreur lors de l'envoi de la notification push:", error);
         return res.status(500).send(error.message);
+    }
+});
+
+// =============================================================================
+// ENDPOINTS IA GEMINI (Assistant de Voyage, OCR Permis, Reformulation Support)
+// =============================================================================
+const GEMINI_CONFIG = {
+    apiKey: process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY || '',
+    model: process.env.GEMINI_MODEL || 'gemini-1.5-flash',
+};
+
+// 1. Chatbot / Assistant de Voyage Virtuel
+app.post('/api/ai/chat', async (req, res) => {
+    try {
+        const { history } = req.body || {};
+        if (!Array.isArray(history) || history.length === 0) {
+            return res.status(400).json({ error: "Historique de discussion manquant ou invalide" });
+        }
+
+        if (!GEMINI_CONFIG.apiKey) {
+            console.warn("[AI Chat] ⚠️ GEMINI_API_KEY non configurée. Réponse de secours transmise.");
+            return res.status(200).json({
+                candidates: [{
+                    content: {
+                        parts: [{
+                            text: "Bonjour ! L'assistant IA TranSen est actuellement en cours d'initialisation sur le serveur. Vous pouvez réserver vos trajets et expéditions en toute sérénité !"
+                        }]
+                    }
+                }]
+            });
+        }
+
+        const systemInstruction = {
+            parts: [{
+                text: "Tu es l'assistant IA officiel de TranSen, la super-application sénégalaise tout-en-un de mobilité : VTC, courses urbaines (Taxi Allô Dakar), covoiturage interurbain (Dakar, Thiès, Touba, Saint-Louis, Mbour, Ziguinchor, etc.) et livraison express de colis (Yobanté).\n" +
+                      "Directives :\n" +
+                      "- Sois chaleureux, poli, bienveillant et serviable.\n" +
+                      "- Exprime-toi en français avec d'agréables touches locales sénégalaises si approprié (ex: Salam alaykoum, Jërëjëf).\n" +
+                      "- Les devises sont en FCFA (Francs CFA).\n" +
+                      "- Les moyens de paiement supportés sont SenePay, Wave, Orange Money et le paiement en espèces à bord.\n" +
+                      "- Sois concis, clair et adapté à la lecture sur smartphone."
+            }]
+        };
+
+        const contents = history.map(item => ({
+            role: item.isUser ? 'user' : 'model',
+            parts: [{ text: String(item.text || '') }]
+        }));
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                systemInstruction,
+                contents,
+                generationConfig: {
+                    temperature: 0.7,
+                    maxOutputTokens: 800,
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`[AI Chat] Erreur Gemini API (${response.status}):`, errText);
+            return res.status(response.status).json({ error: "Erreur lors de la génération de réponse IA" });
+        }
+
+        const data = await response.json();
+        return res.status(200).json(data);
+    } catch (error) {
+        console.error("[AI Chat] Erreur serveur:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// 2. OCR Intelligent pour le Permis de Conduire / Pièce d'identité
+app.post('/api/ai/scan-license', async (req, res) => {
+    try {
+        const { image, mimeType } = req.body || {};
+        if (!image) {
+            return res.status(400).json({ error: "Image manquante" });
+        }
+
+        if (!GEMINI_CONFIG.apiKey) {
+            console.warn("[AI OCR] ⚠️ GEMINI_API_KEY non configurée. Renvoi de valeurs vides.");
+            return res.status(200).json({
+                candidates: [{
+                    content: {
+                        parts: [{
+                            text: JSON.stringify({
+                                firstName: "",
+                                lastName: "",
+                                documentNumber: "",
+                                expiryDate: null
+                            })
+                        }]
+                    }
+                }]
+            });
+        }
+
+        const prompt = "Tu es un système expert de reconnaissance automatique de documents officiels (permis de conduire sénégalais et pièces d'identité CEDEAO).\n" +
+                       "Analyse attentivement l'image fournie et extrais les informations du conducteur.\n" +
+                       "Réponds STRICTEMENT avec un objet JSON valide au format exact suivant, sans balises Markdown (pas de ```json), ni commentaires :\n" +
+                       "{\n" +
+                       '  "firstName": "Prénom du titulaire (ou chaîne vide si illisible)",\n' +
+                       '  "lastName": "Nom de famille du titulaire (ou chaîne vide si illisible)",\n' +
+                       '  "documentNumber": "Numéro du permis ou du document (ou chaîne vide si illisible)",\n' +
+                       '  "expiryDate": "Date d\'expiration au format AAAA-MM-JJ ou JJ/MM/AAAA (ou null si illisible ou absent)"\n' +
+                       "}";
+
+        const contents = [{
+            role: 'user',
+            parts: [
+                { text: prompt },
+                {
+                    inlineData: {
+                        mimeType: mimeType || 'image/jpeg',
+                        data: image
+                    }
+                }
+            ]
+        }];
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents,
+                generationConfig: {
+                    temperature: 0.1,
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`[AI OCR] Erreur Gemini API (${response.status}):`, errText);
+            return res.status(response.status).json({ error: "Erreur lors de l'analyse du document" });
+        }
+
+        const data = await response.json();
+        return res.status(200).json(data);
+    } catch (error) {
+        console.error("[AI OCR] Erreur serveur:", error);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+// 3. Reformulation et Catégorisation intelligente de Réclamation Support
+app.post('/api/ai/refine-ticket', async (req, res) => {
+    try {
+        const { text } = req.body || {};
+        if (!text || typeof text !== 'string') {
+            return res.status(400).json({ error: "Texte de réclamation manquant" });
+        }
+
+        if (!GEMINI_CONFIG.apiKey) {
+            console.warn("[AI Ticket] ⚠️ GEMINI_API_KEY non configurée. Renvoi du texte d'origine.");
+            return res.status(200).json({
+                candidates: [{
+                    content: {
+                        parts: [{
+                            text: JSON.stringify({
+                                refinedText: text,
+                                category: "AUTRE",
+                                urgency: "MOYEN"
+                            })
+                        }]
+                    }
+                }]
+            });
+        }
+
+        const prompt = "Tu es le module IA d'analyse et de reformulation du support client TranSen au Sénégal.\n" +
+                       "Voici le message rédigé par un utilisateur concernant un incident ou une question :\n" +
+                       `"""${text}"""\n\n` +
+                       "Directives :\n" +
+                       "1. Reformule le problème de manière claire, concise, respectueuse et bien structurée pour faciliter la prise en charge par les équipes de support.\n" +
+                       "2. Catégorise le problème parmi : 'PAIEMENT', 'TRAJET', 'CHAUFFEUR', 'COLIS', 'APPLICATION', 'AUTRE'.\n" +
+                       "3. Évalue le niveau d'urgence : 'BAS', 'MOYEN', ou 'HAUT'.\n" +
+                       "Réponds STRICTEMENT avec un objet JSON valide au format suivant, sans balises Markdown ni texte superflu :\n" +
+                       "{\n" +
+                       '  "refinedText": "Texte reformulé clair et professionnel",\n' +
+                       '  "category": "PAIEMENT",\n' +
+                       '  "urgency": "MOYEN"\n' +
+                       "}";
+
+        const contents = [{
+            role: 'user',
+            parts: [{ text: prompt }]
+        }];
+
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents,
+                generationConfig: {
+                    temperature: 0.2,
+                    responseMimeType: "application/json"
+                }
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error(`[AI Ticket] Erreur Gemini API (${response.status}):`, errText);
+            return res.status(response.status).json({ error: "Erreur lors de la reformulation du ticket" });
+        }
+
+        const data = await response.json();
+        return res.status(200).json(data);
+    } catch (error) {
+        console.error("[AI Ticket] Erreur serveur:", error);
+        return res.status(500).json({ error: error.message });
     }
 });
 

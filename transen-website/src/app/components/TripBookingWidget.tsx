@@ -2,10 +2,20 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   MapPin, Calendar, Users, Search, Bus, Car, Package,
-  ChevronDown, Clock, ArrowRight, Star, CheckCircle, X
+  ChevronDown, Clock, ArrowRight, Star, CheckCircle, X, ArrowRightLeft
 } from "lucide-react";
 import { toast } from "sonner";
-import { fetchTrips, createBooking, Trip, searchTripsApi, requestAlloDakarTrip, getTripStatus, cancelAlloDakarTrip } from "../services/api";
+import {
+  createBooking,
+  searchTripsApi,
+  getTripSeatMapApi,
+  createSenePaySessionForBookingApi,
+  requestAlloDakarTrip,
+  requestYobanteApi,
+  calculateVtcEstimateApi,
+  getTripStatus,
+  cancelAlloDakarTrip,
+} from "../services/api";
 
 const SENEGAL_CITIES = [
   "Dakar", "Thiès", "Touba", "Kaolack", "Saint-Louis", "Ziguinchor",
@@ -18,50 +28,64 @@ type ServiceType = "bus_company" | "allo_dakar" | "yobante";
 const SERVICES: { id: ServiceType; label: string; sub: string; Icon: typeof Bus }[] = [
   { id: "bus_company", label: "Compagnies", sub: "Bus · Horaires fixes", Icon: Bus },
   { id: "allo_dakar", label: "Allô Dakar", sub: "VTC · Départ immédiat", Icon: Car },
-  { id: "yobante", label: "Yobante", sub: "Colis · Interurbain", Icon: Package },
+  { id: "yobante", label: "Yobanté", sub: "Colis · Interurbain", Icon: Package },
 ];
 
-interface BusTrip { id: string; company: string; dep: string; arr: string; available: number; total: number; price: string; vehicle: string; rating: number; }
-interface VtcRide { id: string; driver: string; rating: number; car: string; seats: number; price: string; eta: string; }
-interface ColisOffer { id: string; type: string; price: string; delay: string; insurance: string; }
+const YOBANTE_PACKAGES = [
+  { id: "standard", label: "Standard (< 5 kg)", price: 2500, delay: "Même jour · Assurance incluse" },
+  { id: "large", label: "Large (5 – 20 kg)", price: 4500, delay: "Même jour · Assurance incluse" },
+  { id: "express", label: "Express Prioritaire (> 20 kg)", price: 7000, delay: "Livraison prioritaire · Suivi GPS" },
+];
 
-function genBus(): BusTrip[] {
-  return [
-    { id: "b1", company: "MACHALLA Transport", dep: "08:00", arr: "11:30", available: 42, total: 60, price: "3 500", vehicle: "Grand Bus 60 places", rating: 4.8 },
-    { id: "b2", company: "TranSen Express", dep: "12:00", arr: "15:30", available: 3, total: 15, price: "4 000", vehicle: "Minibus 15 places", rating: 4.9 },
-    { id: "b3", company: "Sénégal Voyages", dep: "16:00", arr: "19:30", available: 21, total: 30, price: "3 200", vehicle: "Bus VIP 30 places", rating: 4.7 },
-    { id: "b4", company: "Dakar Bus VIP", dep: "20:00", arr: "23:30", available: 45, total: 60, price: "5 000", vehicle: "Grand Bus VIP 60 places", rating: 5.0 },
-  ];
-}
-function genVtc(): VtcRide[] {
-  return [
-    { id: "v1", driver: "Moussa D.", rating: 4.8, car: "Toyota Corolla (Allô Dakar)", seats: 4, price: "5 000", eta: "5 min" },
-    { id: "v2", driver: "Cheikh N.", rating: 4.9, car: "Peugeot 508 (Allô Dakar)", seats: 4, price: "5 500", eta: "8 min" },
-    { id: "v3", driver: "Ibrahima S.", rating: 4.7, car: "Renault Logan (Allô Dakar)", seats: 4, price: "4 800", eta: "12 min" },
-  ];
-}
-function genColis(): ColisOffer[] {
-  return [
-    { id: "c1", type: "Standard (< 5 kg)", price: "2 000", delay: "Même jour", insurance: "Incluse" },
-    { id: "c2", type: "Large (5 – 20 kg)", price: "4 500", delay: "Même jour", insurance: "Incluse" },
-    { id: "c3", type: "Express Prioritaire", price: "6 000", delay: "< 2 heures", insurance: "Renforcée" },
-  ];
+interface BusTrip {
+  id: string;
+  company: string;
+  dep: string;
+  arr: string;
+  available: number;
+  total: number;
+  price: number;
+  vehicle: string;
+  relayPoint?: string;
+  rating: number;
 }
 
-/* ─── City Dropdown ─────────────────────────────────────────────────── */
-function CityPicker({ label, value, onChange, exclude }: { label: string; value: string; onChange: (v: string) => void; exclude?: string }) {
+/* ─── City Dropdown with Search Filter ──────────────────────────────── */
+function CityPicker({
+  label,
+  value,
+  onChange,
+  exclude,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  exclude?: string;
+}) {
   const [open, setOpen] = useState(false);
-  const cities = SENEGAL_CITIES.filter(c => c !== exclude);
+  const [query, setQuery] = useState("");
+  const cities = SENEGAL_CITIES.filter(
+    (c) => c !== exclude && c.toLowerCase().includes(query.toLowerCase().trim())
+  );
+
   return (
     <div className="relative">
       <p className="text-white/60 text-xs mb-1">{label}</p>
       <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 text-white rounded-xl px-4 py-3 text-left hover:bg-white/15 transition-all"
+        type="button"
+        onClick={() => {
+          setOpen(!open);
+          setQuery("");
+        }}
+        className="w-full flex items-center gap-2 bg-white/10 backdrop-blur border border-white/20 text-white rounded-xl px-4 py-3 text-left hover:bg-white/15 transition-all cursor-pointer"
       >
         <MapPin className="w-4 h-4 text-white/50 shrink-0" />
-        <span className="flex-1 truncate">{value || <span className="text-white/40">{label}</span>}</span>
-        <ChevronDown className={`w-4 h-4 text-white/40 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} />
+        <span className="flex-1 truncate text-sm">
+          {value || <span className="text-white/40">{label}</span>}
+        </span>
+        <ChevronDown
+          className={`w-4 h-4 text-white/40 shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
       <AnimatePresence>
         {open && (
@@ -70,17 +94,37 @@ function CityPicker({ label, value, onChange, exclude }: { label: string; value:
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.15 }}
-            className="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-2xl z-50 max-h-52 overflow-y-auto border border-gray-100"
+            className="absolute top-full mt-1 left-0 right-0 bg-white rounded-xl shadow-2xl z-50 border border-gray-100 overflow-hidden"
           >
-            {cities.map(city => (
-              <button
-                key={city}
-                onClick={() => { onChange(city); setOpen(false); }}
-                className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition-colors text-sm"
-              >
-                {city}
-              </button>
-            ))}
+            <div className="p-2 border-b border-gray-100">
+              <input
+                type="text"
+                autoFocus
+                placeholder="Filtrer une ville..."
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                className="w-full px-3 py-1.5 text-xs text-gray-800 bg-gray-50 rounded-lg border border-gray-200 focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+            <div className="max-h-48 overflow-y-auto">
+              {cities.length === 0 ? (
+                <p className="px-4 py-3 text-xs text-gray-400 text-center">Aucune ville trouvée</p>
+              ) : (
+                cities.map((city) => (
+                  <button
+                    key={city}
+                    type="button"
+                    onClick={() => {
+                      onChange(city);
+                      setOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-emerald-50 hover:text-emerald-800 transition-colors text-sm cursor-pointer"
+                  >
+                    {city}
+                  </button>
+                ))
+              )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -89,9 +133,20 @@ function CityPicker({ label, value, onChange, exclude }: { label: string; value:
 }
 
 /* ─── Seat Map ──────────────────────────────────────────────────────── */
-function SeatBtn({ n, occupied, selected, onClick }: { n: number; occupied: boolean; selected: boolean; onClick: () => void }) {
+function SeatBtn({
+  n,
+  occupied,
+  selected,
+  onClick,
+}: {
+  n: number;
+  occupied: boolean;
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={occupied}
       title={occupied ? "Occupé" : `Siège ${n}`}
@@ -99,8 +154,8 @@ function SeatBtn({ n, occupied, selected, onClick }: { n: number; occupied: bool
         occupied
           ? "bg-blue-50 border-blue-200 text-blue-300 cursor-not-allowed"
           : selected
-          ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-gray-900"
-          : "bg-green-50 border-green-300 text-green-700 hover:border-green-500 hover:bg-green-100"
+          ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-gray-900 font-bold"
+          : "bg-green-50 border-green-300 text-green-700 hover:border-green-500 hover:bg-green-100 cursor-pointer"
       }`}
     >
       {n}
@@ -108,7 +163,35 @@ function SeatBtn({ n, occupied, selected, onClick }: { n: number; occupied: bool
   );
 }
 
-function SeatMap({ total, occupied, selected, onToggle }: { total: number; occupied: number[]; selected: number[]; onToggle: (n: number) => void }) {
+function SeatMap({
+  total,
+  occupied,
+  selected,
+  loading,
+  onToggle,
+}: {
+  total: number;
+  occupied: number[];
+  selected: number[];
+  loading?: boolean;
+  onToggle: (n: number) => void;
+}) {
+  if (loading) {
+    return (
+      <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 h-[240px] flex flex-col justify-center gap-2 animate-pulse">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="flex gap-2 justify-center">
+            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+            <div className="w-5" />
+            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+            <div className="w-9 h-9 rounded-lg bg-gray-200" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   const isLargeBus = total > 15;
   const cols = isLargeBus ? 4 : 3;
   const rows = Math.ceil(total / cols);
@@ -116,51 +199,48 @@ function SeatMap({ total, occupied, selected, onToggle }: { total: number; occup
   return (
     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 max-h-[300px] overflow-y-auto">
       <div className="flex justify-between items-center mb-3">
-        <span className="text-[10px] uppercase font-mono tracking-wider text-gray-400">Avant du véhicule</span>
-        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-sm">🚐</div>
+        <span className="text-[10px] uppercase font-mono tracking-wider text-gray-400">
+          Avant du véhicule
+        </span>
+        <div className="w-8 h-8 rounded-lg bg-gray-200 flex items-center justify-center text-sm">
+          🚐
+        </div>
       </div>
       <div className="space-y-1.5">
-        {Array.from({ length: rows }).map((_, r) => (
-          <div key={r} className="flex gap-1.5 items-center justify-center">
-            {/* Left group */}
-            <SeatBtn
-              n={r * cols + 1}
-              occupied={occupied.includes(r * cols + 1)}
-              selected={selected.includes(r * cols + 1)}
-              onClick={() => onToggle(r * cols + 1)}
-            />
-            <SeatBtn
-              n={r * cols + 2}
-              occupied={occupied.includes(r * cols + 2)}
-              selected={selected.includes(r * cols + 2)}
-              onClick={() => onToggle(r * cols + 2)}
-            />
-
-            {/* Aisle Spacer */}
-            <div className="w-5 text-center text-[9px] text-gray-300 font-mono">Allée</div>
-
-            {/* Right group */}
-            <SeatBtn
-              n={r * cols + 3}
-              occupied={occupied.includes(r * cols + 3)}
-              selected={selected.includes(r * cols + 3)}
-              onClick={() => onToggle(r * cols + 3)}
-            />
-            {isLargeBus && (r * cols + 4 <= total) && (
-              <SeatBtn
-                n={r * cols + 4}
-                occupied={occupied.includes(r * cols + 4)}
-                selected={selected.includes(r * cols + 4)}
-                onClick={() => onToggle(r * cols + 4)}
-              />
-            )}
-          </div>
-        ))}
+        {Array.from({ length: rows }).map((_, r) => {
+          const s1 = r * cols + 1;
+          const s2 = r * cols + 2;
+          const s3 = r * cols + 3;
+          const s4 = r * cols + 4;
+          return (
+            <div key={r} className="flex gap-1.5 items-center justify-center">
+              {s1 <= total && (
+                <SeatBtn n={s1} occupied={occupied.includes(s1)} selected={selected.includes(s1)} onClick={() => onToggle(s1)} />
+              )}
+              {s2 <= total && (
+                <SeatBtn n={s2} occupied={occupied.includes(s2)} selected={selected.includes(s2)} onClick={() => onToggle(s2)} />
+              )}
+              <div className="w-5 text-center text-[9px] text-gray-300 font-mono">Allée</div>
+              {s3 <= total && (
+                <SeatBtn n={s3} occupied={occupied.includes(s3)} selected={selected.includes(s3)} onClick={() => onToggle(s3)} />
+              )}
+              {isLargeBus && s4 <= total && (
+                <SeatBtn n={s4} occupied={occupied.includes(s4)} selected={selected.includes(s4)} onClick={() => onToggle(s4)} />
+              )}
+            </div>
+          );
+        })}
       </div>
       <div className="flex flex-wrap gap-4 mt-4 pt-3 border-t border-gray-200/50 justify-center text-[10px] text-gray-500 font-mono">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-green-50 border border-green-300 inline-block" /> Libre</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-blue-50 border border-blue-200 inline-block" /> Occupé</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded bg-[var(--brand-gold)] inline-block" /> Sélectionné</span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded bg-green-50 border border-green-300 inline-block" /> Libre
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded bg-blue-50 border border-blue-200 inline-block" /> Occupé
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-2.5 h-2.5 rounded bg-[var(--brand-gold)] inline-block" /> Sélectionné
+        </span>
       </div>
     </div>
   );
@@ -172,6 +252,7 @@ interface BusCardProps {
   wantedSeats: number;
   onBookingSuccess?: (ticket: {
     id: string;
+    boardingCode?: string;
     company: string;
     vehicle: string;
     dep: string;
@@ -189,41 +270,57 @@ interface BusCardProps {
 function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<number[]>([]);
+  const [occupied, setOccupied] = useState<number[]>([]);
+  const [loadingSeats, setLoadingSeats] = useState(false);
   const [routingType, setRoutingType] = useState<"specific" | "public">("specific");
-  
-  // États passager pour l'API réelle
+
   const [passengerName, setPassengerName] = useState("");
   const [passengerEmail, setPassengerEmail] = useState("");
   const [passengerPhone, setPassengerPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Calcul dynamique des sièges occupés
-  const occupiedCount = trip.total - trip.available;
-  const occupied = Array.from({ length: trip.total })
-    .map((_, idx) => idx + 1)
-    .filter(n => (n % 3 === 0 || n % 7 === 1) && n <= trip.total)
-    .slice(0, occupiedCount);
+  // Charger le plan réel des sièges occupés depuis Spring Boot (/api/bookings/trip/{id})
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    setLoadingSeats(true);
+    getTripSeatMapApi(trip.id)
+      .then((seats) => {
+        if (active) setOccupied(seats);
+      })
+      .catch(() => {
+        // En cas de fallback hors-ligne, déduire au plus juste
+        if (active) {
+          const count = Math.max(0, trip.total - trip.available);
+          setOccupied(Array.from({ length: count }, (_, i) => i + 1));
+        }
+      })
+      .finally(() => {
+        if (active) setLoadingSeats(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, trip.id, trip.total, trip.available]);
 
   const toggle = (n: number) => {
     if (occupied.includes(n)) return;
-    setSelected(s =>
-      s.includes(n) ? s.filter(x => x !== n) : s.length < wantedSeats ? [...s, n] : s
+    setSelected((s) =>
+      s.includes(n) ? s.filter((x) => x !== n) : s.length < wantedSeats ? [...s, n] : s
     );
   };
 
-  const calculateTotalCost = () => {
-    const rawPrice = Number(trip.price.replace(/\s/g, ""));
-    return rawPrice * wantedSeats;
-  };
+  const calculateTotalCost = () => trip.price * wantedSeats;
 
   const book = async () => {
+    if (isSubmitting) return;
     if (selected.length < wantedSeats) {
-      toast.info(`Sélectionnez d'abord vos ${wantedSeats} sièges.`);
+      toast.info(`Sélectionnez d'abord vos ${wantedSeats} siège(s).`);
       setOpen(true);
       return;
     }
 
-    if (!passengerName || !passengerEmail || !passengerPhone) {
+    if (!passengerName.trim() || !passengerEmail.trim() || !passengerPhone.trim()) {
       toast.info("Veuillez remplir vos coordonnées passager pour la réservation.");
       setOpen(true);
       return;
@@ -232,24 +329,42 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
     setIsSubmitting(true);
     try {
       const priceNum = calculateTotalCost();
-      const transenComm = Math.round((priceNum * 1) / 100);
-      const companyEarn = priceNum - transenComm;
+      const transenComm = Math.round((priceNum * 2) / 100); // Commission unique TranSen : 2%
+      void transenComm;
 
-      // Appeler le backend Spring Boot pour insérer le billet en base de données
       const bookingResult = await createBooking({
         tripId: trip.id,
-        passagerNom: passengerName,
-        passagerEmail: passengerEmail,
-        passagerPhone: passengerPhone,
+        passagerNom: passengerName.trim(),
+        passagerEmail: passengerEmail.trim(),
+        passagerPhone: passengerPhone.trim(),
         siegeNumero: selected.join(", "),
         prixTTC: priceNum,
         statutReglement: routingType === "specific" ? "Réglé" : "En attente",
-        modePaiement: routingType === "specific" ? "Wave" : "Espèces (Gare)"
+        modePaiement: routingType === "specific" ? "Wave" : "Espèces (Gare)",
       });
+
+      if (routingType === "specific") {
+        const orderRef = bookingResult.paymentReference || `WEB-BUS-${bookingResult.id}`;
+        try {
+          const checkoutUrl = await createSenePaySessionForBookingApi({
+            amount: priceNum,
+            orderId: orderRef,
+            description: `Billet ${trip.company} (${selected.length} place(s))`,
+            customerPhone: passengerPhone.trim(),
+          });
+          if (checkoutUrl) {
+            toast.success("Redirection vers SenePay pour finaliser le paiement...");
+            window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+          }
+        } catch {
+          // Billet créé en attente : le passager obtient son billet avec code d'embarquement
+        }
+      }
 
       if (onBookingSuccess) {
         onBookingSuccess({
           id: bookingResult.id,
+          boardingCode: bookingResult.boardingCode,
           company: trip.company,
           vehicle: trip.vehicle,
           dep: trip.dep,
@@ -257,17 +372,17 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
           seats: selected,
           totalCost: priceNum,
           routingType,
-          passengerName,
-          passengerEmail,
-          passengerPhone,
-          dateReservation: bookingResult.dateReservation
+          passengerName: passengerName.trim(),
+          passengerEmail: passengerEmail.trim(),
+          passengerPhone: passengerPhone.trim(),
+          dateReservation: bookingResult.dateReservation,
         });
       }
 
       toast.success(
         routingType === "specific"
-          ? `🎟️ Réservation Spécifique validée ! SenePay en ligne : ${priceNum.toLocaleString()} FCFA.`
-          : `🎟️ Demande Publique enregistrée ! Règlement direct en espèces de ${priceNum.toLocaleString()} FCFA.`
+          ? `🎟️ Réservation confirmée (${priceNum.toLocaleString("fr-FR")} FCFA) · Commission plateforme 2%.`
+          : `🎟️ Place(s) réservée(s) ! Règlement en espèces de ${priceNum.toLocaleString("fr-FR")} FCFA à l'embarquement.`
       );
     } catch (err: any) {
       toast.error(err?.message || "Erreur lors de la création de la réservation.");
@@ -283,7 +398,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
           <div className="flex items-center gap-2 mb-0.5">
             <span className="text-gray-900 font-bold truncate">{trip.company}</span>
             <span className="flex items-center gap-0.5 text-xs shrink-0" style={{ color: "var(--brand-gold)" }}>
-              <Star className="w-3 h-3 fill-[var(--brand-gold)] animate-pulse" />
+              <Star className="w-3 h-3 fill-[var(--brand-gold)]" />
               {trip.rating}
             </span>
           </div>
@@ -293,17 +408,26 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
             <ArrowRight className="w-3 h-3 text-gray-400" />
             <span className="font-semibold text-gray-700">{trip.arr}</span>
             <span className="text-gray-300">·</span>
-            <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-100">{trip.vehicle}</span>
+            <span className="bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-100">
+              {trip.vehicle}
+            </span>
+            {trip.relayPoint && (
+              <span className="text-[10px] text-gray-400 truncate">📍 {trip.relayPoint}</span>
+            )}
           </div>
-          {/* Seat bar indicator */}
           <div className="flex gap-0.5 mt-3">
-            {Array.from({ length: trip.total }).map((_, i) => (
-              <div key={i} className={`h-1 flex-1 rounded-full ${i < trip.available ? "bg-green-400" : "bg-gray-200"}`} />
+            {Array.from({ length: Math.min(trip.total, 60) }).map((_, i) => (
+              <div
+                key={i}
+                className={`h-1 flex-1 rounded-full ${i < trip.available ? "bg-green-400" : "bg-gray-200"}`}
+              />
             ))}
           </div>
         </div>
         <div className="text-right shrink-0">
-          <div className="text-lg font-bold" style={{ color: "var(--brand-green)" }}>{trip.price} <span className="text-xs text-gray-400">FCFA</span></div>
+          <div className="text-lg font-bold" style={{ color: "var(--brand-green)" }}>
+            {trip.price.toLocaleString("fr-FR")} <span className="text-xs text-gray-400">FCFA</span>
+          </div>
           <div className={`text-xs mt-0.5 font-medium ${trip.available <= 3 ? "text-red-500 font-semibold" : "text-gray-400"}`}>
             {trip.available} place{trip.available > 1 ? "s" : ""} dispo
           </div>
@@ -312,6 +436,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
 
       <div className="px-4 pb-4 flex flex-col sm:flex-row gap-2 bg-gray-50/50 pt-2 border-t border-gray-50">
         <button
+          type="button"
           onClick={() => setOpen(!open)}
           className="flex-1 py-2 rounded-xl border text-sm font-semibold transition-all hover:bg-gray-50 cursor-pointer"
           style={{ borderColor: "var(--brand-green)", color: "var(--brand-green)" }}
@@ -319,11 +444,22 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
           {open ? "Masquer les détails" : "Sélectionner mes places"}
         </button>
         <button
+          type="button"
+          disabled={isSubmitting}
           onClick={book}
-          className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-lg cursor-pointer"
+          className="flex-1 py-2 rounded-xl text-sm font-semibold text-white transition-all hover:shadow-lg cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
           style={{ backgroundColor: "var(--brand-green)" }}
         >
-          {routingType === "specific" ? "Réserver · SenePay" : "Réserver · Espèces"}
+          {isSubmitting ? (
+            <>
+              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              Validation...
+            </>
+          ) : routingType === "specific" ? (
+            "Réserver · SenePay"
+          ) : (
+            "Réserver · Espèces"
+          )}
         </button>
       </div>
 
@@ -336,15 +472,19 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
             className="overflow-hidden border-t border-gray-100 bg-white"
           >
             <div className="p-4 grid md:grid-cols-12 gap-5">
-              {/* Seat Selection Panel */}
               <div className="md:col-span-6">
                 <p className="text-xs text-gray-600 mb-2 font-medium">
                   Sélectionnez vos places ({selected.length}/{wantedSeats})
                 </p>
-                <SeatMap total={trip.total} occupied={occupied} selected={selected} onToggle={toggle} />
+                <SeatMap
+                  total={trip.total}
+                  occupied={occupied}
+                  selected={selected}
+                  loading={loadingSeats}
+                  onToggle={toggle}
+                />
               </div>
 
-              {/* Specific/Public routing selections */}
               <div className="md:col-span-6 flex flex-col justify-between">
                 <div>
                   <p className="text-xs text-gray-500 mb-2 font-medium uppercase font-mono">Informations Passager</p>
@@ -354,7 +494,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                       placeholder="Nom complet du passager *"
                       required
                       value={passengerName}
-                      onChange={e => setPassengerName(e.target.value)}
+                      onChange={(e) => setPassengerName(e.target.value)}
                       className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                     />
                     <div className="grid grid-cols-2 gap-2">
@@ -363,7 +503,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                         placeholder="Email *"
                         required
                         value={passengerEmail}
-                        onChange={e => setPassengerEmail(e.target.value)}
+                        onChange={(e) => setPassengerEmail(e.target.value)}
                         className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                       />
                       <input
@@ -371,7 +511,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                         placeholder="Téléphone *"
                         required
                         value={passengerPhone}
-                        onChange={e => setPassengerPhone(e.target.value)}
+                        onChange={(e) => setPassengerPhone(e.target.value)}
                         className="w-full bg-white border border-gray-200 text-gray-800 rounded-xl px-3 py-2 text-xs focus:ring-1 focus:ring-emerald-500 focus:outline-none"
                       />
                     </div>
@@ -380,6 +520,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                   <p className="text-xs text-gray-500 mb-2 font-medium uppercase font-mono">Option de Routage & Paiement</p>
                   <div className="grid grid-cols-2 gap-2 mb-3">
                     <button
+                      type="button"
                       onClick={() => setRoutingType("specific")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "specific"
@@ -388,9 +529,10 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                       }`}
                     >
                       <span>Demande Spécifique</span>
-                      <span className="text-[9px] leading-tight font-normal">Paiement d'avance via SenePay. 99% à la compagnie.</span>
+                      <span className="text-[9px] leading-tight font-normal">Paiement d'avance via SenePay. 98% à la compagnie.</span>
                     </button>
                     <button
+                      type="button"
                       onClick={() => setRoutingType("public")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "public"
@@ -406,28 +548,37 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                   <div className="bg-gray-50 p-3 rounded-xl border border-gray-200/50 space-y-1 text-xs">
                     <div className="flex justify-between">
                       <span className="text-gray-500">Tarif unitaire :</span>
-                      <span className="font-bold text-gray-800">{trip.price} FCFA</span>
+                      <span className="font-bold text-gray-800">{trip.price.toLocaleString("fr-FR")} FCFA</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-500">Places choisies :</span>
                       <span className="font-bold text-gray-800">{selected.length || wantedSeats} place(s)</span>
                     </div>
-                    <div className="flex justify-between pt-1 border-t border-dashed border-gray-205 text-gray-900 font-bold">
+                    <div className="flex justify-between pt-1 border-t border-dashed border-gray-200 text-gray-900 font-bold">
                       <span>Total à payer :</span>
-                      <span style={{ color: "var(--brand-green)" }}>{calculateTotalCost().toLocaleString()} FCFA</span>
+                      <span style={{ color: "var(--brand-green)" }}>{calculateTotalCost().toLocaleString("fr-FR")} FCFA</span>
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-3">
                   <button
+                    type="button"
+                    disabled={isSubmitting}
                     onClick={book}
-                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow hover:opacity-90 cursor-pointer"
+                    className="w-full py-2.5 rounded-xl text-xs font-bold text-white transition-all shadow hover:opacity-90 cursor-pointer disabled:opacity-60 flex items-center justify-center gap-2"
                     style={{ backgroundColor: "var(--brand-green)" }}
                   >
-                    {routingType === "specific"
-                      ? `Régler ${calculateTotalCost().toLocaleString()} FCFA par SenePay`
-                      : "S'enregistrer (Payer en Espèces à bord)"}
+                    {isSubmitting ? (
+                      <>
+                        <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        Confirmation en cours...
+                      </>
+                    ) : routingType === "specific" ? (
+                      `Régler ${calculateTotalCost().toLocaleString("fr-FR")} FCFA par SenePay`
+                    ) : (
+                      "S'enregistrer (Payer en Espèces à bord)"
+                    )}
                   </button>
                 </div>
               </div>
@@ -439,57 +590,22 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
   );
 }
 
-/* ─── VTC Card ──────────────────────────────────────────────────────── */
-function VtcCard({ ride }: { ride: VtcRide }) {
+/* ─── Search Skeleton ────────────────────────────────────────────────── */
+function ResultsSkeleton() {
   return (
-    <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-100 flex items-center justify-between gap-3">
-      <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0" style={{ backgroundColor: "var(--brand-green)" + "20" }}>🚐</div>
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="text-gray-900">{ride.driver}</span>
-            <span className="flex items-center gap-0.5 text-xs" style={{ color: "var(--brand-gold)" }}>
-              <Star className="w-3 h-3 fill-[var(--brand-gold)]" />{ride.rating}
-            </span>
+    <div className="mt-5 space-y-3">
+      {[1, 2].map((i) => (
+        <div key={i} className="bg-white/95 rounded-2xl p-4 shadow-md animate-pulse">
+          <div className="flex justify-between">
+            <div className="space-y-2 flex-1 pr-4">
+              <div className="h-4 w-40 bg-gray-200 rounded" />
+              <div className="h-3 w-56 bg-gray-100 rounded" />
+            </div>
+            <div className="h-6 w-24 bg-emerald-100 rounded" />
           </div>
-          <div className="text-sm text-gray-500">{ride.car} · {ride.seats} places · ETA {ride.eta}</div>
+          <div className="h-2 w-full bg-gray-100 rounded-full mt-3" />
         </div>
-      </div>
-      <div className="text-right shrink-0">
-        <div style={{ color: "var(--brand-green)" }}>{ride.price} FCFA</div>
-        <button
-          onClick={() => toast.success(`🚗 ${ride.driver} contacté ! Arrivée dans ${ride.eta}`)}
-          className="mt-2 px-4 py-1.5 rounded-xl text-sm text-white"
-          style={{ backgroundColor: "var(--brand-green)" }}
-        >
-          Réserver
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/* ─── Colis Card ────────────────────────────────────────────────────── */
-function ColisCard({ offer }: { offer: ColisOffer }) {
-  return (
-    <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-100 flex items-center justify-between gap-3">
-      <div>
-        <div className="text-gray-900">{offer.type}</div>
-        <div className="text-sm text-gray-500 flex items-center gap-2 mt-0.5">
-          <CheckCircle className="w-3.5 h-3.5 text-green-500" />
-          {offer.delay} · Assurance {offer.insurance}
-        </div>
-      </div>
-      <div className="text-right shrink-0">
-        <div style={{ color: "var(--brand-green)" }}>{offer.price} FCFA</div>
-        <button
-          onClick={() => toast.success(`📦 Envoi initié ! Code de suivi généré.`)}
-          className="mt-2 px-4 py-1.5 rounded-xl text-sm"
-          style={{ backgroundColor: "var(--brand-gold)", color: "#1a1a1a" }}
-        >
-          Envoyer
-        </button>
-      </div>
+      ))}
     </div>
   );
 }
@@ -502,11 +618,15 @@ export function TripBookingWidget() {
   const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
   const [seats, setSeats] = useState(1);
   const [searching, setSearching] = useState(false);
-  const [results, setResults] = useState<BusTrip[] | VtcRide[] | ColisOffer[] | null>(null);
+  const [results, setResults] = useState<BusTrip[] | null>(null);
   const [activeTicket, setActiveTicket] = useState<any | null>(null);
 
   const [passengerName, setPassengerName] = useState("");
   const [passengerPhone, setPassengerPhone] = useState("");
+  const [receiverPhone, setReceiverPhone] = useState("");
+  const [packageType, setPackageType] = useState("standard");
+  const [vtcEstimate, setVtcEstimate] = useState<number>(4500);
+
   const [activeAlloDakarTripId, setActiveAlloDakarTripId] = useState<string | null>(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("transen_active_trip_id");
@@ -515,6 +635,20 @@ export function TripBookingWidget() {
   });
   const [trackedTrip, setTrackedTrip] = useState<any | null>(null);
   const [cancelling, setCancelling] = useState(false);
+
+  // Estimation tarif VTC via Spring Boot (/api/vtc/calculate-price)
+  useEffect(() => {
+    if (service !== "allo_dakar" || !from || !to || from === to) return;
+    calculateVtcEstimateApi(18, 25)
+      .then((list) => {
+        if (Array.isArray(list) && list.length > 0 && typeof list[0].price === "number") {
+          setVtcEstimate(list[0].price);
+        }
+      })
+      .catch(() => {
+        setVtcEstimate(4500);
+      });
+  }, [service, from, to]);
 
   useEffect(() => {
     if (activeAlloDakarTripId) {
@@ -525,27 +659,31 @@ export function TripBookingWidget() {
   useEffect(() => {
     if (!activeAlloDakarTripId) return;
 
-    getTripStatus(activeAlloDakarTripId).then(setTrackedTrip).catch(console.error);
-
-    const intervalId = setInterval(async () => {
-      try {
-        const trip = await getTripStatus(activeAlloDakarTripId);
-        setTrackedTrip(trip);
-        if (trip && (trip.status === "COMPLETED" || trip.status === "CANCELLED")) {
-          localStorage.removeItem("transen_active_trip_id");
-        }
-      } catch (err) {
-        console.error("Erreur lors du suivi du trajet:", err);
-      }
-    }, 4000);
-
-    return () => {
-      clearInterval(intervalId);
+    const pollTrip = () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      getTripStatus(activeAlloDakarTripId)
+        .then((trip) => {
+          setTrackedTrip(trip);
+          if (trip && (trip.status === "COMPLETED" || trip.status === "CANCELLED")) {
+            localStorage.removeItem("transen_active_trip_id");
+          }
+        })
+        .catch(() => {});
     };
+
+    pollTrip();
+    const intervalId = setInterval(pollTrip, 4500);
+    return () => clearInterval(intervalId);
   }, [activeAlloDakarTripId]);
 
+  const handleSwapCities = () => {
+    const prevFrom = from;
+    setFrom(to);
+    setTo(prevFrom);
+  };
+
   const handleCancelTrip = async () => {
-    if (!activeAlloDakarTripId) return;
+    if (!activeAlloDakarTripId || cancelling) return;
     if (!window.confirm("Êtes-vous sûr de vouloir annuler votre demande de trajet ? Cette action est irréversible.")) {
       return;
     }
@@ -553,15 +691,14 @@ export function TripBookingWidget() {
     try {
       await cancelAlloDakarTrip(activeAlloDakarTripId);
       toast.success("Votre demande de trajet a été annulée.");
-      setTrackedTrip((prev: any) => prev ? { ...prev, status: "CANCELLED" } : null);
+      setTrackedTrip((prev: any) => (prev ? { ...prev, status: "CANCELLED" } : null));
       localStorage.removeItem("transen_active_trip_id");
       setTimeout(() => {
         setActiveAlloDakarTripId(null);
         setTrackedTrip(null);
       }, 2000);
     } catch (err: any) {
-      console.error("Erreur d'annulation:", err);
-      toast.error(err.message || "Impossible d'annuler le trajet.");
+      toast.error(err?.message || "Impossible d'annuler le trajet.");
     } finally {
       setCancelling(false);
     }
@@ -570,79 +707,102 @@ export function TripBookingWidget() {
   const today = new Date().toISOString().split("T")[0];
 
   const handleSearch = async () => {
-    if (service !== "yobante" && (!from || !to)) {
-      toast.error("Veuillez choisir une ville de départ et de destination");
+    if (searching) return;
+
+    if (!from || !to) {
+      toast.error("Veuillez choisir une ville de départ et de destination.");
       return;
     }
-    if (service !== "yobante" && from === to) {
-      toast.error("Départ et destination doivent être différents");
+    if (from === to) {
+      toast.error("Départ et destination doivent être différents.");
       return;
     }
+
     setSearching(true);
     setResults(null);
-    
+
     try {
       if (service === "bus_company") {
         const apiTrips = await searchTripsApi(from, to, date);
-        
+
         if (!apiTrips || apiTrips.length === 0) {
-          toast.info(`Aucune compagnie disponible de ${from} vers ${to} à la date du ${new Date(date).toLocaleDateString("fr-FR")}.`);
+          toast.info(
+            `Aucune compagnie disponible de ${from} vers ${to} le ${new Date(date).toLocaleDateString("fr-FR")}.`
+          );
           setResults([]);
         } else {
-          setResults(apiTrips.map((apiTrip: any) => {
-            const heureDepart = apiTrip.heure || "08:00";
-            const [h, m] = heureDepart.split(":").map(Number);
-            const arrHour = ((h || 8) + 3) % 24;
-            const arrMin = ((m || 0) + 30) % 60;
-            const formattedArr = `${String(arrHour).padStart(2, '0')}:${String(arrMin).padStart(2, '0')}`;
-            
-            return {
-              id: apiTrip.id,
-              company: apiTrip.compagnie || "Compagnie Partenaire",
-              dep: heureDepart,
-              arr: formattedArr,
-              available: apiTrip.placesDispo,
-              total: apiTrip.placesMax,
-              price: (apiTrip.prix || 5000).toString(),
-              vehicle: apiTrip.type || "Bus",
-              rating: 4.8
-            };
-          }));
+          setResults(
+            apiTrips.map((apiTrip) => {
+              let depTime = "08:00";
+              if (apiTrip.scheduledTime && apiTrip.scheduledTime.includes("T")) {
+                depTime = apiTrip.scheduledTime.split("T")[1].slice(0, 5);
+              }
+              const [h, m] = depTime.split(":").map(Number);
+              const arrHour = ((Number.isNaN(h) ? 8 : h) + 3) % 24;
+              const arrMin = ((Number.isNaN(m) ? 0 : m) + 30) % 60;
+              const formattedArr = `${String(arrHour).padStart(2, "0")}:${String(arrMin).padStart(2, "0")}`;
+              const seatsTotal = apiTrip.totalSeats || 15;
+
+              return {
+                id: apiTrip.id,
+                company: apiTrip.companyName || "Compagnie Partenaire",
+                dep: depTime,
+                arr: formattedArr,
+                available: apiTrip.availableSeats ?? seatsTotal,
+                total: seatsTotal,
+                price: apiTrip.price || 5000,
+                vehicle: seatsTotal >= 30 ? `Grand Bus ${seatsTotal} places` : `Minibus ${seatsTotal} places`,
+                relayPoint: apiTrip.relayPoint || undefined,
+                rating: 4.9,
+              };
+            })
+          );
         }
       } else if (service === "allo_dakar") {
         if (!passengerName.trim() || !passengerPhone.trim()) {
-          toast.error("Veuillez renseigner votre nom et votre numéro de téléphone pour envoyer la demande.");
-          setSearching(false);
+          toast.error("Veuillez renseigner votre nom et votre numéro de téléphone.");
           return;
         }
-
-        const price = 4500; 
 
         const trip = await requestAlloDakarTrip({
           passengerPhone: passengerPhone.trim(),
           passengerName: passengerName.trim(),
           pickupLocation: from,
           dropoffLocation: to,
-          price: price
+          price: vtcEstimate,
         });
 
         if (trip && trip.id) {
           setActiveAlloDakarTripId(trip.id);
-          toast.success("Votre demande de trajet Allo Dakar a été envoyée aux chauffeurs en ligne !");
+          toast.success("Demande Allô Dakar envoyée aux chauffeurs en ligne !");
         } else {
           throw new Error("Impossible d'obtenir l'identifiant du trajet créé.");
         }
       } else {
-        setResults([
-          { id: "c1", type: "Standard (< 5 kg)", price: "2500", delay: "24h maximum", insurance: "Incluse" },
-          { id: "c2", type: "Large (5 – 20 kg)", price: "4500", delay: "24h maximum", insurance: "Incluse" },
-          { id: "c3", type: "Très large (> 20 kg)", price: "8000", delay: "24-48h", insurance: "Optionnelle" }
-        ] as any);
+        // Yobanté réel sur Spring Boot /api/trips/request
+        if (!passengerName.trim() || !passengerPhone.trim() || !receiverPhone.trim()) {
+          toast.error("Veuillez renseigner votre nom, votre numéro et celui du destinataire.");
+          return;
+        }
+        const pkg = YOBANTE_PACKAGES.find((p) => p.id === packageType) || YOBANTE_PACKAGES[0];
+        const parcelTrip = await requestYobanteApi({
+          senderPhone: passengerPhone.trim(),
+          receiverPhone: receiverPhone.trim(),
+          passengerName: passengerName.trim(),
+          pickupLocation: from,
+          dropoffLocation: to,
+          baggageDescription: `${pkg.label} (${from} ➔ ${to})`,
+          price: pkg.price,
+        });
+
+        if (parcelTrip && parcelTrip.id) {
+          setActiveAlloDakarTripId(parcelTrip.id);
+          toast.success(`📦 Expédition Yobanté créée (${pkg.price.toLocaleString("fr-FR")} FCFA) ! Suivi actif.`);
+        }
       }
     } catch (err: any) {
-      console.error("API error during search/request:", err);
-      toast.error(err.message || "Une erreur est survenue lors de la connexion avec le serveur.");
-      setResults([]);
+      toast.error(err?.message || "Erreur lors de la connexion au serveur.");
+      if (service === "bus_company") setResults([]);
     } finally {
       setSearching(false);
     }
@@ -652,29 +812,30 @@ export function TripBookingWidget() {
     <div className="w-full">
       {activeAlloDakarTripId ? (
         <div className="bg-slate-900/90 border border-emerald-500/30 rounded-3xl p-6 shadow-2xl relative overflow-hidden text-white mb-4">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full translate-x-12 -translate-y-12" />
-          
           <div className="flex justify-between items-center mb-6 border-b border-white/10 pb-4">
             <div className="flex items-center gap-2">
-              <span className="text-xl">🚗</span>
-              <span className="font-extrabold text-[#FFD700] tracking-wider text-xs font-mono uppercase">Suivi en direct Allô Dakar</span>
+              <span className="text-xl">{service === "yobante" ? "📦" : "🚗"}</span>
+              <span className="font-extrabold text-[#FFD700] tracking-wider text-xs font-mono uppercase">
+                Suivi en direct TranSen
+              </span>
             </div>
-            <button 
+            <button
+              type="button"
               onClick={() => {
                 setActiveAlloDakarTripId(null);
                 setTrackedTrip(null);
-                toast.info("Suivi du trajet fermé.");
+                toast.info("Suivi fermé.");
               }}
-              className="p-1 px-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition text-xs font-bold"
+              className="p-1 px-3 bg-white/10 hover:bg-white/20 text-white rounded-xl transition text-xs font-bold cursor-pointer"
             >
-              Fermer le suivi
+              Fermer
             </button>
           </div>
 
           <div className="flex justify-between items-center mb-6">
             <div>
               <span className="text-[10px] text-emerald-400 font-mono uppercase block tracking-wider">Départ</span>
-              <span className="text-xl font-bold text-white">{from || "Dakar"}</span>
+              <span className="text-xl font-bold text-white">{trackedTrip?.pickupLocation || from || "Dakar"}</span>
             </div>
             <div className="flex flex-col items-center px-4">
               <ArrowRight className="w-5 h-5 text-[#FFD700] animate-pulse" />
@@ -682,7 +843,7 @@ export function TripBookingWidget() {
             </div>
             <div className="text-right">
               <span className="text-[10px] text-emerald-400 font-mono uppercase block tracking-wider">Destination</span>
-              <span className="text-xl font-bold text-white">{to || "Thiès"}</span>
+              <span className="text-xl font-bold text-white">{trackedTrip?.dropoffLocation || to || "Thiès"}</span>
             </div>
           </div>
 
@@ -694,19 +855,19 @@ export function TripBookingWidget() {
                   {trackedTrip.status === "PENDING" && (
                     <>
                       <div className="w-4 h-4 border-2 border-[#FFD700] border-t-transparent rounded-full animate-spin shrink-0" />
-                      <span className="text-sm font-bold text-[#FFD700]">Recherche de chauffeur en cours...</span>
+                      <span className="text-sm font-bold text-[#FFD700]">Recherche d'un chauffeur en cours...</span>
                     </>
                   )}
                   {trackedTrip.status === "ACCEPTED" && (
                     <>
-                      <CheckCircle className="w-4 h-4 text-emerald-400 fill-emerald-500/10 shrink-0" />
-                      <span className="text-sm font-bold text-emerald-400">Demande acceptée par un chauffeur !</span>
+                      <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span className="text-sm font-bold text-emerald-400">Acceptée par un chauffeur !</span>
                     </>
                   )}
                   {trackedTrip.status === "IN_PROGRESS" && (
                     <>
                       <Clock className="w-4 h-4 text-blue-400 shrink-0" />
-                      <span className="text-sm font-bold text-blue-400">Course en cours... Bon voyage !</span>
+                      <span className="text-sm font-bold text-blue-400">En cours d'acheminement...</span>
                     </>
                   )}
                   {trackedTrip.status === "COMPLETED" && (
@@ -718,45 +879,37 @@ export function TripBookingWidget() {
                   {trackedTrip.status === "CANCELLED" && (
                     <>
                       <X className="w-4 h-4 text-red-500 shrink-0" />
-                      <span className="text-sm font-bold text-red-500">Course annulée.</span>
+                      <span className="text-sm font-bold text-red-500">Demande annulée.</span>
                     </>
                   )}
                 </div>
-                {trackedTrip.status === "PENDING" && (
-                  <p className="text-xs text-white/60 mt-2 font-mono leading-relaxed">
-                    Votre demande a été envoyée en temps réel et est actuellement affichée sur l'application des chauffeurs Allô Dakar. Veuillez patienter, un chauffeur va l'accepter d'un instant à l'autre.
-                  </p>
-                )}
               </div>
 
               {(trackedTrip.status === "ACCEPTED" || trackedTrip.status === "IN_PROGRESS" || trackedTrip.status === "COMPLETED") && (
-                <div className="p-4 bg-emerald-950/40 rounded-2xl border border-emerald-500/20 space-y-3">
-                  <span className="text-[10px] text-emerald-400 block font-mono uppercase">Votre Chauffeur</span>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-base font-bold block">{trackedTrip.driverName || "Chauffeur Allô Dakar"}</span>
-                      <span className="text-xs text-[#FFD700] flex items-center gap-1 mt-0.5">
-                        <Star className="w-3.5 h-3.5 fill-[#FFD700]" /> 4.9 · Véhicule vérifié TranSen
-                      </span>
-                    </div>
-                    {trackedTrip.driverPhone && (
-                      <a 
-                        href={`tel:${trackedTrip.driverPhone}`}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl transition duration-150 flex items-center gap-1.5 text-xs font-bold cursor-pointer"
-                      >
-                        📞 Appeler ({trackedTrip.driverPhone})
-                      </a>
-                    )}
+                <div className="p-4 bg-emerald-950/40 rounded-2xl border border-emerald-500/20 flex items-center justify-between">
+                  <div>
+                    <span className="text-[10px] text-emerald-400 block font-mono uppercase">Votre Chauffeur</span>
+                    <span className="text-base font-bold block">{trackedTrip.driverName || "Chauffeur TranSen"}</span>
                   </div>
+                  {trackedTrip.driverPhone && (
+                    <a
+                      href={`tel:${trackedTrip.driverPhone}`}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold"
+                    >
+                      📞 {trackedTrip.driverPhone}
+                    </a>
+                  )}
                 </div>
               )}
+
               {(trackedTrip.status === "PENDING" || trackedTrip.status === "ACCEPTED" || trackedTrip.status === "IN_PROGRESS") && (
                 <button
+                  type="button"
                   onClick={handleCancelTrip}
                   disabled={cancelling}
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl transition text-xs font-bold mt-4 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
+                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl transition text-xs font-bold cursor-pointer disabled:opacity-50"
                 >
-                  {cancelling ? "Annulation en cours..." : "🚫 Annuler ma demande de trajet"}
+                  {cancelling ? "Annulation en cours..." : "🚫 Annuler ma demande"}
                 </button>
               )}
             </div>
@@ -769,159 +922,201 @@ export function TripBookingWidget() {
         </div>
       ) : (
         <>
-          {typeof window !== "undefined" && localStorage.getItem("transen_active_trip_id") && (
-            <div className="bg-emerald-950/60 border border-emerald-500/30 rounded-2xl p-4 mb-5 flex justify-between items-center text-white">
-              <div className="flex items-center gap-2">
-                <span className="animate-pulse w-2.5 h-2.5 rounded-full bg-emerald-400" />
-                <span className="text-xs font-semibold">Demande Allô Dakar en cours de suivi.</span>
-              </div>
-              <button
-                onClick={() => {
-                  const id = localStorage.getItem("transen_active_trip_id");
-                  if (id) {
-                    setActiveAlloDakarTripId(id);
-                  }
-                }}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer"
-              >
-                Rejoindre le suivi
-              </button>
-            </div>
-          )}
-
           {/* Service Tabs */}
           <div className="flex gap-1 bg-black/20 backdrop-blur rounded-2xl p-1 mb-5">
             {SERVICES.map(({ id, label, sub, Icon }) => (
               <button
                 key={id}
-                onClick={() => { setService(id); setResults(null); }}
-                className={`flex-1 flex flex-col items-center py-3 px-2 rounded-xl transition-all ${
+                type="button"
+                onClick={() => {
+                  setService(id);
+                  setResults(null);
+                }}
+                className={`flex-1 flex flex-col items-center py-3 px-2 rounded-xl transition-all cursor-pointer ${
                   service === id ? "bg-white shadow-lg" : "hover:bg-white/10"
                 }`}
               >
                 <Icon className="w-5 h-5 mb-1" style={{ color: service === id ? "var(--brand-green)" : "white" }} />
-                <span className={`text-sm ${service === id ? "" : "text-white"}`} style={service === id ? { color: "var(--brand-green)" } : {}}>
+                <span
+                  className={`text-sm font-semibold ${service === id ? "" : "text-white"}`}
+                  style={service === id ? { color: "var(--brand-green)" } : {}}
+                >
                   {label}
                 </span>
-                <span className={`text-xs ${service === id ? "text-gray-400" : "text-white/50"}`}>{sub}</span>
+                <span className={`text-[11px] ${service === id ? "text-gray-400" : "text-white/50"}`}>{sub}</span>
               </button>
             ))}
           </div>
 
-          {/* Form */}
-          <div className={`grid gap-3 mb-4 ${service === "yobante" ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"}`}>
-            {service !== "yobante" ? (
+          {/* City Pickers + Quick Swap */}
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 mb-3 items-end">
+            <div className="sm:col-span-5">
+              <CityPicker label="Ville de départ" value={from} onChange={setFrom} exclude={to} />
+            </div>
+            <div className="hidden sm:flex sm:col-span-2 justify-center pb-1">
+              <button
+                type="button"
+                onClick={handleSwapCities}
+                title="Inverser départ et destination"
+                className="w-10 h-10 rounded-full bg-white/15 hover:bg-white/25 text-white flex items-center justify-center border border-white/20 transition cursor-pointer"
+              >
+                <ArrowRightLeft className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="sm:col-span-5">
+              <CityPicker label="Destination" value={to} onChange={setTo} exclude={from} />
+            </div>
+          </div>
+
+          {/* Service-specific fields */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            {service === "bus_company" && (
               <>
-                <CityPicker label="Ville de départ" value={from} onChange={setFrom} exclude={to} />
-                <CityPicker label="Destination" value={to} onChange={setTo} exclude={from} />
-              </>
-            ) : (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Type de colis</p>
-                <select className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm [color-scheme:dark]">
-                  <option>Standard ({"<"} 5 kg)</option>
-                  <option>Large (5 – 20 kg)</option>
-                  <option>Très large ({">"}20 kg)</option>
-                </select>
-              </div>
-            )}
-
-            {/* Date / Nom */}
-            {service === "allo_dakar" ? (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Votre Nom complet</p>
-                <input
-                  type="text"
-                  placeholder="Ex: Babacar Diop"
-                  value={passengerName}
-                  onChange={e => setPassengerName(e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm [color-scheme:dark] placeholder:text-white/30"
-                />
-              </div>
-            ) : (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Date de départ</p>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
-                  <input
-                    type="date"
-                    value={date}
-                    min={today}
-                    onChange={e => setDate(e.target.value)}
-                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl pl-9 pr-4 py-3 text-sm [color-scheme:dark]"
-                  />
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Date de départ</p>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={date}
+                      min={today}
+                      onChange={(e) => setDate(e.target.value)}
+                      className="w-full bg-white/10 border border-white/20 text-white rounded-xl pl-9 pr-4 py-3 text-sm [color-scheme:dark]"
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Seats / Téléphone */}
-            {service === "allo_dakar" ? (
-              <div>
-                <p className="text-white/60 text-xs mb-1">Numéro de téléphone</p>
-                <input
-                  type="tel"
-                  placeholder="Ex: 771234567"
-                  value={passengerPhone}
-                  onChange={e => setPassengerPhone(e.target.value)}
-                  className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm [color-scheme:dark] placeholder:text-white/30"
-                />
-              </div>
-            ) : (
-              service !== "yobante" && (
                 <div>
                   <p className="text-white/60 text-xs mb-1">Passagers</p>
                   <div className="relative">
                     <Users className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50 pointer-events-none" />
                     <select
                       value={seats}
-                      onChange={e => setSeats(Number(e.target.value))}
+                      onChange={(e) => setSeats(Number(e.target.value))}
                       className="w-full bg-white/10 border border-white/20 text-white rounded-xl pl-9 pr-4 py-3 text-sm [color-scheme:dark] appearance-none"
                     >
-                      {[1, 2, 3, 4].map(n => (
-                        <option key={n} value={n}>{n} place{n > 1 ? "s" : ""}</option>
+                      {[1, 2, 3, 4].map((n) => (
+                        <option key={n} value={n}>
+                          {n} place{n > 1 ? "s" : ""}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
-              )
+              </>
+            )}
+
+            {service === "allo_dakar" && (
+              <>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Votre Nom complet</p>
+                  <input
+                    type="text"
+                    placeholder="Ex: Babacar Diop"
+                    value={passengerName}
+                    onChange={(e) => setPassengerName(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm placeholder:text-white/30"
+                  />
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Téléphone (Tarif estimé ~{vtcEstimate.toLocaleString("fr-FR")} F)</p>
+                  <input
+                    type="tel"
+                    placeholder="Ex: 771234567"
+                    value={passengerPhone}
+                    onChange={(e) => setPassengerPhone(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm placeholder:text-white/30"
+                  />
+                </div>
+              </>
+            )}
+
+            {service === "yobante" && (
+              <>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Format du colis</p>
+                  <select
+                    value={packageType}
+                    onChange={(e) => setPackageType(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm [color-scheme:dark]"
+                  >
+                    {YOBANTE_PACKAGES.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label} — {p.price.toLocaleString("fr-FR")} F
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Nom de l'expéditeur</p>
+                  <input
+                    type="text"
+                    placeholder="Ex: Awa Ndiaye"
+                    value={passengerName}
+                    onChange={(e) => setPassengerName(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm placeholder:text-white/30"
+                  />
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Tél. Expéditeur</p>
+                  <input
+                    type="tel"
+                    placeholder="77 123 45 67"
+                    value={passengerPhone}
+                    onChange={(e) => setPassengerPhone(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm placeholder:text-white/30"
+                  />
+                </div>
+                <div>
+                  <p className="text-white/60 text-xs mb-1">Tél. Destinataire</p>
+                  <input
+                    type="tel"
+                    placeholder="78 987 65 43"
+                    value={receiverPhone}
+                    onChange={(e) => setReceiverPhone(e.target.value)}
+                    className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm placeholder:text-white/30"
+                  />
+                </div>
+              </>
             )}
           </div>
 
-          {/* Search Button */}
           <motion.button
+            type="button"
             onClick={handleSearch}
             whileTap={{ scale: 0.98 }}
             disabled={searching}
-            className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 transition-all hover:shadow-xl disabled:opacity-80"
+            className="w-full py-4 rounded-2xl flex items-center justify-center gap-3 font-bold transition-all hover:shadow-xl disabled:opacity-70 cursor-pointer"
             style={{ backgroundColor: "var(--brand-gold)", color: "#111" }}
           >
             {searching ? (
               <>
                 <div className="w-5 h-5 border-2 border-gray-800 border-t-transparent rounded-full animate-spin" />
-                <span>{service === "allo_dakar" ? "Envoi de la demande..." : "Recherche en cours…"}</span>
+                <span>{service === "bus_company" ? "Recherche en cours…" : "Envoi en cours..."}</span>
+              </>
+            ) : service === "allo_dakar" ? (
+              <>
+                <Car className="w-5 h-5" />
+                <span>Demander un chauffeur Allô Dakar</span>
+              </>
+            ) : service === "yobante" ? (
+              <>
+                <Package className="w-5 h-5" />
+                <span>Expédier mon colis Yobanté</span>
               </>
             ) : (
               <>
-                {service === "allo_dakar" ? (
-                  <>
-                    <Car className="w-5 h-5" />
-                    <span>Demander un chauffeur Allô Dakar</span>
-                  </>
-                ) : (
-                  <>
-                    <Search className="w-5 h-5" />
-                    <span>Rechercher les voyages</span>
-                  </>
-                )}
+                <Search className="w-5 h-5" />
+                <span>Rechercher les voyages</span>
               </>
             )}
           </motion.button>
         </>
       )}
 
-      {/* Results */}
+      {searching && service === "bus_company" && <ResultsSkeleton />}
+
       <AnimatePresence>
-        {results && (
+        {results && !searching && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -931,35 +1126,33 @@ export function TripBookingWidget() {
             <div className="flex items-center justify-between mb-1">
               <p className="text-white/80 text-sm">
                 {results.length} résultat{results.length > 1 ? "s" : ""} trouvé{results.length > 1 ? "s" : ""}
-                {service !== "yobante" && from && to && <span className="text-white/50"> — {from} → {to}</span>}
+                {from && to && <span className="text-white/50"> — {from} → {to}</span>}
               </p>
-              <button onClick={() => setResults(null)} className="text-white/40 hover:text-white/70">
+              <button type="button" onClick={() => setResults(null)} className="text-white/40 hover:text-white/70 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
-            {service === "bus_company" && (results as BusTrip[]).map(t => (
-              <BusCard 
-                key={t.id} 
-                trip={t} 
-                wantedSeats={seats} 
+            {results.map((t) => (
+              <BusCard
+                key={t.id}
+                trip={t}
+                wantedSeats={seats}
                 onBookingSuccess={(ticket) => {
                   setActiveTicket({
                     ...ticket,
                     from: from || "Dakar",
                     to: to || "Kaolack",
-                    date: date,
-                    qrcode: `TS-QR-${Math.floor(100000 + Math.random() * 900000)}`
+                    date,
+                    qrcode: ticket.boardingCode || `TS-${ticket.id.slice(0, 6).toUpperCase()}`,
                   });
                 }}
               />
             ))}
-            {service === "allo_dakar" && (results as VtcRide[]).map(r => <VtcCard key={r.id} ride={r} />)}
-            {service === "yobante" && (results as ColisOffer[]).map(o => <ColisCard key={o.id} offer={o} />)}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* 🎟️ LUXURY BOARDING PASS TICKET MODAL OVERLAY ─── */}
+      {/* Boarding Pass Ticket Modal */}
       <AnimatePresence>
         {activeTicket && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
@@ -969,19 +1162,16 @@ export function TripBookingWidget() {
               exit={{ scale: 0.9, opacity: 0, y: 30 }}
               className="relative w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-gray-100 flex flex-col"
             >
-              {/* Top luxury header */}
               <div className="bg-emerald-800 text-white p-6 pb-8 relative overflow-hidden">
-                {/* Decorative absolute element */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400/10 rounded-full translate-x-12 -translate-y-12" />
-                
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-1.5">
                     <span className="text-lg">🇸🇳</span>
                     <span className="font-extrabold text-[#FFD700] tracking-wider text-xs font-mono uppercase">Carte d’accès TranSen</span>
                   </div>
-                  <button 
+                  <button
+                    type="button"
                     onClick={() => setActiveTicket(null)}
-                    className="p-1 px-1.5 bg-white/20 hover:bg-white/30 text-white rounded-full transition text-[11px] font-bold"
+                    className="p-1 px-2.5 bg-white/20 hover:bg-white/30 text-white rounded-full transition text-[11px] font-bold cursor-pointer"
                   >
                     Fermer
                   </button>
@@ -992,9 +1182,9 @@ export function TripBookingWidget() {
                     <span className="text-[10px] text-emerald-300 font-mono uppercase block tracking-wider">Provenance</span>
                     <span className="text-2xl font-extrabold text-white tracking-tight">{activeTicket.from}</span>
                   </div>
-                  <div className="flex flex-col items-center px-4 self-center relative w-12 text-center h-full">
+                  <div className="flex flex-col items-center px-4 self-center text-center">
                     <ArrowRight className="w-5 h-5 text-amber-400 animate-pulse" />
-                    <span className="text-[9px] text-[#FFD700] mt-0.5 bg-emerald-900 border border-emerald-700/50 px-1 rounded font-mono">1% Fee</span>
+                    <span className="text-[9px] text-[#FFD700] mt-0.5 bg-emerald-900 border border-emerald-700/50 px-1 rounded font-mono">2% Fee</span>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] text-emerald-300 font-mono uppercase block tracking-wider">Destination</span>
@@ -1003,97 +1193,71 @@ export function TripBookingWidget() {
                 </div>
               </div>
 
-              {/* Tearing line with circular side punches */}
               <div className="relative h-1 bg-gray-50 flex items-center justify-between">
                 <div className="absolute -left-3 w-6 h-6 rounded-full bg-slate-950/80 backdrop-blur" />
                 <div className="w-full border-t border-dashed border-gray-300 mx-5" />
                 <div className="absolute -right-3 w-6 h-6 rounded-full bg-slate-950/80 backdrop-blur" />
               </div>
 
-              {/* Middle Section (Ticket Body) */}
               <div className="p-6 bg-white space-y-4 text-xs">
                 <div className="grid grid-cols-2 gap-y-4 gap-x-2 font-mono">
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Voyageur</span>
-                    <span className="text-gray-800 font-bold block truncate">{activeTicket.passengerName} 🇸🇳</span>
+                    <span className="text-gray-800 font-bold block truncate">{activeTicket.passengerName}</span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[9px] uppercase">Réseau / Transporteur</span>
+                    <span className="text-gray-400 block text-[9px] uppercase">Transporteur</span>
                     <span className="text-gray-800 font-bold block truncate">{activeTicket.company}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Date de Départ</span>
-                    <span className="text-gray-800 font-bold block truncate">{new Date(activeTicket.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}</span>
+                    <span className="text-gray-800 font-bold block truncate">
+                      {new Date(activeTicket.date).toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" })}
+                    </span>
                   </div>
                   <div>
-                    <span className="text-gray-400 block text-[9px] uppercase">Heure / Embarquement</span>
+                    <span className="text-gray-400 block text-[9px] uppercase">Heure</span>
                     <span className="text-gray-800 font-bold block truncate">{activeTicket.dep}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400 block text-[9px] uppercase">Type de véhicule</span>
-                    <span className="text-emerald-700 font-bold block truncate bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 self-start w-fit">{activeTicket.vehicle}</span>
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Places Assises</span>
                     <span className="text-gray-900 font-extrabold block text-sm">
-                      {activeTicket.seats.length > 0 ? activeTicket.seats.map((s: number) => `#${s}`).join(", ") : "Libre / Non-Réservé"}
+                      {activeTicket.seats.map((s: number) => `#${s}`).join(", ")}
                     </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-400 block text-[9px] uppercase">Code Embarquement</span>
+                    <span className="text-emerald-700 font-black block text-sm">{activeTicket.qrcode}</span>
                   </div>
                 </div>
 
-                <div className="my-5 p-3.5 bg-gray-50 rounded-2xl border border-gray-200/60 flex items-center justify-between">
+                <div className="my-4 p-3.5 bg-gray-50 rounded-2xl border border-gray-200/60 flex items-center justify-between">
                   <div>
                     <span className="text-gray-500 font-mono text-[10px] block">Statut règlement :</span>
                     <span className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${activeTicket.routingType === "specific" ? "text-emerald-600" : "text-amber-600"}`}>
-                      <CheckCircle className="w-4 h-4 text-emerald-500 fill-emerald-50 shrink-0" />
-                      {activeTicket.routingType === "specific" ? "Réglé par SenePay (Wave/OM)" : "Paiement direct espèce (Gare)"}
+                      <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                      {activeTicket.routingType === "specific" ? "SenePay (Wave/OM)" : "Espèces à bord"}
                     </span>
                   </div>
                   <div className="text-right">
-                    <span className="text-gray-400 text-[9px] block uppercase font-mono">Montant net</span>
-                    <span className="text-lg font-extrabold text-emerald-800 font-mono">{activeTicket.totalCost.toLocaleString()} FCFA</span>
+                    <span className="text-gray-400 text-[9px] block uppercase font-mono">Total</span>
+                    <span className="text-lg font-extrabold text-emerald-800 font-mono">{activeTicket.totalCost.toLocaleString("fr-FR")} FCFA</span>
                   </div>
-                </div>
-
-                {/* Animated Scanner QR code area */}
-                <div className="flex flex-col items-center justify-center pt-3 border-t border-gray-100 relative">
-                  <div className="relative p-2 bg-slate-900 rounded-2xl border border-slate-800 w-32 h-32 flex items-center justify-center overflow-hidden">
-                    {/* Animated laser scan beam */}
-                    <motion.div 
-                      animate={{
-                        top: ["10%", "90%", "10%"]
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                      }}
-                      className="absolute left-1.5 right-1.5 h-1 bg-red-500 shadow-[0_0_8px_#ef4444]"
-                    />
-                    
-                    {/* Abstract QR design bars */}
-                    <div className="text-3xl text-white select-none">📱🎟️</div>
-                  </div>
-                  <span className="text-[10px] font-mono tracking-wider text-slate-500 mt-2">ID Réservation: {activeTicket.id}</span>
                 </div>
               </div>
 
-              {/* Utility Print / Save Bar */}
               <div className="bg-gray-50 p-4 border-t border-gray-100 flex gap-2">
                 <button
-                  onClick={() => {
-                    toast.success("🖨️ Préparation du document PDF... Votre billet est enregistré localement.");
-                  }}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition duration-150 flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  type="button"
+                  onClick={() => window.print()}
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
-                  📥 Télécharger (PDF)
+                  🖨️ Imprimer / Sauver (PDF)
                 </button>
                 <button
-                  onClick={() => {
-                    setActiveTicket(null);
-                    toast.info("🎟️ Votre réservation a été ajoutée à votre portefeuille de voyages.");
-                  }}
-                  className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition duration-150 cursor-pointer"
+                  type="button"
+                  onClick={() => setActiveTicket(null)}
+                  className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-xl transition cursor-pointer"
                 >
                   Fermer
                 </button>

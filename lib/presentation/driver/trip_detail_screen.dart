@@ -35,6 +35,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
   int _currentStepIndex = 0;
   double _remainingDistance = 0.0;
   bool _isNavigating = false;
+  bool _isActionLoading = false;
 
   @override
   void initState() {
@@ -400,7 +401,7 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     if (subInfo.isActive) return true;
     
     final wallet = ref.read(walletProvider).value;
-    final commission = widget.trip.price * 0.01;
+    final commission = widget.trip.price * 0.02;
     
     if ((wallet?.balance ?? 0.0) < commission) {
       if (!mounted) return false;
@@ -596,18 +597,20 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                               ],
                             ),
                             child: ElevatedButton(
-                              onPressed: () async {
+                              onPressed: _isActionLoading ? null : () async {
                                  final messenger = ScaffoldMessenger.of(context);
                                  final navigator = Navigator.of(context);
-                                 if (widget.trip.status == 'pending') {
-                                   final auth = ref.read(authProvider);
-                                   if (auth != null) {
-                                     await ref.read(tripRepositoryProvider).acceptTrip(widget.trip.id, auth.userId);
-                                     if (mounted) navigator.pop();
-                                   }
-                                 } else if (widget.trip.status == 'accepted') {
-                                   // Démarrer la course
-                                   try {
+                                 setState(() => _isActionLoading = true);
+                                 try {
+                                   if (widget.trip.status == 'pending') {
+                                     final auth = ref.read(authProvider);
+                                     if (auth != null) {
+                                       await ref.read(tripRepositoryProvider).acceptTrip(widget.trip.id, auth.userId);
+                                       ref.read(walletProvider.notifier).refresh();
+                                       if (mounted) navigator.pop();
+                                     }
+                                   } else if (widget.trip.status == 'accepted') {
+                                     // Démarrer la course
                                      await FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen')
                                          .collection('trips')
                                          .doc(widget.trip.id)
@@ -625,17 +628,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                          ),
                                        );
                                      }
-                                   } catch (navErr) {
-                                     debugPrint("Erreur Navigation: $navErr");
-                                     if (mounted) {
-                                       messenger.showSnackBar(
-                                         SnackBar(content: Text("Erreur: $navErr")),
-                                       );
-                                     }
-                                   }
-                                 } else {
-                                  try {
-                                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
+                                   } else {
+                                    messenger.showSnackBar(const SnackBar(content: Text("Vérification GPS..."), duration: Duration(seconds: 1)));
                                     
                                     geo.Position? position;
                                     try {
@@ -655,14 +649,23 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                       currentLng: position?.longitude,
                                     );
                                     
-                                    if (context.mounted) {
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Course terminée !"), backgroundColor: Colors.green));
+                                    if (mounted) {
+                                      navigator.pop();
+                                      messenger.showSnackBar(const SnackBar(content: Text("Course terminée !"), backgroundColor: Colors.green));
                                     }
-                                  } catch (e) {
-                                    if (context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Erreur: $e"), backgroundColor: Colors.red));
                                   }
-                                }
+                                 } catch (e) {
+                                   if (mounted) {
+                                     messenger.showSnackBar(
+                                       SnackBar(
+                                         content: Text(e.toString().replaceAll("Exception: ", "")),
+                                         backgroundColor: Colors.red,
+                                       ),
+                                     );
+                                   }
+                                 } finally {
+                                   if (mounted) setState(() => _isActionLoading = false);
+                                 }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: widget.trip.status == 'pending'
@@ -675,7 +678,13 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                                 elevation: 0,
                               ),
-                              child: Text(
+                              child: _isActionLoading
+                                  ? const SizedBox(
+                                      width: 22,
+                                      height: 22,
+                                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                    )
+                                  : Text(
                                 widget.trip.status == 'pending'
                                     ? "ACCEPTER LA COURSE"
                                     : widget.trip.status == 'accepted'

@@ -18,10 +18,19 @@
     --glass-border: #E0E3E8; /* Clean Slate-200 / border-gray-300 */
     --text-main: #1F1F1F; /* High legibility Charcoal */
     --text-dim: #5F6368; /* Google Secondary Gray */
-    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --accent-cyan: #06B6D4;
+    --transition: all 0.18s cubic-bezier(0.22, 1, 0.36, 1);
     --shadow-sm: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 1px 3px 1px rgba(60, 64, 67, 0.15);
     --shadow-md: 0 1px 2px 0 rgba(60, 64, 67, 0.1), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
-    --shadow-lg: 0 4px 16px rgba(0,0,0,0.08);
+    --shadow-lg: 0 10px 30px -8px rgba(6, 78, 59, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,6 +38,7 @@
 body {
     font-family: 'Outfit', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     background-color: var(--dark);
+    background-image: radial-gradient(circle at 90% 10%, rgba(16, 185, 129, 0.06), transparent 40%), radial-gradient(circle at 10% 90%, rgba(6, 182, 212, 0.05), transparent 40%);
     color: var(--text-main);
     min-height: 100vh;
     overflow-x: hidden;
@@ -38,13 +48,15 @@ body {
 /* Glassmorphism & Card Utility overrides for Light Theme */
 .glass {
     background: var(--glass);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--glass-border);
 }
 
 .glass-card {
     background: var(--card-bg);
     border: 1px solid var(--glass-border);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 24px;
     transition: var(--transition);
     position: relative;
@@ -55,13 +67,14 @@ body {
     content: '';
     position: absolute;
     top: 0; left: 0; width: 100%; height: 3px;
-    background: linear-gradient(90deg, transparent, var(--primary), transparent);
-    opacity: 0.25;
+    background: linear-gradient(90deg, transparent, var(--primary), var(--accent-cyan), transparent);
+    opacity: 0.6;
 }
 
 .glass-card:hover {
-    border-color: rgba(16, 185, 129, 0.25);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    border-color: rgba(16, 185, 129, 0.35);
+    box-shadow: 0 12px 32px -10px rgba(16, 185, 129, 0.16);
+    transform: translateY(-2px);
 }
 
 /* Login Page Styling - Crisp Google Account Login Style */

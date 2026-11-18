@@ -14,6 +14,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 }
 
 class NotificationService {
+  static final NotificationService _instance = NotificationService._internal();
+  factory NotificationService() => _instance;
+  NotificationService._internal();
+
   final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
 
@@ -27,8 +31,14 @@ class NotificationService {
 
   final Map<String, StreamSubscription> _chatSubscriptions = {};
   final Map<String, String> _knownTripStatuses = {};
+  bool _isInitialized = false;
+  String? _initializedUserId;
 
   Future<void> init(String userId) async {
+    if (_isInitialized && _initializedUserId == userId) return;
+    _isInitialized = true;
+    _initializedUserId = userId;
+
     // 1. Demander la permission
     NotificationSettings settings = await _fcm.requestPermission(
       alert: true,
@@ -150,10 +160,13 @@ class NotificationService {
     final activeIds = docs.map((d) => d.id).toSet();
     
     // Supprimer les écouteurs pour les trajets qui ne sont plus actifs ou plus là
-    _chatSubscriptions.removeWhere((id, sub) {
-      if (!activeIds.contains(id) && id.startsWith(collectionName)) {
-        sub.cancel();
-        return true;
+    _chatSubscriptions.removeWhere((key, sub) {
+      if (key.startsWith("${collectionName}_")) {
+        final tripId = key.substring(collectionName.length + 1);
+        if (!activeIds.contains(tripId)) {
+          sub.cancel();
+          return true;
+        }
       }
       return false;
     });

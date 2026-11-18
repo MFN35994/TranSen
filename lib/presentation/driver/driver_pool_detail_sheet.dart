@@ -45,6 +45,7 @@ class _DriverPoolDetailSheetState
       await ref
           .read(tripRepositoryProvider)
           .acceptPool(widget.pool.id, auth.userId);
+      ref.read(walletProvider.notifier).refresh();
 
       if (mounted) {
         Navigator.of(context).pop(true);
@@ -86,9 +87,9 @@ class _DriverPoolDetailSheetState
     final subInfo = await SubscriptionService().checkSubscription(auth.userId);
     if (subInfo.isActive) return true;
     
-    // 2. Vérifier le solde (Pool prix fixe 10000F, donc 1% = 100F)
+    // 2. Vérifier le solde (Pool prix fixe 10000F, donc 2% = 200F)
     final wallet = ref.read(walletProvider).value;
-    const commission = 100.0; 
+    const commission = 200.0; 
     
     if ((wallet?.balance ?? 0.0) < commission) {
       if (mounted) {

@@ -3,6 +3,7 @@
 export 'src/data/repositories/trip_repository.dart';
 export 'src/providers/trip_providers.dart';
 export 'src/screens/ticket_screen.dart';
+export 'src/screens/scanner_screen.dart';
 export 'src/providers/pool_providers.dart';
 export 'src/screens/trip_tracking_screen.dart';
 export 'src/widgets/order_sheet.dart';

@@ -150,24 +150,23 @@ export function Tarifs() {
     <div>
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <section
-        className="py-24"
-        style={{ background: "linear-gradient(135deg, #062617 0%, #14A44D 100%)" }}
+        className="py-24 relative overflow-hidden"
+        style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="cyber-grid absolute inset-0 opacity-65 pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-block px-4 py-1.5 rounded-full text-sm mb-6"
-              style={{ backgroundColor: "rgba(255,215,0,0.2)", color: "var(--brand-gold)" }}
-            >
-              Tarifs transparents
+            <div className="inline-block px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold mb-6 bg-emerald-950/60 border border-emerald-400/35 text-amber-300 backdrop-blur-md">
+              Tarifs transparents · 2%
             </div>
-            <h1 className="text-4xl md:text-5xl text-white mb-5">
-              Des prix clairs, sans surprises
+            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-5 tracking-tight">
+              Des prix clairs, <span className="bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">sans surprises</span>
             </h1>
-            <p className="text-white/70 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-slate-300 max-w-2xl mx-auto leading-relaxed">
               Consultez la grille tarifaire indicative pour tous vos déplacements au Sénégal.
               Les prix exacts s'affichent lors de votre réservation.
             </p>
@@ -454,7 +453,7 @@ export function Tarifs() {
                     </li>
                     <li className="flex gap-2">
                       <span className="text-amber-500 font-bold shrink-0">2.</span>
-                      <span><strong>Fallback TransPay :</strong> Sans abonnement, son portefeuille TransPay est vérifié. La course est validée si le solde couvre la commission de 1%.</span>
+                      <span><strong>Fallback TransPay :</strong> Sans abonnement, son portefeuille TransPay est vérifié. La course est validée si le solde couvre la commission de 2%.</span>
                     </li>
                   </ul>
                 </div>
@@ -481,7 +480,7 @@ export function Tarifs() {
                     </li>
                     <li className="flex gap-2">
                       <span className="text-emerald-500 shrink-0">✔</span>
-                      <span>Commission standard de <strong>1%</strong> prélevée directement sur le compte TransPay, sauf sous abonnement illimité.</span>
+                      <span>Commission standard de <strong>2%</strong> prélevée directement sur le compte TransPay, sauf sous abonnement illimité.</span>
                     </li>
                   </ul>
                 </div>
@@ -504,7 +503,7 @@ export function Tarifs() {
                   <ul className="space-y-2.5 text-xs text-gray-600">
                     <li className="flex gap-2">
                       <span className="text-emerald-500 shrink-0">✔</span>
-                      <span><strong>Demande Spécifique:</strong> Le client paye par SenePay (OM, Wave, Free). 99% crédités sur le dashboard compagnie, 1% retenus par TranSen.</span>
+                      <span><strong>Demande Spécifique:</strong> Le client paye par SenePay (OM, Wave, Free). 98% crédités sur le dashboard compagnie, 2% retenus par TranSen.</span>
                     </li>
                     <li className="flex gap-2">
                       <span className="text-amber-500 shrink-0">⚠</span>

@@ -154,6 +154,38 @@ const db = getFirestore(firebaseApp, "transen");
 const API_BASE_URL = 'https://api.transen.org'; // The Spring Boot backend
 
 // ==========================================
+// ANTI-DOUBLE-CLICK, IDEMPOTENCY & CACHE ENGINE
+// ==========================================
+const _inFlightMutations = new Set();
+const _recentMutationTimestamps = new Map();
+const _MUTATION_COOLDOWN_MS = 1500;
+const _getCache = new Map();
+const _GET_CACHE_TTL_MS = 4000;
+
+function _hashStr(s) {
+    let h = 0;
+    for (let i = 0; i < s.length; i++) {
+        h = ((h << 5) - h) + s.charCodeAt(i);
+        h |= 0;
+    }
+    return Math.abs(h);
+}
+
+function _computeMutationKey(config) {
+    const method = (config.method || 'GET').toUpperCase();
+    const bodyStr = config.data ? (typeof config.data === 'string' ? config.data : JSON.stringify(config.data)) : '';
+    return `${method}:${config.url}:${_hashStr(bodyStr)}`;
+}
+
+function _debounce(fn, delayMs = 220) {
+    let timer = null;
+    return function(...args) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delayMs);
+    };
+}
+
+// ==========================================
 // CENTRALIZED SECURE AXIOS CLIENT (Defense in Depth)
 // ==========================================
 const apiSecureClient = axios.create({
@@ -167,23 +199,47 @@ const apiSecureClient = axios.create({
     }
 });
 
-// Request interceptor to automatically inject Auth Bearer token and customized security markers
+// Request interceptor: JWT + Anti-Double-Click + X-Idempotency-Key
 apiSecureClient.interceptors.request.use((config) => {
     const token = localStorage.getItem('transen_company_token');
     if (token) {
         config.headers['Authorization'] = `Bearer ${token}`;
     }
-    // CSRF protection header
     config.headers['X-CSRF-Token'] = 'Secure-TranSen-B2B-Token';
+
+    const method = (config.method || 'GET').toUpperCase();
+    const isMutation = method === 'POST' || method === 'PUT' || method === 'DELETE' || method === 'PATCH';
+    if (isMutation) {
+        const mutKey = _computeMutationKey(config);
+        const now = Date.now();
+        const lastSent = _recentMutationTimestamps.get(mutKey);
+        if (_inFlightMutations.has(mutKey) || (lastSent && (now - lastSent) < _MUTATION_COOLDOWN_MS)) {
+            return Promise.reject({
+                isDuplicateBlocked: true,
+                message: 'Requête déjà en cours de traitement (Anti-Double-Click actif).'
+            });
+        }
+        _inFlightMutations.add(mutKey);
+        _recentMutationTimestamps.set(mutKey, now);
+        config.__mutationKey = mutKey;
+        config.headers['X-Idempotency-Key'] = `${now}-${_hashStr(mutKey)}`;
+        _getCache.clear();
+    }
     return config;
 }, (error) => {
     return Promise.reject(error);
 });
 
-// Response interceptor to centrally handle authentication expiries and standard error codes
+// Response interceptor: libère le verrou & gère 401/403
 apiSecureClient.interceptors.response.use((response) => {
+    if (response.config && response.config.__mutationKey) {
+        _inFlightMutations.delete(response.config.__mutationKey);
+    }
     return response;
 }, (error) => {
+    if (error && error.config && error.config.__mutationKey) {
+        _inFlightMutations.delete(error.config.__mutationKey);
+    }
     if (error.response) {
         const status = error.response.status;
         if (status === 401 || status === 403) {
@@ -199,8 +255,20 @@ apiSecureClient.interceptors.response.use((response) => {
 async function customTransenFetch(resource, init = {}) {
     const urlStr = typeof resource === 'string' ? resource : (resource && resource.url) ? resource.url : "";
     const method = (init.method || "GET").toUpperCase();
-    
-    // Normalize body to data object if needed
+
+    if (method === "GET") {
+        const cached = _getCache.get(urlStr);
+        if (cached && (Date.now() - cached.ts) < _GET_CACHE_TTL_MS) {
+            return {
+                ok: true,
+                status: 200,
+                statusText: "OK",
+                json: async () => cached.data,
+                text: async () => (typeof cached.data === 'object' ? JSON.stringify(cached.data) : String(cached.data))
+            };
+        }
+    }
+
     let reqData = null;
     if (init.body) {
         if (typeof init.body === 'string') {
@@ -213,7 +281,7 @@ async function customTransenFetch(resource, init = {}) {
             reqData = init.body;
         }
     }
-    
+
     try {
         const sourceUrl = urlStr.startsWith('http') ? urlStr : `${API_BASE_URL}${urlStr}`;
         const config = {
@@ -222,16 +290,19 @@ async function customTransenFetch(resource, init = {}) {
             data: reqData,
             headers: {}
         };
-        
-        // Pass any headers, avoiding overriding defaults unnecessarily
+
         if (init.headers) {
             Object.keys(init.headers).forEach(k => {
                 config.headers[k] = init.headers[k];
             });
         }
-        
+
         const response = await apiSecureClient(config);
-        
+
+        if (method === "GET") {
+            _getCache.set(urlStr, { ts: Date.now(), data: response.data });
+        }
+
         return {
             ok: true,
             status: response.status,
@@ -240,6 +311,15 @@ async function customTransenFetch(resource, init = {}) {
             text: async () => (typeof response.data === 'object' ? JSON.stringify(response.data) : response.data)
         };
     } catch (error) {
+        if (error && error.isDuplicateBlocked) {
+            return {
+                ok: false,
+                status: 429,
+                statusText: "Duplicate Blocked",
+                json: async () => ({ message: error.message, error: error.message }),
+                text: async () => error.message
+            };
+        }
         console.error(`[Axios Client Error] Échec de la requête vers: ${urlStr}. Erreur:`, error);
         if (error.response) {
             return {
@@ -594,6 +674,10 @@ document.getElementById('confirmSenepayBtn').onclick = async () => {
     }
 
     const amount = parseFloat(amountStr);
+    if (isNaN(amount) || amount <= 0) {
+        alert("Veuillez saisir un montant valide supérieur à 0 FCFA.");
+        return;
+    }
     const operator = document.getElementById('senepayOperator').value;
     const btn = document.getElementById('confirmSenepayBtn');
     btn.innerHTML = "Traitement..."; btn.disabled = true;
@@ -808,13 +892,26 @@ window.dismissAlert = function(alertId) {
     if (el) el.style.display = 'none';
 };
 
+let isLoadingDashboard = false;
+
 async function loadDashboardData() {
-    if (!currentCompanyId) return;
+    if (!currentCompanyId || isLoadingDashboard) return;
+    isLoadingDashboard = true;
 
     try {
-        // 0. Load KYC Status
-        try {
-            const kycStatus = await fetchWithAuth(`${API_BASE_URL}/api/companies/${currentCompanyId}/status`);
+        // Exécution en parallèle des 6 appels critiques (Règle 16 : zéro waterfall)
+        const [kycRes, userRes, statsRes, driversRes, tripsRes, walletRes] = await Promise.allSettled([
+            fetchWithAuth(`${API_BASE_URL}/api/companies/${currentCompanyId}/status`),
+            fetchWithAuth(`${API_BASE_URL}/api/users/me`),
+            fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/stats?companyId=${currentCompanyId}`),
+            fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/drivers?companyId=${currentCompanyId}`),
+            fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips?companyId=${currentCompanyId}`),
+            fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/wallet?companyId=${currentCompanyId}`)
+        ]);
+
+        // 0. KYC Status
+        if (kycRes.status === 'fulfilled') {
+            const kycStatus = kycRes.value;
             const banner = document.getElementById('kycAlertBanner');
             if (banner) {
                 if (kycStatus.status !== 'APPROVED' && sessionStorage.getItem('dismissed_alert_kycAlertBanner') !== 'true') {
@@ -836,13 +933,13 @@ async function loadDashboardData() {
                     banner.style.display = 'none';
                 }
             }
-        } catch (kycErr) {
-            console.error("Erreur lors de la récupération du statut KYC :", kycErr);
+        } else {
+            console.error("Erreur lors de la récupération du statut KYC :", kycRes.reason);
         }
 
-        // 0b. Check Email Verification Status
-        try {
-            const userInfo = await fetchWithAuth(`${API_BASE_URL}/api/users/me`);
+        // 0b. Email Verification Status
+        if (userRes.status === 'fulfilled') {
+            const userInfo = userRes.value;
             const emailBanner = document.getElementById('emailVerifyBanner');
             if (emailBanner) {
                 if (userInfo.isVerified === false && sessionStorage.getItem('dismissed_alert_emailVerifyBanner') !== 'true') {
@@ -878,36 +975,33 @@ async function loadDashboardData() {
                     emailBanner.style.display = 'none';
                 }
             }
-        } catch (emailErr) {
-            console.error("Erreur lors de la vérification du statut email :", emailErr);
         }
 
-        // 1. Load Stats
-        const stats = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/stats?companyId=${currentCompanyId}`);
-        document.getElementById('activeDriversCount').innerText = `${stats.activeDrivers} / ${stats.totalDrivers}`;
-        document.getElementById('onlineDriversCount').innerText = stats.activeDrivers;
-        document.getElementById('offlineDriversCount').innerText = stats.totalDrivers - stats.activeDrivers;
-        document.getElementById('todayTrips').innerText = stats.todayTrips;
-        document.getElementById('totalRevenue').innerText = `${stats.totalRevenue.toLocaleString()} F`;
+        // 1. Stats
+        if (statsRes.status === 'fulfilled') {
+            const stats = statsRes.value;
+            document.getElementById('activeDriversCount').innerText = `${stats.activeDrivers} / ${stats.totalDrivers}`;
+            document.getElementById('onlineDriversCount').innerText = stats.activeDrivers;
+            document.getElementById('offlineDriversCount').innerText = stats.totalDrivers - stats.activeDrivers;
+            document.getElementById('todayTrips').innerText = stats.todayTrips;
+            document.getElementById('totalRevenue').innerText = `${stats.totalRevenue.toLocaleString()} F`;
+        }
 
-        // 2. Load Drivers
-        const drivers = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/drivers?companyId=${currentCompanyId}`);
+        // 2. Drivers (batch DOM join, lazy avatars)
+        const drivers = driversRes.status === 'fulfilled' ? driversRes.value : [];
         window.loadedDriversCache = drivers;
         const driversTbody = document.getElementById('driversTableBody');
         const dashboardDriverList = document.getElementById('dashboardDriverList');
-        
-        driversTbody.innerHTML = "";
-        if (dashboardDriverList) dashboardDriverList.innerHTML = "";
 
-        // Update maintenance dropdown list of drivers dynamically
         updateMaintDriverDropdown(drivers);
 
         if (drivers.length === 0) {
             driversTbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Aucun chauffeur. Donnez votre Code de Recrutement !</td></tr>`;
             if (dashboardDriverList) dashboardDriverList.innerHTML = `<div class="loading-cell" style="text-align:center; padding:20px; color:var(--text-dim);">Aucun chauffeur rattaché.</div>`;
         } else {
+            const driverRowsHtml = [];
+            const dashDriversHtml = [];
             drivers.forEach((d, index) => {
-                // In maintenance check warning badges
                 const driverRules = getMaintenanceRules().filter(r => r.driverName === d.name);
                 let maintBadge = "";
                 driverRules.forEach(rule => {
@@ -920,12 +1014,11 @@ async function loadDashboardData() {
                 });
 
                 const vInfo = getVehicleModelInfo(d, index);
-
                 const isFav = typeof window.isFavorite === 'function' ? window.isFavorite('driver', d.id) : false;
                 const starColor = isFav ? '#F59E0B' : 'var(--text-dim)';
                 const starIcon = isFav ? 'fas fa-star' : 'far fa-star';
 
-                driversTbody.innerHTML += `
+                driverRowsHtml.push(`
                     <tr>
                         <td data-label="Chauffeur">
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -941,30 +1034,31 @@ async function loadDashboardData() {
                         <td data-label="Revenus Générés"><b>${d.totalRevenue.toLocaleString()} F</b></td>
                         <td data-label="Statut"><span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${escapeHtml(d.status)}</span></td>
                         <td data-label="Actions"><button class="icon-btn glass" style="color:var(--text-dim)"><i class="fas fa-ban"></i></button></td>
-                    </tr>`;
-                
+                    </tr>`);
+
                 if (dashboardDriverList && index < 6) {
-                    let badgeClass = d.status === 'ACTIVE' ? 'available' : 'maintenance';
-                    let statusText = d.status === 'ACTIVE' ? 'En Ligne' : 'Hors Ligne';
-                    dashboardDriverList.innerHTML += `
+                    const badgeClass = d.status === 'ACTIVE' ? 'available' : 'maintenance';
+                    const statusText = d.status === 'ACTIVE' ? 'En Ligne' : 'Hors Ligne';
+                    dashDriversHtml.push(`
                     <div class="driver-status-item">
                         <div class="driver-info-sm">
-                            <img src="https://ui-avatars.com/api/?name=${encodeURIComponent(d.name)}&background=random" alt="${escapeHtml(d.name)}">
+                            <img loading="lazy" decoding="async" src="https://ui-avatars.com/api/?name=${encodeURIComponent(d.name)}&background=random" alt="${escapeHtml(d.name)}">
                             <div><span class="d-name">${escapeHtml(d.name)}</span><span class="d-car">${escapeHtml(vInfo.model)} &middot; ${escapeHtml(d.phone)}</span></div>
                         </div>
                         <span class="status-badge ${badgeClass}">${escapeHtml(statusText)}</span>
-                    </div>`;
+                    </div>`);
                 }
             });
+            driversTbody.innerHTML = driverRowsHtml.join('');
+            if (dashboardDriverList) dashboardDriverList.innerHTML = dashDriversHtml.join('');
         }
 
-        // Initialize Mapbox with active drivers
         setupMapbox(drivers);
 
-        const trips = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips?companyId=${currentCompanyId}`);
-        window.loadedTrips = trips; // Cache globally for real-time filters
+        // 3. Trips (batch DOM join, cap visuel à 100 lignes récentes pour fluidité)
+        const trips = tripsRes.status === 'fulfilled' ? tripsRes.value : [];
+        window.loadedTrips = trips;
 
-        // Update timelineTrips dynamically from active trips
         const activeTrips = trips.filter(t => t.status === 'PENDING' || t.status === 'ACCEPTED' || t.status === 'IN_PROGRESS');
         window.timelineTrips = activeTrips.map(t => {
             let timeStr = "08:00";
@@ -975,9 +1069,7 @@ async function loadDashboardData() {
                         timeStr = parts[1].substring(0, 5);
                     } else {
                         const spaceParts = t.scheduledTime.split(' ');
-                        if (spaceParts.length > 1) {
-                            timeStr = spaceParts[1].substring(0, 5);
-                        }
+                        if (spaceParts.length > 1) timeStr = spaceParts[1].substring(0, 5);
                     }
                 } catch(e) {}
             }
@@ -991,7 +1083,6 @@ async function loadDashboardData() {
             };
         });
 
-        // Update statistics indicators for company fleet
         const totalTrips = trips.length;
         const activeTripsCount = activeTrips.length;
         const completedTrips = trips.filter(t => t.status === 'COMPLETED').length;
@@ -1000,30 +1091,27 @@ async function loadDashboardData() {
 
         const totalCountEl = document.getElementById('tripsStatTotalCount');
         if (totalCountEl) totalCountEl.innerText = `${activeTripsCount} / ${totalTrips}`;
-
         const completedCountEl = document.getElementById('tripsStatCompletedCount');
         if (completedCountEl) completedCountEl.innerText = `${completedTrips}`;
-
         const passengersCountEl = document.getElementById('tripsStatPassengersCount');
         if (passengersCountEl) passengersCountEl.innerText = `${totalBookedSeats} / ${totalCapacity}`;
 
         const liveTbody = document.getElementById('liveTripsTableBody');
-        liveTbody.innerHTML = "";
-        
         if (trips.length === 0) {
-            liveTbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Aucune course enregistrée.</td></tr>`;
+            liveTbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Aucune course enregistrée.</td></tr>`;
         } else {
-            trips.forEach((t) => {
+            liveTbody.innerHTML = trips.slice(0, 100).map((t) => {
                 const dateStr = new Date(t.createdAt).toLocaleString('fr-FR');
-                liveTbody.innerHTML += `
+                const favActive = typeof window.isFavorite === 'function' && window.isFavorite('trip', t.id);
+                return `
                     <tr>
                         <td data-label="ID / Date"><small>${escapeHtml(t.id.substring(0,6))}</small><br>${dateStr}</td>
                         <td data-label="Chauffeur"><b>${escapeHtml(t.driverName)}</b></td>
                         <td data-label="Client (Nom)">${escapeHtml(t.clientName)}</td>
                         <td data-label="Trajet">
                             <div style="display: flex; align-items: center; gap: 8px;">
-                                <button onclick="window.toggleFavorite('trip', '${t.id}', '${(escapeHtml(t.departure) || "Inconnu").replace(/'/g, "\\'")} ➔ ${(escapeHtml(t.destination) || "Inconnu").replace(/'/g, "\\'")}')" style="border:none; background:none; cursor:pointer; color: ${typeof window.isFavorite === 'function' && window.isFavorite('trip', t.id) ? '#F59E0B' : 'var(--text-dim)'}; padding:0; display:inline-flex; align-items:center;" title="Épingler ce trajet">
-                                    <i class="${typeof window.isFavorite === 'function' && window.isFavorite('trip', t.id) ? 'fas fa-star' : 'far fa-star'}" style="font-size:0.9rem;"></i>
+                                <button onclick="window.toggleFavorite('trip', '${t.id}', '${(escapeHtml(t.departure) || "Inconnu").replace(/'/g, "\\'")} ➔ ${(escapeHtml(t.destination) || "Inconnu").replace(/'/g, "\\'")}')" style="border:none; background:none; cursor:pointer; color: ${favActive ? '#F59E0B' : 'var(--text-dim)'}; padding:0; display:inline-flex; align-items:center;" title="Épingler ce trajet">
+                                    <i class="${favActive ? 'fas fa-star' : 'far fa-star'}" style="font-size:0.9rem;"></i>
                                 </button>
                                 <small><b>De:</b> ${escapeHtml(t.departure || "Inconnu")}<br><b>À:</b> ${escapeHtml(t.destination || "Inconnu")}${t.relayPoint ? `<br><b>Relais:</b> ${escapeHtml(t.relayPoint)}` : ''}</small>
                             </div>
@@ -1044,86 +1132,77 @@ async function loadDashboardData() {
                             ` : ''}
                         </td>
                     </tr>`;
-            });
+            }).join('');
         }
 
-        // Render activities dynamically with any configured filters
         window.filterAndRenderActivities();
-
-        // Render drivers performance circular gauges
         renderKPIBarCharts(drivers, trips);
 
-        // 4. Load Wallet Data
-        const walletData = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/wallet?companyId=${currentCompanyId}`);
-        window.loadedWalletData = walletData;
-        
-        let displayedBalance = walletData.balance || 0;
-        
-        document.getElementById('walletBalance').innerText = `${displayedBalance.toLocaleString()} F`;
+        // 4. Wallet Data (batch DOM join, cap à 80 transactions récentes)
+        if (walletRes.status === 'fulfilled') {
+            const walletData = walletRes.value;
+            window.loadedWalletData = walletData;
 
-        // Proactive wallet threshold check
-        const threshold = parseInt(localStorage.getItem('wallet_critical_threshold') || '25000');
-        const alertBanner = document.getElementById('walletThresholdAlert');
-        if (alertBanner) {
-            if (displayedBalance < threshold) {
-                const isDismissed = sessionStorage.getItem('dismissed_alert_walletThresholdAlert') === 'true';
-                if (!isDismissed) {
-                    alertBanner.style.display = 'flex';
+            const displayedBalance = walletData.balance || 0;
+            document.getElementById('walletBalance').innerText = `${displayedBalance.toLocaleString()} F`;
+
+            const threshold = parseInt(localStorage.getItem('wallet_critical_threshold') || '25000');
+            const alertBanner = document.getElementById('walletThresholdAlert');
+            if (alertBanner) {
+                if (displayedBalance < threshold) {
+                    const isDismissed = sessionStorage.getItem('dismissed_alert_walletThresholdAlert') === 'true';
+                    if (!isDismissed) alertBanner.style.display = 'flex';
+                    const balText = document.getElementById('walletAlertBalanceText');
+                    const thText = document.getElementById('walletAlertThresholdText');
+                    if (balText) balText.innerText = `${displayedBalance.toLocaleString()} F`;
+                    if (thText) thText.innerText = `${threshold.toLocaleString()} F`;
+                } else {
+                    alertBanner.style.display = 'none';
                 }
-                const balText = document.getElementById('walletAlertBalanceText');
-                const thText = document.getElementById('walletAlertThresholdText');
-                if (balText) balText.innerText = `${displayedBalance.toLocaleString()} F`;
-                if (thText) thText.innerText = `${threshold.toLocaleString()} F`;
+            }
+
+            const txTbody = document.getElementById('transactionsTableBody');
+            if (!walletData.transactions || walletData.transactions.length === 0) {
+                txTbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune transaction pour le moment.</td></tr>`;
             } else {
-                alertBanner.style.display = 'none';
+                txTbody.innerHTML = walletData.transactions.slice(0, 80).map(tx => {
+                    const dateStr = new Date(tx.date).toLocaleString('fr-FR');
+                    let color = "var(--text-color)";
+                    let amountStr = `${tx.amount} F`;
+                    if (tx.amount > 0) { color = "var(--green)"; amountStr = `+${tx.amount} F`; }
+                    else if (tx.amount < 0) { color = "var(--red)"; }
+
+                    const ref = tx.id ? tx.id.substring(0, 8).toUpperCase() : "N/A";
+                    let statusFr = tx.status;
+                    if (statusFr === 'PENDING') statusFr = 'EN ATTENTE';
+                    if (statusFr === 'COMPLETED') statusFr = 'COMPLÉTÉ';
+                    if (statusFr === 'FAILED') statusFr = 'ÉCHOUÉ';
+
+                    return `
+                        <tr style="cursor: pointer;" onclick="openReceipt('${ref}', '${dateStr}', '${tx.type}', '${tx.status}', '${amountStr}')" title="Cliquez pour voir le reçu">
+                            <td data-label="Date">${dateStr}</td>
+                            <td data-label="Type"><b>${tx.type}</b></td>
+                            <td data-label="Montant" style="color: ${color}; font-weight: bold;">${amountStr}</td>
+                            <td data-label="Statut"><span class="status-tag ${tx.status.toLowerCase()}">${statusFr}</span></td>
+                        </tr>`;
+                }).join('');
             }
         }
-        
-        const txTbody = document.getElementById('transactionsTableBody');
-        txTbody.innerHTML = "";
-        if (walletData.transactions.length === 0) {
-            txTbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune transaction pour le moment.</td></tr>`;
-        } else {
-            walletData.transactions.forEach(tx => {
-                const dateStr = new Date(tx.date).toLocaleString('fr-FR');
-                let color = "var(--text-color)";
-                let amountStr = `${tx.amount} F`;
-                if (tx.amount > 0) { color = "var(--green)"; amountStr = `+${tx.amount} F`; }
-                else if (tx.amount < 0) { color = "var(--red)"; }
-                
-                let ref = tx.id ? tx.id.substring(0, 8).toUpperCase() : "N/A";
-                let statusFr = tx.status;
-                if (statusFr === 'PENDING') statusFr = 'EN ATTENTE';
-                if (statusFr === 'COMPLETED') statusFr = 'COMPLÉTÉ';
-                if (statusFr === 'FAILED') statusFr = 'ÉCHOUÉ';
-                
-                txTbody.innerHTML += `
-                    <tr style="cursor: pointer;" onclick="openReceipt('${ref}', '${dateStr}', '${tx.type}', '${tx.status}', '${amountStr}')" title="Cliquez pour voir le reçu">
-                        <td data-label="Date">${dateStr}</td>
-                        <td data-label="Type"><b>${tx.type}</b></td>
-                        <td data-label="Montant" style="color: ${color}; font-weight: bold;">${amountStr}</td>
-                        <td data-label="Statut"><span class="status-tag ${tx.status.toLowerCase()}">${statusFr}</span></td>
-                    </tr>`;
-            });
-        }
 
-        // Rendre le graphique de chiffre d'affaires, le donut des catégories de véhicules, et configurer ses filtres
         setTimeout(() => {
             const activeFilter = document.querySelector('.chart-filters button.active');
             const range = activeFilter ? activeFilter.getAttribute('data-range') : '7d';
             renderRevenueChart(range);
             setupChartFilters();
             renderVehicleDonutChart(drivers);
-            if (typeof renderDriverStatusPieChart === 'function') {
-                renderDriverStatusPieChart(drivers);
-            }
-            if (typeof renderTimelinePlanning === 'function') {
-                renderTimelinePlanning(drivers);
-            }
-        }, 100);
+            if (typeof renderDriverStatusPieChart === 'function') renderDriverStatusPieChart(drivers);
+            if (typeof renderTimelinePlanning === 'function') renderTimelinePlanning(drivers);
+        }, 80);
 
     } catch (error) {
         console.error("Erreur chargement données API", error);
+    } finally {
+        isLoadingDashboard = false;
     }
 }
 
@@ -1514,6 +1593,15 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
     e.preventDefault();
     if (!currentPassengerTripId) return;
 
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn && submitBtn.disabled) return;
+    const origBtnHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ajout...';
+    }
+
     const name = document.getElementById('pmPassengerName').value;
     const phone = document.getElementById('pmPassengerPhone').value;
     const seats = document.getElementById('pmPassengerSeats').value;
@@ -1527,7 +1615,6 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
         });
 
         if (response.ok) {
-            // Tenter l'inscription sur Firestore en temps réel pour avertir le chauffeur
             try {
                 const tripRef = doc(db, "pools", currentPassengerTripId);
                 await updateDoc(tripRef, {
@@ -1549,9 +1636,7 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
                             seats: parseInt(seats)
                         }
                     });
-                } catch(err) {
-                    console.log("Inscription Firestore ignorée :", err);
-                }
+                } catch(err) {}
             }
 
             alert("Passager ajouté avec succès !");
@@ -1559,13 +1644,18 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
             document.getElementById('pmPassengerPhone').value = "";
             document.getElementById('pmPassengerSeats').value = "1";
             await loadTripBookings();
-            loadDashboardData(); // Refresh
+            loadDashboardData();
         } else {
             const err = await response.text();
             alert("Erreur: " + err);
         }
     } catch (error) {
         alert("Erreur de connexion.");
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origBtnHtml;
+        }
     }
 };
 
@@ -2628,6 +2718,9 @@ function startAutoRefresh() {
     const intervalMs = (parseInt(window.autoRefreshSeconds) || 10) * 1000;
     
     refreshInterval = setInterval(async () => {
+        if ((typeof document !== 'undefined' && document.hidden) || isLoadingDashboard) {
+            return;
+        }
         const syncIcon = document.getElementById('syncIcon');
         const syncText = document.getElementById('syncText');
         const pulseDot = document.querySelector('.pulse-dot');
@@ -2960,9 +3053,9 @@ window.filterAndRenderActivities = function() {
     if (filteredTrips.length === 0) {
         dashTbody.innerHTML = `<tr><td colspan="5" class="loading-cell" style="text-align: center; padding: 25px; color: var(--text-dim);">Aucune activité ne correspond à vos filtres de recherche.</td></tr>`;
     } else {
-        filteredTrips.slice(0, 10).forEach(t => {
+        dashTbody.innerHTML = filteredTrips.slice(0, 10).map(t => {
             const dateStr = new Date(t.createdAt).toLocaleString('fr-FR');
-            dashTbody.innerHTML += `
+            return `
             <tr>
                 <td data-label="Date">${dateStr}</td>
                 <td data-label="Chauffeur"><b>${escapeHtml(t.driverName)}</b></td>
@@ -2970,7 +3063,7 @@ window.filterAndRenderActivities = function() {
                 <td data-label="Prix"><b>${t.price} F</b></td>
                 <td data-label="Statut"><span class="status-tag ${escapeHtml(t.status.toLowerCase())}">${escapeHtml(t.status)}</span></td>
             </tr>`;
-        });
+        }).join('');
     }
 };
 
@@ -2982,7 +3075,7 @@ function setupActivityFiltersEvents() {
     const resetBtn = document.getElementById('resetActivityFiltersBtn');
 
     if (searchInp) {
-        searchInp.oninput = () => window.filterAndRenderActivities();
+        searchInp.oninput = _debounce(() => window.filterAndRenderActivities(), 220);
     }
     if (statusFilt) {
         statusFilt.onchange = () => window.filterAndRenderActivities();
@@ -5945,8 +6038,11 @@ function initSolarAutoDarkMode() {
     // Init process
     fetchSolarData();
 
-    // Check periodically (every 60 seconds)
-    setInterval(applySolarModeLifecycle, 60000);
+    // Check periodically (every 60 seconds, pause when hidden)
+    setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        applySolarModeLifecycle();
+    }, 60000);
 }
 
 // ====================================================

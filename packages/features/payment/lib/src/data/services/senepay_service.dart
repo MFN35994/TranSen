@@ -118,8 +118,29 @@ class SenePayService {
     }
   }
 
-  Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async { return null; }
-  Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async { return null; }
+  Future<Map<String, dynamic>?> getPayoutStatus(String internalId) async {
+    try {
+      final response = await _apiClient.dio.get('/api/payments/payout-status/$internalId');
+      if (response.statusCode == 200 && response.data is Map) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+    } catch (e) {
+      debugPrint(">>> SenePayService getPayoutStatus error: $e");
+    }
+    return null;
+  }
+
+  Future<Map<String, dynamic>?> checkCheckoutStatus(String orderReference) async {
+    try {
+      final response = await _apiClient.dio.get('/api/payments/check-status/$orderReference');
+      if (response.statusCode == 200 && response.data is Map) {
+        return Map<String, dynamic>.from(response.data as Map);
+      }
+    } catch (e) {
+      debugPrint(">>> SenePayService checkCheckoutStatus error: $e");
+    }
+    return null;
+  }
 
   Future<void> recordCommission({
     required double amount,

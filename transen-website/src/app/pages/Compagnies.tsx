@@ -34,9 +34,9 @@ export function Compagnies() {
     {
       title: "4. Reversement direct & Taux Unique",
       short: "Redistribution & KPI",
-      desc: "Suivez vos encaissements consolidés en direct. Grâce à notre modèle révolutionnaire, conservez 99% de vos ventes grâce à notre commission fixe de seulement 1%.",
+      desc: "Suivez vos encaissements consolidés en direct. Grâce à notre modèle révolutionnaire, conservez 98% de vos ventes grâce à notre commission fixe de seulement 2%.",
       icon: Percent,
-      features: ["Frais de service imbattables de 1%", "Compatibilité Mobile Money (Orange Money, Wave, SenePay)", "Rapports d'activité financiers quotidiens"]
+      features: ["Frais de service imbattables de 2%", "Compatibilité Mobile Money (Orange Money, Wave, SenePay)", "Rapports d'activité financiers quotidiens"]
     }
   ];
 
@@ -46,8 +46,8 @@ export function Compagnies() {
       a: "Pour garantir un confort optimal pour les voyages interurbains au Sénégal, nous supportons et limitons la configuration à 60 chaises/sièges maximum pour les grands bus autocars partenaires."
     },
     {
-      q: "Comment fonctionne la commission unifiée de 1% ?",
-      a: "C'est notre promesse phare : TranSen prélève uniquement 1% de frais sur la vente de chaque billet de transport, que ce soit pour les lignes urbaines ou interurbaines. Les 99% restants sont directement reversés sur le compte bancaire ou compte marchand de votre compagnie."
+      q: "Comment fonctionne la commission unifiée de 2% ?",
+      a: "C'est notre promesse phare : TranSen prélève uniquement 2% de frais sur la vente de chaque billet de transport, que ce soit pour les lignes urbaines ou interurbaines. Les 98% restants sont directement reversés sur le compte bancaire ou compte marchand de votre compagnie."
     },
     {
       q: "Les passagers peuvent-ils réserver des places spécifiques ?",
@@ -75,7 +75,7 @@ export function Compagnies() {
               <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6 leading-tight">
                 Digitalisez votre compagnie <br />
                 <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-200 bg-clip-text text-transparent">
-                  à 1% de commission.
+                  à 2% de commission.
                 </span>
               </h1>
               <p className="text-lg text-white/80 leading-relaxed mb-8 max-w-xl">
@@ -121,8 +121,8 @@ export function Compagnies() {
                       <div className="text-2xl font-black text-white mt-1">1 245 000 FCFA</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-[10px] text-emerald-400 font-bold font-mono">+99.0% gardé</div>
-                      <div className="text-xs text-zinc-500 mt-1 font-mono">Commission: 1%</div>
+                      <div className="text-[10px] text-emerald-400 font-bold font-mono">+98.0% gardé</div>
+                      <div className="text-xs text-zinc-500 mt-1 font-mono">Commission: 2%</div>
                     </div>
                   </div>
 
@@ -170,11 +170,11 @@ export function Compagnies() {
           <div className="grid md:grid-cols-3 gap-8">
             <div className="p-8 rounded-3xl bg-slate-50 border border-gray-100 relative group hover:shadow-xl transition-all duration-300">
               <div className="w-12 h-12 rounded-2xl bg-amber-400/20 flex items-center justify-center text-amber-700 font-black text-xl mb-6">
-                1%
+                2%
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-3">Taux de commission minimal</h3>
               <p className="text-gray-500 text-sm leading-relaxed">
-                Gardez 99% de vos revenus de billetterie. Notre modèle à seulement 1% s'applique équitablement sur toutes les lignes, sans frais cachés ni abonnements coûteux.
+                Gardez 98% de vos revenus de billetterie. Notre modèle à seulement 2% s'applique équitablement sur toutes les lignes, sans frais cachés ni abonnements coûteux.
               </p>
             </div>
 
@@ -328,7 +328,7 @@ export function Compagnies() {
             Assurez le taux de remplissage maximal de vos autocars dès aujourd'hui
           </h2>
           <p className="text-zinc-400 text-md max-w-2xl mx-auto mb-10 leading-relaxed">
-            Pas d'engagements financiers initiaux compliqués. Créez votre espace en 5 minutes et planifiez vos premières ventes de places à taux universel de 1%.
+            Pas d'engagements financiers initiaux compliqués. Créez votre espace en 5 minutes et planifiez vos premières ventes de places à taux universel de 2%.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a

@@ -6,6 +6,7 @@ import 'package:transen_profile/transen_profile.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_trips/transen_trips.dart';
 import '../settings/support_ticket_screen.dart';
+import '../driver/statistics_screen.dart';
 
 final userFutureProvider = FutureProvider.family<Map<String, dynamic>?, String>((ref, userId) async {
   ref.watch(authProvider); // Re-run and refresh cache whenever the user details change
@@ -46,8 +47,62 @@ class ProfileDrawer extends ConsumerWidget {
                     Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfileScreen()));
                   },
                 ),
-
-
+                _buildMenuItem(
+                  context: context,
+                  icon: Icons.account_balance_wallet_outlined,
+                  title: 'TransPay Wallet',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                  },
+                ),
+                _buildMenuItem(
+                  context: context,
+                  icon: Icons.receipt_long_outlined,
+                  title: 'Mes Trajets & Billets',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                  },
+                ),
+                _buildMenuItem(
+                  context: context,
+                  icon: Icons.favorite_border,
+                  title: 'Adresses & Favoris',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const FavoritesScreen()));
+                  },
+                ),
+                _buildMenuItem(
+                  context: context,
+                  icon: Icons.card_giftcard_outlined,
+                  title: 'Parrainage & Bonus',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+                  },
+                ),
+                if (role == 'driver') ...[
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.bar_chart_rounded,
+                    title: 'Mes Statistiques & Avis',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+                    },
+                  ),
+                  _buildMenuItem(
+                    context: context,
+                    icon: Icons.workspace_premium_outlined,
+                    title: 'Abonnement Chauffeur',
+                    onTap: () {
+                      Navigator.pop(context);
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => const SubscriptionScreen()));
+                    },
+                  ),
+                ],
                 _buildMenuItem(
                   context: context,
                   icon: Icons.support_agent,
@@ -219,26 +274,35 @@ class ProfileDrawer extends ConsumerWidget {
                 builder: (context, ref, child) {
                   try {
                     final wallet = ref.watch(walletProvider);
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
-                          const SizedBox(width: 8),
-                          Text(
-                            "${wallet.value?.balance.toInt() ?? 0} FCFA",
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white24),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              "${wallet.value?.balance.toInt() ?? 0} FCFA",
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 6),
+                            const Icon(Icons.chevron_right, color: Colors.white70, size: 16),
+                          ],
+                        ),
                       ),
                     );
                   } catch (e) {

@@ -87,7 +87,7 @@ export function Investir() {
 
   // Calculations for live promise form
   const computedEquity = Math.round((amount / 200000000) * 100 * 100) / 100; // Exactly 200,000,000 FCFA valuation
-  const estimatedAnnualInterests = Math.round(amount * 0.12); // Simulated high yield 12% from the 1% commission Pool
+  const estimatedAnnualInterests = Math.round(amount * 0.12); // Simulated high yield 12% from the 2% commission Pool
 
   // Chart data for simulated premium portfolio growth over 5 years (2026-2030)
   const growthData = [
@@ -121,7 +121,7 @@ export function Investir() {
               </span>
             </h1>
             <p className="text-lg text-white/80 leading-relaxed mb-8">
-              En introduisant le modèle unique au monde de <strong className="text-amber-300">seulement 1% de commission</strong> sur tous les trajets urbains et interurbains du Sénégal, TranSen capte un volume de transactions historique. Attirez la croissance à nos côtés.
+              En introduisant le modèle unique au monde de <strong className="text-amber-300">seulement 2% de commission</strong> sur tous les trajets urbains et interurbains du Sénégal, TranSen capte un volume de transactions historique. Attirez la croissance à nos côtés.
             </p>
 
             {/* Quick platform anchors requested by USER */}
@@ -177,17 +177,17 @@ export function Investir() {
                   OFFRE AGRESSIVE UNIQUE AU MONDE
                 </span>
                 <h3 className="text-2xl font-bold text-gray-900 mt-1">
-                  1% de Commission Fixe sur l'Urbain & l'Interurbain
+                  2% de Commission Fixe sur l'Urbain & l'Interurbain
                 </h3>
                 <p className="text-gray-500 text-sm mt-1.5 leading-relaxed">
-                  Contrairement aux géants du transport prélevant 20% à 25%, TranSen ne prélève que <strong className="text-emerald-700">1%</strong>. Ce taux ultra-bas favorise une adoption exhaustive et instantanée par 100% des chauffeurs et compagnies au Sénégal, créant un monopole d'adoption.
+                  Contrairement aux géants du transport prélevant 20% à 25%, TranSen ne prélève que <strong className="text-emerald-700">2%</strong>. Ce taux ultra-bas favorise une adoption exhaustive et instantanée par 100% des chauffeurs et compagnies au Sénégal, créant un monopole d'adoption.
                 </p>
               </div>
             </div>
 
             <div className="bg-emerald-900/5 rounded-2xl p-6 border border-emerald-900/10 text-center">
               <div className="text-xs text-gray-500 uppercase tracking-wider font-semibold">Taux de Commission TranSen</div>
-              <div className="text-5xl font-black text-emerald-800 my-2 animate-bounce">1.0%</div>
+              <div className="text-5xl font-black text-emerald-800 my-2 animate-bounce">2.0%</div>
               <div className="text-xs text-emerald-700 font-bold">Uniquement, sur tout le Sénégal</div>
             </div>
           </div>
@@ -384,7 +384,7 @@ export function Investir() {
                   )}
                 </div>
 
-                {/* Right Side: Actionable dynamic returns calculations based on 1% commission model */}
+                {/* Right Side: Actionable dynamic returns calculations based on 2% commission model */}
                 <div className="lg:col-span-5 space-y-6">
                   <div className="bg-emerald-950 text-white rounded-3xl p-8 border border-emerald-800 shadow-xl relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400 opacity-5 blur-2xl pointer-events-none" />
@@ -412,7 +412,7 @@ export function Investir() {
                         <div className="text-3xl font-bold mt-1 text-emerald-300">
                           +{estimatedAnnualInterests.toLocaleString("fr-FR")} FCFA <span className="text-xs text-white/70 font-normal">/ an</span>
                         </div>
-                        <div className="text-xs text-white/50 mt-1">Hypothèse prudente de retour sur dividendes (12% l'an) générée sur le pool de transactions TranSen 1% commission.</div>
+                        <div className="text-xs text-white/50 mt-1">Hypothèse prudente de retour sur dividendes (12% l'an) générée sur le pool de transactions TranSen 2% commission.</div>
                       </div>
 
                       <div className="border-t border-emerald-800/80 pt-5 space-y-3">
@@ -518,7 +518,7 @@ export function Investir() {
                         <p className="text-xs text-gray-400">Simulation de rendements sur 5 ans basés sur votre allocation de promesses actuelles</p>
                       </div>
                       <div className="bg-emerald-50 text-emerald-700 font-mono text-xs px-3 py-1 rounded-lg border border-emerald-100 font-semibold">
-                        Modèle 1% Urbain & Interurbain
+                        Modèle 2% Urbain & Interurbain
                       </div>
                     </div>
 
@@ -604,7 +604,7 @@ export function Investir() {
             <div className="space-y-2">
               <h4 className="font-bold text-amber-300">Comment fonctionne le reversement des dividendes ?</h4>
               <p className="text-xs text-gray-300 leading-relaxed">
-                Le prélèvement de 1% de commission sur l'écosystème urbain et interurbain est centralisé en temps réel sur SenePay et redistribué trimestriellement au prorata des parts détenues.
+                Le prélèvement de 2% de commission sur l'écosystème urbain et interurbain est centralisé en temps réel sur SenePay et redistribué trimestriellement au prorata des parts détenues.
               </p>
             </div>
             <div className="space-y-2">

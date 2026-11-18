@@ -15,6 +15,7 @@ enum VtcSheetState { search, selectVehicle }
 class VtcBookingSheet extends ConsumerStatefulWidget {
   final VoidCallback? onBackToHome;
   final Function(String destination, double distance, double duration)? onRouteSelected;
+  final Function(double destLat, double destLng)? onRouteCoordinatesSelected;
   final double? userLatitude;
   final double? userLongitude;
 
@@ -22,6 +23,7 @@ class VtcBookingSheet extends ConsumerStatefulWidget {
     super.key,
     this.onBackToHome,
     this.onRouteSelected,
+    this.onRouteCoordinatesSelected,
     this.userLatitude,
     this.userLongitude,
   });
@@ -303,6 +305,14 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
 
     if (widget.onRouteSelected != null) {
       widget.onRouteSelected!(destName, distance, duration);
+    }
+    if (widget.onRouteCoordinatesSelected != null &&
+        route['latitude'] != null &&
+        route['longitude'] != null) {
+      widget.onRouteCoordinatesSelected!(
+        (route['latitude'] as num).toDouble(),
+        (route['longitude'] as num).toDouble(),
+      );
     }
 
     _fetchPricingEstimations(distance, duration);

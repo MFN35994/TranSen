@@ -5,42 +5,83 @@
       
       <meta charset="UTF-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <meta name="theme-color" content="#041b12" />
       <title>TranSen - La plateforme de mobilité de référence au Sénégal</title>
-      <meta name="description" content="TranSen est la plateforme numérique de mobilité de référence au Sénégal. Réservez vos trajets en bus interurbains, commandez une course avec Allô Dakar, ou expédiez vos colis avec Yobante." />
+      <meta name="description" content="TranSen est la plateforme numérique de mobilité de référence au Sénégal. Réservez vos trajets en bus interurbains, commandez une course avec Allô Dakar, ou expédiez vos colis avec Yobante à 2% de commission." />
       <meta name="robots" content="index, follow" />
+      <meta property="og:type" content="website" />
+      <meta property="og:site_name" content="TranSen" />
+      <meta property="og:title" content="TranSen - Mobilité Urbaine & Interurbaine au Sénégal" />
+      <meta property="og:description" content="Réservez vos sièges de bus interurbains, commandez Allô Dakar VTC ou expédiez vos colis Yobante. Commission unique de 2%." />
+      <meta property="og:url" content="https://transen.org/" />
+      <meta property="og:image" content="https://transen.org/logo.png" />
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content="TranSen - Mobilité Sénégal 2%" />
+      <meta name="twitter:description" content="L'infrastructure numérique du transport urbain et interurbain au Sénégal." />
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
-      <link rel="icon" type="image/png" href="/logo.png" />
-      <link rel="apple-touch-icon" href="/logo.png" />
+      <link rel="icon" href="/favicon.ico" sizes="any" />
+      <link rel="shortcut icon" href="/favicon.ico" />
+      <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png" />
+      <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png" />
+      <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png" />
+      <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+      <link rel="manifest" href="/site.webmanifest" />
       <link rel="canonical" href="https://transen.org/" />
+      <link rel="preconnect" href="https://api.transen.org" crossorigin />
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+      <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@graph": [
+            {
+              "@type": "Organization",
+              "name": "TranSen",
+              "url": "https://transen.org",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://transen.org/logo.png",
+                "width": 512,
+                "height": 512
+              },
+              "description": "Plateforme numérique de mobilité urbaine, interurbaine (bus), VTC Allô Dakar et livraison de colis Yobanté au Sénégal à 2% de commission.",
+              "address": {
+                "@type": "PostalAddress",
+                "addressLocality": "Dakar",
+                "addressCountry": "SN"
+              },
+              "contactPoint": {
+                "@type": "ContactPoint",
+                "telephone": "+221-78-138-64-05",
+                "email": "contact@transen.org",
+                "contactType": "customer service",
+                "availableLanguage": ["French", "Wolof"]
+              },
+              "sameAs": [
+                "https://app.transen.org",
+                "https://compagnie.transen.org",
+                "https://investir.transen.org"
+              ]
+            },
+            {
+              "@type": "WebSite",
+              "name": "TranSen Sénégal",
+              "url": "https://transen.org"
+            }
+          ]
+        }
+      </script>
     </head>
 
     <body>
-      
-      <div id="root">
-        <!-- Contenu de secours et SEO pour les moteurs de recherche -->
-        <div style="display:none;">
-          <header>
-            <h1>TranSen - Plateforme Nationale de Transport et Mobilité au Sénégal</h1>
-            <p>Découvrez la première infrastructure numérique de transport tri-modale au Sénégal. Réservez des trajets de VTC avec Allo Dakar, planifiez vos voyages en bus interurbains ou gérez vos flottes de compagnies.</p>
-          </header>
-          <main>
-            <section>
-              <h2>Nos Services de Mobilité</h2>
-              <ul>
-                <li><strong>Allo Dakar :</strong> Service de transport et chauffeurs indépendants pour vos déplacements quotidiens.</li>
-                <li><strong>Compagnies Partenaires :</strong> Digitalisation des flottes de bus et suivi en temps réel.</li>
-                <li><strong>Bourse Publique de Transport :</strong> Partage intelligent des courses de surcharge.</li>
-              </ul>
-            </section>
-            <section>
-              <h2>Modèle Économique Révolutionnaire</h2>
-              <p>Bénéficiez d'une commission technique minimale de 1% pour maximiser les revenus des conducteurs et offrir des prix justes aux passagers.</p>
-            </section>
-          </main>
+      <div id="root"></div>
+      <noscript>
+        <div style="padding:2rem;font-family:sans-serif;max-width:720px;margin:auto;">
+          <h1>TranSen - Plateforme Nationale de Transport et Mobilité au Sénégal</h1>
+          <p>Réservez vos trajets en bus interurbains, commandez un VTC Allô Dakar ou expédiez vos colis Yobanté avec une commission unique de 2%.</p>
         </div>
-      </div>
+      </noscript>
       <script type="module" src="/src/main.tsx"></script>
-      
     </body>
   </html>
   

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://compagnie.transen.org/sitemap.xml

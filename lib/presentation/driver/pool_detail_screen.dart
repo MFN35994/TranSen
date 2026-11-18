@@ -38,6 +38,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
   int _currentStepIndex = 0;
   double _remainingDistance = 0.0;
   bool _isNavigating = false;
+  bool _isActionLoading = false;
 
   @override
   void initState() {
@@ -563,9 +564,10 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                       ],
                     ),
                     child: ElevatedButton(
-                      onPressed: () async {
+                      onPressed: _isActionLoading ? null : () async {
                         final messenger = ScaffoldMessenger.of(context);
                         final navigator = Navigator.of(context);
+                        setState(() => _isActionLoading = true);
                         try {
                           final repo = ref.read(tripRepositoryProvider);
                           if (pool.status == 'accepted') {
@@ -607,6 +609,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                                   backgroundColor: Colors.red),
                             );
                           }
+                        } finally {
+                          if (mounted) setState(() => _isActionLoading = false);
                         }
                       },
                       style: ElevatedButton.styleFrom(
@@ -619,12 +623,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                         elevation: 0,
                       ),
                       child: Center(
-                        child: Text(
-                          pool.status == 'accepted'
-                              ? "DÉMARRER LE TRAJET"
-                              : "TERMINER LE TRAJET",
-                          style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1),
-                        ),
+                        child: _isActionLoading
+                            ? const SizedBox(
+                                width: 22,
+                                height: 22,
+                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                              )
+                            : Text(
+                                pool.status == 'accepted'
+                                    ? "DÉMARRER LE TRAJET"
+                                    : "TERMINER LE TRAJET",
+                                style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1),
+                              ),
                       ),
                     ),
                   ),
@@ -643,9 +653,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     final subInfo = await SubscriptionService().checkSubscription(auth.userId);
     if (subInfo.isActive) return true;
     
-    // 2. Vérifier le solde (Pool prix fixe 10000F, donc 1% = 100F)
+    // 2. Vérifier le solde (Pool prix fixe 10000F, donc 2% = 200F)
     final wallet = ref.read(walletProvider).value;
-    const commission = 100.0; 
+    const commission = 200.0; 
     
     if ((wallet?.balance ?? 0.0) < commission) {
       if (mounted) {

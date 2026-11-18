@@ -1,13 +1,24 @@
 :root {
-    --bg-dark: #0a0b0d;
-    --bg-card: rgba(20, 22, 28, 0.6);
-    --primary-gold: #f1c40f;
-    --primary-gold-hover: #f39c12;
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --text-main: #f5f6f8;
-    --text-dim: #9ca3af;
-    --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.4);
-    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --bg-dark: #050811;
+    --bg-card: rgba(13, 18, 30, 0.72);
+    --primary-gold: #F59E0B;
+    --primary-gold-bright: #FBBF24;
+    --primary-gold-hover: #D97706;
+    --accent-emerald: #10B981;
+    --accent-cyan: #06B6D4;
+    --glass-border: rgba(245, 158, 11, 0.16);
+    --text-main: #F8FAFC;
+    --text-dim: #94A3B8;
+    --shadow-premium: 0 22px 50px rgba(0, 0, 0, 0.52);
+    --transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 * {
@@ -18,20 +29,33 @@
 
 body {
     font-family: 'Outfit', sans-serif;
-    background-color: var(--bg-dark);
+    background: radial-gradient(circle at 80% 0%, #171207 0%, var(--bg-dark) 50%, #030908 100%);
     color: var(--text-main);
     overflow-x: hidden;
     min-height: 100vh;
+    position: relative;
 }
 
-/* Background Glowing Orbs */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(to right, rgba(245, 158, 11, 0.04) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(16, 185, 129, 0.035) 1px, transparent 1px);
+    background-size: 52px 52px;
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Background Glowing Orbs (GPU optimized) */
 .glow-container {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: -1;
+    z-index: -2;
     overflow: hidden;
     pointer-events: none;
 }
@@ -39,23 +63,24 @@ body {
 .glow-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(120px);
-    opacity: 0.15;
-    animation: pulse 8s infinite alternate ease-in-out;
+    filter: blur(90px);
+    opacity: 0.16;
+    will-change: transform;
+    animation: pulse 9s infinite alternate ease-in-out;
 }
 
 .orb-gold {
-    width: 400px;
-    height: 400px;
+    width: 420px;
+    height: 420px;
     background: var(--primary-gold);
     top: -100px;
     right: -100px;
 }
 
 .orb-purple {
-    width: 500px;
-    height: 500px;
-    background: #8e44ad;
+    width: 480px;
+    height: 480px;
+    background: var(--accent-emerald);
     bottom: -150px;
     left: -150px;
     animation-delay: 2s;
@@ -63,7 +88,7 @@ body {
 
 @keyframes pulse {
     0% { transform: scale(1) translate(0, 0); opacity: 0.12; }
-    100% { transform: scale(1.2) translate(30px, 50px); opacity: 0.22; }
+    100% { transform: scale(1.15) translate(24px, 36px); opacity: 0.22; }
 }
 
 /* App Layout */
@@ -79,10 +104,11 @@ body {
 /* Glassmorphism Common Styles */
 .glass {
     background: var(--bg-card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border);
-    border-radius: 20px;
+    border-radius: 22px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* Header */

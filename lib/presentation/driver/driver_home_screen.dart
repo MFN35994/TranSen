@@ -21,6 +21,7 @@ import 'pool_detail_screen.dart';
 import 'destination_pools_screen.dart';
 import 'active_deliveries_sheet.dart';
 import 'company_reservations_screen.dart';
+import 'statistics_screen.dart';
 
 final driverProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) {
   ref.watch(authProvider); // Re-run when auth details (e.g. name or phone) change
@@ -59,6 +60,7 @@ class DriverHomeScreen extends ConsumerStatefulWidget {
 class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with SingleTickerProviderStateMixin {
 
   bool _isOnline = false;
+  bool _isAcceptingTrip = false;
   Timer? _locationTimer;
   String? _pubDeparture;
   String? _pubDestination;
@@ -187,8 +189,10 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   }
 
   Future<void> _acceptTripDirectly(TripModel trip) async {
+    if (_isAcceptingTrip) return;
     final auth = ref.read(authProvider);
     if (auth == null) return;
+    _isAcceptingTrip = true;
     
     final profile = ref.read(driverProfileProvider).value;
     final companyId = profile?['companyId'] as String?;
@@ -199,7 +203,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       if (!hasCompany) {
         final subInfo = await SubscriptionService().checkSubscription(auth.userId);
         final wallet = ref.read(walletProvider).value;
-        final commission = trip.price * 0.01;
+        final commission = trip.price * 0.02;
 
         if (!subInfo.isActive && (wallet?.balance ?? 0.0) < commission) {
           if (mounted) {
@@ -226,6 +230,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       }
 
       await ref.read(tripRepositoryProvider).acceptTrip(trip.id, auth.userId);
+      ref.read(walletProvider.notifier).refresh();
       
       if (mounted) {
         Navigator.push(
@@ -244,6 +249,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           ),
         );
       }
+    } finally {
+      _isAcceptingTrip = false;
     }
   }
 
@@ -319,7 +326,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                             if (info.isActive && !info.expiresSOon) return const SizedBox.shrink();
 
                             final isExpired = info.isExpired || info.isNone;
-                            final hasBalanceForCommission = (wallet.value?.balance ?? 0.0) >= 100;
+                            final hasBalanceForCommission = (wallet.value?.balance ?? 0.0) >= 200;
 
                             return GestureDetector(
                               onTap: () => Navigator.push(
@@ -357,8 +364,8 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                                       child: Text(
                                         isExpired
                                             ? (hasBalanceForCommission
-                                                ? "ℹ️ Mode Commission (1%) actif — Abonnez-vous pour l'illimité"
-                                                : '⛔ Solde insuffisant pour la commission (1%) — Rechargez ou Abonnez-vous')
+                                                ? "ℹ️ Mode Commission (2%) actif — Abonnez-vous pour l'illimité"
+                                                : '⛔ Solde insuffisant pour la commission (2%) — Rechargez ou Abonnez-vous')
                                             : '⚠️ Abonnement expire dans ${info.daysRemaining}j ${info.hoursRemaining}h — Appuyez pour renouveler',
                                         style: const TextStyle(
                                           color: Colors.white,
@@ -746,7 +753,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                         }),
                       ] else
                         // Offline Placeholder
-                        _buildOfflinePlaceholder(),
+                        _buildOfflinePlaceholder(currentUserId),
                       
                       const SizedBox(height: 30),
                     ],
@@ -757,14 +764,165 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           ],
         ),
       ),
+      bottomNavigationBar: _buildDriverBottomNavBar(isDark, isCompanyDriver, currentUserId),
     );
   }
 
-  Widget _buildOfflinePlaceholder() {
+  Widget _buildDriverBottomNavBar(bool isDark, bool isCompanyDriver, String currentUserId) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildDriverNavItem(
+                icon: Icons.dashboard_rounded,
+                label: 'Cockpit',
+                isActive: true,
+                isDark: isDark,
+                onTap: () {},
+              ),
+              _buildDriverNavItem(
+                icon: Icons.bar_chart_rounded,
+                label: 'Statistiques',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const StatisticsScreen()));
+                },
+              ),
+              GestureDetector(
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  if (isCompanyDriver) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => const ScannerScreen()));
+                  } else {
+                    _showRouteBottomSheet(context, ref, currentUserId);
+                  }
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [TranSenColors.primaryGreen, TranSenColors.darkGreen],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(22),
+                    boxShadow: [
+                      BoxShadow(
+                        color: TranSenColors.primaryGreen.withValues(alpha: 0.4),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isCompanyDriver ? Icons.qr_code_scanner_rounded : Icons.add_road_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isCompanyDriver ? "Scanner QR" : "Mon Trajet",
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              _buildDriverNavItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'TransPay',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                },
+              ),
+              _buildDriverNavItem(
+                icon: Icons.history_rounded,
+                label: 'Courses',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDriverNavItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final color = isActive
+        ? TranSenColors.primaryGreen
+        : (isDark ? Colors.white60 : Colors.black54);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflinePlaceholder(String currentUserId) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       margin: const EdgeInsets.only(top: 10),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 35),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       decoration: BoxDecoration(
         color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(24),
@@ -785,18 +943,46 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
             "Vous êtes Hors Ligne",
             style: TextStyle(
               color: isDark ? Colors.white : Colors.black87,
-              fontWeight: FontWeight.bold,
-              fontSize: 16,
+              fontWeight: FontWeight.w800,
+              fontSize: 17,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            "Activez votre statut 'En Ligne' en haut à droite pour commencer à recevoir des demandes de trajets et de colis en temps réel.",
+            "Passez en ligne pour commencer à recevoir les courses VTC, trajets interurbains et colis Yobanté autour de vous.",
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isDark ? Colors.white70 : Colors.black54,
-              fontSize: 12,
+              fontSize: 12.5,
               height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                _toggleOnline(true, currentUserId);
+              },
+              icon: const Icon(Icons.power_settings_new_rounded, color: Colors.white, size: 20),
+              label: const Text(
+                "PASSER EN LIGNE MAINTENANT",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13.5,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: TranSenColors.primaryGreen,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 4,
+              ),
             ),
           ),
         ],
@@ -1308,7 +1494,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         ],
       ),
       child: InkWell(
-        onTap: null, // Désactivé selon demande utilisateur
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TripDetailScreen(trip: delivery)),
+          );
+        },
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -1399,7 +1592,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),
-        onTap: null, // Désactivé selon demande utilisateur
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => TripDetailScreen(trip: trip)),
+          );
+        },
         child: Padding(
           padding: const EdgeInsets.all(14),
           child: Column(

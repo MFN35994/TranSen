@@ -1,13 +1,65 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#050811">
+    <meta name="description"
+        content="Portail officiel des investisseurs TranSen S.A.S. Simulez votre participation au capital dès 500 FCFA/action et suivez vos actions en temps réel.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://investir.transen.org/">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="TranSen Invest">
+    <meta property="og:title" content="Investir dans TranSen - Devenez Actionnaire">
+    <meta property="og:description"
+        content="Participez au capital de la plateforme de mobilité urbaine et interurbaine du Sénégal dès 500 FCFA l'action via Wave, Orange Money et Free Money.">
+    <meta property="og:url" content="https://investir.transen.org/">
+    <meta property="og:image" content="https://investir.transen.org/assets/transen-logo.png">
     <title>Investir dans TranSen - Devenez Actionnaire</title>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "WebSite",
+            "name": "TranSen Invest",
+            "url": "https://investir.transen.org/"
+          },
+          {
+            "@type": "WebPage",
+            "name": "Investir dans TranSen - Devenez Actionnaire",
+            "url": "https://investir.transen.org/",
+            "isPartOf": {
+              "@type": "Organization",
+              "name": "TranSen S.A.S.",
+              "url": "https://transen.org",
+              "logo": {
+                "@type": "ImageObject",
+                "url": "https://investir.transen.org/assets/transen-logo.png",
+                "width": 512,
+                "height": 512
+              }
+            }
+          }
+        ]
+      }
+    </script>
+    <link rel="preconnect" href="https://api.transen.org" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
+
 <body>
     <!-- Background glow elements -->
     <div class="glow-container">
@@ -20,7 +72,8 @@
         <!-- Header -->
         <header class="header glass">
             <div class="logo">
-                <img src="assets/transen-logo.png" alt="TranSen Logo" onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
+                <img src="assets/transen-logo.png" alt="TranSen Logo"
+                    onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
                 <span>TranSen Invest</span>
             </div>
             <div class="header-actions">
@@ -36,7 +89,9 @@
                 <div class="hero-content">
                     <span class="badge-gold">Levée de Fonds Privée</span>
                     <h1>Participez au capital de TranSen</h1>
-                    <p class="subtitle">La première plateforme de mobilité partagée, logistique et transport interurbain inclusive au Sénégal. Ouvrons le capital à notre communauté pour bâtir ensemble le transport de demain.</p>
+                    <p class="subtitle">La première plateforme de mobilité partagée, logistique et transport interurbain
+                        inclusive au Sénégal. Ouvrons le capital à notre communauté pour bâtir ensemble le transport de
+                        demain.</p>
                 </div>
 
                 <!-- Metrics Grid -->
@@ -59,7 +114,7 @@
                 <div class="calculator-card glass">
                     <h3><i class="fas fa-calculator text-gold"></i> Simulateur d'Investissement</h3>
                     <p class="calc-desc">Calculez le coût de votre participation en temps réel.</p>
-                    
+
                     <div class="calc-input-group">
                         <label for="sharesInput">Nombre d'actions souhaité</label>
                         <div class="input-wrapper">
@@ -85,46 +140,58 @@
             <section class="form-section">
                 <div class="form-card glass">
                     <h2>Promesse de Souscription</h2>
-                    <p class="form-desc">Réservez vos actions dès aujourd'hui. Phase 1 : Collecte des intentions et vérification KYC réglementaire.</p>
-                    
+                    <p class="form-desc">Réservez vos actions dès aujourd'hui. Phase 1 : Collecte des intentions et
+                        vérification KYC réglementaire.</p>
+
                     <form id="investmentForm">
                         <div class="form-group">
-                            <label for="fullName"><i class="fas fa-user"></i> Nom Complet <span class="required">*</span></label>
+                            <label for="fullName"><i class="fas fa-user"></i> Nom Complet <span
+                                    class="required">*</span></label>
                             <input type="text" id="fullName" placeholder="Ex: Seydou Ndiaye" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="email"><i class="fas fa-envelope"></i> E-mail <span style="color: var(--primary);">*</span></label>
+                            <label for="email"><i class="fas fa-envelope"></i> E-mail <span
+                                    class="required">*</span></label>
                             <input type="email" id="email" placeholder="Ex: seydou@example.com" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="phone"><i class="fas fa-phone"></i> Téléphone Mobile Money <span class="required">*</span></label>
+                            <label for="phone"><i class="fas fa-phone"></i> Téléphone Mobile Money <span
+                                    class="required">*</span></label>
                             <div class="phone-input-wrapper">
                                 <span class="country-code">+221</span>
-                                <input type="tel" id="phone" placeholder="77 123 45 67" required pattern="[0-9\s]{9,15}">
+                                <input type="tel" id="phone" placeholder="77 123 45 67" required
+                                    pattern="[0-9\s]{9,15}">
                             </div>
-                            <small class="help-text">Ce numéro sera utilisé pour l'achat de vos actions via SenePay.</small>
+                            <small class="help-text">Ce numéro sera utilisé pour l'achat de vos actions via
+                                SenePay.</small>
                         </div>
 
                         <div class="form-group">
-                            <label for="formSharesCount"><i class="fas fa-coins"></i> Nombre d'actions à réserver <span class="required">*</span></label>
+                            <label for="formSharesCount"><i class="fas fa-coins"></i> Nombre d'actions à réserver <span
+                                    class="required">*</span></label>
                             <input type="number" id="formSharesCount" min="1" value="100" required>
                         </div>
 
                         <div class="form-group">
-                            <label for="kycFile"><i class="fas fa-id-card"></i> Pièce d'identité (CNI / Passeport) <span class="required">*</span></label>
+                            <label for="kycFile"><i class="fas fa-id-card"></i> Pièce d'identité (CNI / Passeport) <span
+                                    class="required">*</span></label>
                             <div class="file-upload-box" id="uploadBox">
                                 <i class="fas fa-cloud-upload-alt upload-icon"></i>
                                 <p class="upload-text">Glissez ou cliquez pour ajouter votre pièce d'identité</p>
-                                <span class="file-info" id="fileInfo">Aucun fichier sélectionné (PDF, PNG, JPG max. 10 Mo)</span>
-                                <input type="file" id="kycFile" accept="image/*,application/pdf" required style="display: none;">
+                                <span class="file-info" id="fileInfo">Aucun fichier sélectionné (PDF, PNG, JPG max. 10
+                                    Mo)</span>
+                                <input type="file" id="kycFile" accept="image/*,application/pdf" required
+                                    style="display: none;">
                             </div>
                         </div>
 
                         <div class="form-checkbox">
                             <input type="checkbox" id="termsCheck" required>
-                            <label for="termsCheck">Je confirme mon intention sérieuse de souscrire à ces actions et accepte que mes données soient vérifiées conformément aux réglementations financières.</label>
+                            <label for="termsCheck">Je confirme mon intention sérieuse de souscrire à ces actions et
+                                accepte que mes données soient vérifiées conformément aux réglementations
+                                financières.</label>
                         </div>
 
                         <button type="submit" class="btn-submit" id="submitBtn">
@@ -150,7 +217,7 @@
             </div>
             <h2>Félicitations !</h2>
             <p>Votre promesse de souscription a été enregistrée avec succès par notre système.</p>
-            
+
             <div class="summary-box">
                 <div class="summary-line">
                     <span>Actions réservées :</span>
@@ -166,8 +233,9 @@
                 </div>
             </div>
 
-            <p class="modal-note">Nos équipes vont analyser votre pièce d'identité. Vous recevrez un SMS de confirmation dès validation de votre dossier pour passer au paiement.</p>
-            
+            <p class="modal-note">Nos équipes vont analyser votre pièce d'identité. Vous recevrez un SMS de confirmation
+                dès validation de votre dossier pour passer au paiement.</p>
+
             <button class="btn-close" id="closeModalBtn">Fermer</button>
         </div>
     </div>
@@ -179,8 +247,9 @@
                 <i class="fas fa-wallet"></i>
             </div>
             <h2>Espace Portefeuille</h2>
-            <p>Connectez-vous avec les identifiants utilisés lors de votre souscription pour accéder au suivi de votre investissement.</p>
-            
+            <p>Connectez-vous avec les identifiants utilisés lors de votre souscription pour accéder au suivi de votre
+                investissement.</p>
+
             <form id="loginForm">
                 <div class="form-group">
                     <label for="loginEmail"><i class="fas fa-envelope"></i> E-mail</label>
@@ -204,6 +273,8 @@
     </div>
 
     <script src="js/premium-notifications.js"></script>
+    <script src="js/api-client.js"></script>
     <script src="js/app.js"></script>
 </body>
+
 </html>

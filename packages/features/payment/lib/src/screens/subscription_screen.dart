@@ -41,6 +41,7 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
       }
 
       await service.subscribe(userId: userId, plan: plan);
+      await ref.read(walletProvider.notifier).refresh();
 
       if (mounted) {
         messenger.showSnackBar(SnackBar(

@@ -2,13 +2,12 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:dio/dio.dart';
+import '../api/api_client.dart';
 
 class GeminiService {
-  final Dio _dio = Dio(BaseOptions(
-    baseUrl: 'https://api.transen.org',
-    connectTimeout: const Duration(seconds: 60),
-    receiveTimeout: const Duration(seconds: 60),
-  ));
+  final Dio _dio;
+
+  GeminiService({Dio? dio}) : _dio = dio ?? ApiClient().dio;
 
   // L'IA est toujours configurée via le backend sécurisé
   bool get isConfigured => true;

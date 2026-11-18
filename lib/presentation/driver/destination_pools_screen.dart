@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_core/transen_core.dart';
 import 'package:transen_auth/transen_auth.dart';
+import 'package:transen_payment/transen_payment.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'pool_detail_screen.dart';
 
@@ -14,6 +15,7 @@ class DestinationPoolsScreen extends ConsumerStatefulWidget {
 
 class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen> {
   final Set<String> _ignoredPoolIds = {};
+  final Set<String> _acceptingPoolIds = {};
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +96,8 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: () async {
+                onPressed: _acceptingPoolIds.contains(pool.id) ? null : () async {
+                  if (driverId.isEmpty) return;
                   try {
                     if (pool.currentFilling < 3) {
                       final confirm = await showDialog<bool>(
@@ -110,14 +113,22 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
                       );
                       if (confirm != true) return;
                     }
+
+                    if (!mounted) return;
+                    setState(() => _acceptingPoolIds.add(pool.id));
+
                     await ref.read(tripRepositoryProvider).acceptPool(pool.id, driverId);
+                    ref.read(walletProvider.notifier).refresh();
                     
                     if (!context.mounted) return;
                     Navigator.push(context, MaterialPageRoute(builder: (_) => PoolDetailScreen(pool: pool)));
                   } catch (e) {
+                    if (!context.mounted) return;
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
                     );
+                  } finally {
+                    if (mounted) setState(() => _acceptingPoolIds.remove(pool.id));
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -126,7 +137,13 @@ class _DestinationPoolsScreenState extends ConsumerState<DestinationPoolsScreen>
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
                 ),
-                child: Text(isFull ? 'ACCEPTER (COMPLET)' : 'ACCEPTER (${pool.currentFilling}/4)'),
+                child: _acceptingPoolIds.contains(pool.id)
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : Text(isFull ? 'ACCEPTER (COMPLET)' : 'ACCEPTER (${pool.currentFilling}/4)'),
               ),
             ),
           ],

@@ -29,26 +29,140 @@ const API_HOST = window.location.hostname === 'localhost' || window.location.hos
     ? 'http://localhost:8081' 
     : 'https://api.transen.org';
 
-// Helper for REST calls to Spring Boot backend
+const ADMIN_FETCH_TIMEOUT_MS = 15000;
+const ADMIN_GET_CACHE_TTL_MS = 4000;
+const ADMIN_MUTATION_COOLDOWN_MS = 1500;
+const _adminGetCache = new Map();
+const _adminInFlightGets = new Map();
+const _adminInFlightMutations = new Set();
+const _adminRecentMutations = new Map();
+
+function escapeHtml(val) {
+    if (val === null || val === undefined) return '';
+    return String(val)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function _debounce(fn, delayMs = 220) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn(...args), delayMs);
+    };
+}
+
+function clearAdminCache() {
+    _adminGetCache.clear();
+}
+
+function _genIdempotencyKey() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return `adm-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+// Helper for REST calls to Spring Boot backend (timeout + GET dedup/cache + anti-double-click + idempotency)
 async function adminFetch(url, options = {}) {
+    const method = (options.method || 'GET').toUpperCase();
+    const fullUrl = `${API_HOST}${url}`;
+    const isMutation = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method);
+    const isAuthRoute = url.includes('/auth/');
+    const mutationKey = `${method}:${url}`;
+
+    if (isMutation && !isAuthRoute) {
+        const lastAt = _adminRecentMutations.get(mutationKey) || 0;
+        if (_adminInFlightMutations.has(mutationKey) || (Date.now() - lastAt < ADMIN_MUTATION_COOLDOWN_MS)) {
+            throw new Error("Action déjà en cours, veuillez patienter...");
+        }
+        _adminInFlightMutations.add(mutationKey);
+        _adminRecentMutations.set(mutationKey, Date.now());
+    }
+
+    if (method === 'GET' && !isAuthRoute && !options.bypassCache) {
+        const cached = _adminGetCache.get(url);
+        if (cached && (Date.now() - cached.ts < ADMIN_GET_CACHE_TTL_MS)) {
+            return new Response(cached.bodyText, {
+                status: cached.status,
+                headers: { 'Content-Type': cached.contentType || 'application/json' }
+            });
+        }
+        if (_adminInFlightGets.has(url)) {
+            const shared = await _adminInFlightGets.get(url);
+            return new Response(shared.bodyText, {
+                status: shared.status,
+                headers: { 'Content-Type': shared.contentType || 'application/json' }
+            });
+        }
+    }
+
     const token = localStorage.getItem('adminToken');
     const headers = {
         'Content-Type': 'application/json',
         ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...(isMutation && !isAuthRoute ? { 'X-Idempotency-Key': _genIdempotencyKey() } : {}),
         ...options.headers
     };
-    const response = await fetch(`${API_HOST}${url}`, {
-        ...options,
-        headers
-    });
-    if (response.status === 401 || response.status === 403) {
-        localStorage.removeItem('adminToken');
-        localStorage.removeItem('adminUser');
-        signOut(auth);
-        hideApp();
-        throw new Error("Session expirée ou droits insuffisants. Veuillez vous reconnecter.");
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), options.timeoutMs || ADMIN_FETCH_TIMEOUT_MS);
+
+    const execFetch = async () => {
+        try {
+            const response = await fetch(fullUrl, {
+                ...options,
+                headers,
+                signal: options.signal || controller.signal
+            });
+
+            if (response.status === 401 || response.status === 403) {
+                localStorage.removeItem('adminToken');
+                localStorage.removeItem('adminUser');
+                signOut(auth);
+                hideApp();
+                throw new Error("Session expirée ou droits insuffisants. Veuillez vous reconnecter.");
+            }
+
+            if (isMutation && !isAuthRoute) {
+                clearAdminCache();
+            }
+
+            if (method === 'GET' && response.ok && !isAuthRoute && !options.bypassCache) {
+                const bodyText = await response.text();
+                const contentType = response.headers.get('content-type') || 'application/json';
+                const payload = { ts: Date.now(), status: response.status, bodyText, contentType };
+                _adminGetCache.set(url, payload);
+                return payload;
+            }
+            return { rawResponse: response };
+        } catch (err) {
+            if (err && err.name === 'AbortError') {
+                throw new Error("Le serveur met trop de temps à répondre (15s). Réessayez.");
+            }
+            throw err;
+        } finally {
+            clearTimeout(timeoutId);
+            if (isMutation && !isAuthRoute) {
+                _adminInFlightMutations.delete(mutationKey);
+            }
+        }
+    };
+
+    if (method === 'GET' && !isAuthRoute && !options.bypassCache) {
+        const promise = execFetch().finally(() => _adminInFlightGets.delete(url));
+        _adminInFlightGets.set(url, promise);
+        const result = await promise;
+        if (result.rawResponse) return result.rawResponse;
+        return new Response(result.bodyText, {
+            status: result.status,
+            headers: { 'Content-Type': result.contentType }
+        });
     }
-    return response;
+
+    const result = await execFetch();
+    return result.rawResponse;
 }
 
 // Global Error Handler for Snapshots
@@ -96,11 +210,15 @@ document.getElementById('loginForm').onsubmit = async (e) => {
     signInBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion en cours...';
     signInBtn.disabled = true;
 
+    let loginTimeoutId;
     try {
+        const loginCtrl = new AbortController();
+        loginTimeoutId = setTimeout(() => loginCtrl.abort(), ADMIN_FETCH_TIMEOUT_MS);
         const res = await fetch(`${API_HOST}/api/auth/admin/login`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
+            body: JSON.stringify({ email, password }),
+            signal: loginCtrl.signal
         });
 
         const data = await res.json();
@@ -120,14 +238,26 @@ document.getElementById('loginForm').onsubmit = async (e) => {
             errorMsg.innerText = data.message || "Identifiants incorrects.";
         }
     } catch (err) {
-        errorMsg.innerText = "Erreur de connexion au serveur : " + err.message;
+        errorMsg.innerText = err?.name === 'AbortError'
+            ? "Délai d'attente dépassé (15s). Vérifiez le serveur."
+            : "Erreur de connexion au serveur : " + err.message;
         console.error(err);
     } finally {
+        clearTimeout(loginTimeoutId);
         // Reset button state
         signInBtn.innerHTML = originalBtnHtml;
         signInBtn.disabled = false;
     }
 };
+
+let _unsubRecentActivity = null;
+let _unsubLiveFeed = null;
+
+function stopFirestoreListeners() {
+    if (_unsubRecentActivity) { _unsubRecentActivity(); _unsubRecentActivity = null; }
+    if (_unsubLiveFeed) { _unsubLiveFeed(); _unsubLiveFeed = null; }
+    if (typeof unsubscribeMediaHub === 'function') { unsubscribeMediaHub(); }
+}
 
 function showApp(userData) {
     document.getElementById('login-overlay').style.display = "none";
@@ -151,6 +281,8 @@ function showApp(userData) {
 }
 
 function hideApp() {
+    stopFirestoreListeners();
+    clearAdminCache();
     document.getElementById('login-overlay').style.display = "flex";
     document.getElementById('admin-app').style.display = "none";
 }
@@ -158,17 +290,11 @@ function hideApp() {
 function initDashboard() {
     setupNavigation();
     setupFiltersAndSearch();
+    // Only boot visible dashboard + sidebar counters; heavy sections lazy-load on navigation
     syncGlobalStats();
     syncRecentActivity();
-    syncLiveFeed();
-    syncDrivers();
     syncCompanies();
-    syncUsers();
-    syncAdmins();
     syncDocumentsSection();
-    syncFinanceSection();
-    syncMarketsSection();
-    syncChannelsSection();
 }
 
 function setupNavigation() {
@@ -202,31 +328,41 @@ function setupNavigation() {
             link.classList.add('active');
             document.getElementById('sectionTitle').innerText = link.innerText;
 
-            // Refresh on click
+            if (section !== 'live' && _unsubLiveFeed) {
+                _unsubLiveFeed();
+                _unsubLiveFeed = null;
+            }
+
+            // Lazy-load & refresh active section
             if (section === 'companies') syncCompanies();
-            if (section === 'admins') syncAdmins();
-            if (section === 'dashboard') {
+            else if (section === 'admins') syncAdmins();
+            else if (section === 'live') syncLiveFeed();
+            else if (section === 'dashboard') {
                 syncGlobalStats();
                 syncRecentActivity();
             }
-            if (section === 'drivers') syncDrivers();
-            if (section === 'users') syncUsers();
-            if (section === 'documents') syncDocumentsSection();
-            if (section === 'finance') syncFinanceSection();
-            if (section === 'investments') syncInvestments();
-            if (section === 'markets') syncMarketsSection();
-            if (section === 'channels') syncChannelsSection();
-            if (section === 'media-hub') syncMediaHubSection();
+            else if (section === 'drivers') syncDrivers();
+            else if (section === 'users') syncUsers();
+            else if (section === 'documents') syncDocumentsSection();
+            else if (section === 'finance') syncFinanceSection();
+            else if (section === 'investments') syncInvestments();
+            else if (section === 'markets') syncMarketsSection();
+            else if (section === 'channels') syncChannelsSection();
+            else if (section === 'media-hub') syncMediaHubSection();
         };
     });
 }
 
 async function syncGlobalStats() {
-    console.log("Syncing Global Stats from REST API...");
     try {
-        const res = await adminFetch('/api/admin/stats');
-        if (res.ok) {
-            const stats = await res.json();
+        const [statsRes, compRes, finRes] = await Promise.allSettled([
+            adminFetch('/api/admin/stats'),
+            adminFetch('/api/admin/metrics/compartments'),
+            adminFetch('/api/admin/finance/stats')
+        ]);
+
+        if (statsRes.status === 'fulfilled' && statsRes.value.ok) {
+            const stats = await statsRes.value.json();
             document.getElementById('totalTrips').innerText = stats.totalTrips || 0;
             document.getElementById('totalUsers').innerText = stats.totalUsers || 0;
             document.getElementById('totalRevenue').innerText = (stats.totalRevenue || 0).toLocaleString() + " F";
@@ -234,9 +370,8 @@ async function syncGlobalStats() {
         }
 
         // Fetch compartments/markets for dashboard preview
-        const resComp = await adminFetch('/api/admin/metrics/compartments');
-        if (resComp.ok) {
-            const data = await resComp.json();
+        if (compRes.status === 'fulfilled' && compRes.value.ok) {
+            const data = await compRes.value.json();
             const m = data.markets;
             const c = data.categories;
 
@@ -269,9 +404,8 @@ async function syncGlobalStats() {
         }
 
         // Fetch finance for mobile money network split
-        const resFin = await adminFetch('/api/admin/finance/stats');
-        if (resFin.ok) {
-            const data = await resFin.json();
+        if (finRes.status === 'fulfilled' && finRes.value.ok) {
+            const data = await finRes.value.json();
             const wavePct = data.networks.wave.percentage ? Math.round(data.networks.wave.percentage) : 0;
             const omPct = data.networks.orangeMoney.percentage ? Math.round(data.networks.orangeMoney.percentage) : 0;
             const freePct = data.networks.freeMoney.percentage ? Math.round(data.networks.freeMoney.percentage) : 0;
@@ -290,50 +424,69 @@ async function syncGlobalStats() {
 }
 
 function syncRecentActivity() {
+    if (_unsubRecentActivity) {
+        _unsubRecentActivity();
+        _unsubRecentActivity = null;
+    }
     const q = query(collection(db, "trips"), orderBy("createdAt", "desc"), limit(8));
-    onSnapshot(q, 
+    _unsubRecentActivity = onSnapshot(q, 
         snap => {
             const tbody = document.getElementById('activityTableBody');
-            tbody.innerHTML = "";
+            if (!tbody) return;
+            const rows = [];
             snap.forEach(docSnap => {
                 const t = docSnap.data();
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>#${docSnap.id.substring(0,6)}</td>
-                    <td><span class="badge blue">${t.type?.toUpperCase() || 'COURSE'}</span></td>
-                    <td>${t.clientName || 'Inconnu'}</td>
-                    <td>${t.price} F</td>
-                    <td style="color:var(--primary); font-weight:bold">${(t.price * 0.01).toFixed(0)} F</td>
-                    <td><span class="status-tag ${t.status}">${t.status.toUpperCase()}</span></td>
-                `;
-                tbody.appendChild(tr);
+                const priceNum = Number(t.price) || 0;
+                const statusSafe = escapeHtml(t.status || 'pending');
+                rows.push(`
+                    <tr>
+                        <td>#${escapeHtml(docSnap.id.substring(0, 6))}</td>
+                        <td><span class="badge blue">${escapeHtml((t.type || 'COURSE').toUpperCase())}</span></td>
+                        <td>${escapeHtml(t.clientName || 'Inconnu')}</td>
+                        <td>${priceNum} F</td>
+                        <td style="color:var(--primary); font-weight:bold">${(priceNum * 0.02).toFixed(0)} F</td>
+                        <td><span class="status-tag ${statusSafe}">${statusSafe.toUpperCase()}</span></td>
+                    </tr>
+                `);
             });
+            tbody.innerHTML = rows.join('');
         },
         e => handleError(e, "Recent Activity")
     );
 }
 
 function syncLiveFeed() {
+    if (_unsubLiveFeed) {
+        _unsubLiveFeed();
+        _unsubLiveFeed = null;
+    }
     const q = query(collection(db, "trips"), orderBy("createdAt", "desc"), limit(50));
-    onSnapshot(q, 
+    _unsubLiveFeed = onSnapshot(q, 
         snap => {
             const tbody = document.getElementById('liveTripsTableBody');
-            tbody.innerHTML = "";
+            if (!tbody) return;
+            const rows = [];
             snap.forEach(docSnap => {
                 const t = docSnap.data();
                 const date = t.createdAt?.toDate ? t.createdAt.toDate().toLocaleTimeString('fr-FR') : '--:--';
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${date}</td>
-                    <td>${formatServiceType(t)}</td>
-                    <td><div style="font-size:0.8rem"><b>DE:</b> ${t.departure?.substring(0,25)}...<br><b>À:</b> ${t.destination?.substring(0,25)}...</div></td>
-                    <td>${t.driverName || '<span style="color:gray">En recherche...</span>'}</td>
-                    <td><span class="badge gold">${t.paymentMethod?.toUpperCase() || 'CASH'}</span></td>
-                    <td><b>${t.price} F</b><br><small style="color:var(--primary)">Com (1%): ${(t.price * 0.01).toFixed(0)} F</small></td>
-                    <td><span class="status-tag ${t.status}">${t.status.toUpperCase()}</span></td>
-                `;
-                tbody.appendChild(tr);
+                const priceNum = Number(t.price) || 0;
+                const dep = escapeHtml((t.departure || '').substring(0, 25));
+                const dest = escapeHtml((t.destination || '').substring(0, 25));
+                const drv = t.driverName ? escapeHtml(t.driverName) : '<span style="color:gray">En recherche...</span>';
+                const statusSafe = escapeHtml(t.status || 'pending');
+                rows.push(`
+                    <tr>
+                        <td>${escapeHtml(date)}</td>
+                        <td>${formatServiceType(t)}</td>
+                        <td><div style="font-size:0.8rem"><b>DE:</b> ${dep}...<br><b>À:</b> ${dest}...</div></td>
+                        <td>${drv}</td>
+                        <td><span class="badge gold">${escapeHtml((t.paymentMethod || 'CASH').toUpperCase())}</span></td>
+                        <td><b>${priceNum} F</b><br><small style="color:var(--primary)">Com (2%): ${(priceNum * 0.02).toFixed(0)} F</small></td>
+                        <td><span class="status-tag ${statusSafe}">${statusSafe.toUpperCase()}</span></td>
+                    </tr>
+                `);
             });
+            tbody.innerHTML = rows.join('');
         },
         e => handleError(e, "Live Feed")
     );
@@ -380,82 +533,83 @@ async function syncCompanies() {
 
 function renderCompaniesList() {
     const tbody = document.getElementById('companiesTableBody');
-    tbody.innerHTML = "";
-    
+    if (!tbody) return;
+
     const filterType = document.querySelector('#companyTypeFilters .filter-chip.active')?.getAttribute('data-comp-type') || 'all';
     const searchQuery = document.getElementById('companySearchInput')?.value.toLowerCase() || '';
-    
+
     const filtered = window.allCompaniesMetrics.filter(c => {
         const matchesType = (filterType === 'all' || c.type === filterType);
-        const matchesSearch = c.name.toLowerCase().includes(searchQuery) || 
+        const matchesSearch = (c.name || '').toLowerCase().includes(searchQuery) ||
                               (c.managerName && c.managerName.toLowerCase().includes(searchQuery)) ||
                               (c.managerPhone && c.managerPhone.includes(searchQuery));
         return matchesType && matchesSearch;
     });
-    
-    filtered.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.classList.add('tr-link');
-        tr.style.cursor = 'pointer';
-        
-        tr.onclick = (e) => {
-            if (e.target.closest('button') || e.target.closest('a')) return;
-            window.openCompanyDetails(c.id);
-        };
-        
-        let docsHtml = '';
-        if (c.rccmUrl || c.nineaUrl || c.managerFrontUrl || c.managerBackUrl || c.transportAuthUrl) {
-            docsHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`;
-        } else {
-            docsHtml = `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
-        }
-        
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:gray; padding:24px;">Aucune compagnie trouvée.</td></tr>';
+        return;
+    }
+
+    const capped = filtered.slice(0, 120);
+    const rowsHtml = capped.map(c => {
         let statusClass = 'pending';
         if (c.verificationStatus === 'APPROVED') statusClass = 'completed';
         if (c.verificationStatus === 'REJECTED') statusClass = 'failed';
-        
-        const statusTag = `<span class="status-tag ${statusClass}">${c.verificationStatus}</span>`;
-        
-        tr.innerHTML = `
-            <td><b>${c.name}</b></td>
-            <td><span class="badge blue">${c.type}</span></td>
-            <td>
-                <b>${c.managerName || 'Non lié'}</b><br>
-                <small>${c.managerPhone || ''}</small>
-            </td>
-            <td><b>${c.totalDrivers}</b></td>
-            <td><b>${formatCurrency(c.totalRevenue)}</b></td>
-            <td><b>${formatCurrency(c.walletBalance)}</b></td>
-            <td>${statusTag}</td>
-            <td>
-                <div style="display: flex; gap: 8px;">
-                    <button class="icon-btn glass" style="color:var(--primary);" title="Détails de la Compagnie" onclick="window.openCompanyDetails('${c.id}')"><i class="fas fa-chart-line"></i></button>
-                    ${c.verificationStatus === 'PENDING' ? 
-                      `<button class="icon-btn glass" style="color:var(--primary);" title="Vérifier KYC" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-check-double"></i></button>` : 
-                      `<button class="icon-btn glass" style="color:var(--text-dim);" title="Voir KYC" onclick="window.openCompanyKyc('${c.id}')"><i class="fas fa-eye"></i></button>`}
-                </div>
-            </td>
+        const cid = escapeHtml(c.id);
+        const statusTag = `<span class="status-tag ${statusClass}">${escapeHtml(c.verificationStatus || 'PENDING')}</span>`;
+
+        return `
+            <tr class="tr-link" style="cursor:pointer" data-company-id="${cid}">
+                <td><b>${escapeHtml(c.name)}</b></td>
+                <td><span class="badge blue">${escapeHtml(c.type)}</span></td>
+                <td>
+                    <b>${escapeHtml(c.managerName || 'Non lié')}</b><br>
+                    <small>${escapeHtml(c.managerPhone || '')}</small>
+                </td>
+                <td><b>${c.totalDrivers || 0}</b></td>
+                <td><b>${formatCurrency(c.totalRevenue)}</b></td>
+                <td><b>${formatCurrency(c.walletBalance)}</b></td>
+                <td>${statusTag}</td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="icon-btn glass" style="color:var(--primary);" title="Détails de la Compagnie" onclick="window.openCompanyDetails('${cid}')"><i class="fas fa-chart-line"></i></button>
+                        ${c.verificationStatus === 'PENDING' ?
+                          `<button class="icon-btn glass" style="color:var(--primary);" title="Vérifier KYC" onclick="window.openCompanyKyc('${cid}')"><i class="fas fa-check-double"></i></button>` :
+                          `<button class="icon-btn glass" style="color:var(--text-dim);" title="Voir KYC" onclick="window.openCompanyKyc('${cid}')"><i class="fas fa-eye"></i></button>`}
+                    </div>
+                </td>
+            </tr>
         `;
-        tbody.appendChild(tr);
-    });
+    }).join('');
+
+    const footerNote = filtered.length > 120
+        ? `<tr><td colspan="8" style="text-align:center; color:var(--text-dim); font-size:0.82rem; padding:12px;">Affichage des 120 premières compagnies sur ${filtered.length}. Utilisez la recherche pour filtrer.</td></tr>`
+        : '';
+
+    tbody.innerHTML = rowsHtml + footerNote;
+    tbody.onclick = (e) => {
+        if (e.target.closest('button') || e.target.closest('a')) return;
+        const tr = e.target.closest('tr[data-company-id]');
+        if (tr) window.openCompanyDetails(tr.dataset.companyId);
+    };
 }
 
 async function syncDrivers() {
-    console.log("Syncing Drivers from REST API...");
     try {
         const res = await adminFetch('/api/admin/metrics/drivers');
         if (!res.ok) throw new Error("Impossible de charger les statistiques des chauffeurs.");
         const drivers = await res.json();
         window.allDriversMetrics = drivers;
-        
+
         const totalDrivers = drivers.length;
         const verifiedDriversCount = drivers.filter(d => d.isVerified).length;
         const totalVolume = drivers.reduce((acc, curr) => acc + (curr.totalRevenue || 0), 0);
-        
+
         document.getElementById('metricsDriversTotal').innerText = totalDrivers;
         document.getElementById('metricsDriversActive').innerText = verifiedDriversCount;
         document.getElementById('metricsDriversVolume').innerText = formatCurrency(totalVolume);
-        
+
         renderDriversList();
     } catch (e) {
         console.error("Error syncing drivers:", e);
@@ -464,77 +618,90 @@ async function syncDrivers() {
 
 function renderDriversList() {
     const tbody = document.getElementById('driversTableBody');
-    tbody.innerHTML = "";
-    
+    if (!tbody) return;
+
     const filterMarket = document.querySelector('#driverMarketFilters .filter-chip.active')?.getAttribute('data-driver-market') || 'all';
     const searchQuery = document.getElementById('driverSearchInput')?.value.toLowerCase() || '';
-    
+
     const filtered = window.allDriversMetrics.filter(d => {
         const isIndependent = d.companyId === null;
-        const matchesMarket = (filterMarket === 'all' || 
+        const matchesMarket = (filterMarket === 'all' ||
                               (filterMarket === 'independent' && isIndependent) ||
                               (filterMarket === 'company' && !isIndependent));
-        const matchesSearch = d.fullName.toLowerCase().includes(searchQuery) || 
-                              d.phone.includes(searchQuery);
+        const matchesSearch = (d.fullName || '').toLowerCase().includes(searchQuery) ||
+                              (d.phone || '').includes(searchQuery);
         return matchesMarket && matchesSearch;
     });
-    
-    filtered.forEach(d => {
-        const tr = document.createElement('tr');
-        tr.classList.add('tr-link');
-        tr.style.cursor = 'pointer';
-        tr.onclick = (e) => {
-            if (e.target.closest('button')) return;
-            window.openDriverDetails(d.id);
-        };
-        
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:gray; padding:24px;">Aucun chauffeur trouvé.</td></tr>';
+        return;
+    }
+
+    const capped = filtered.slice(0, 120);
+    const rowsHtml = capped.map(d => {
         let osIcon = '<i class="fab fa-android" style="color:#3b82f6; font-size:1.15rem;" title="Android"></i>';
         if (d.deviceSystem === 'IOS') {
             osIcon = '<i class="fab fa-apple" style="color:#ec4899; font-size:1.15rem;" title="iOS"></i>';
         } else if (d.deviceSystem === 'WEB') {
             osIcon = '<i class="fas fa-globe" style="color:#10b981; font-size:1.15rem;" title="Web"></i>';
         }
+        const did = escapeHtml(d.id);
 
-        tr.innerHTML = `
-            <td><b>${d.fullName}</b><br><small>${d.phone}</small></td>
-            <td>
-                ${d.companyId ? `<span class="badge blue">${d.companyName}</span>` : `<span class="badge gold">Indépendant</span>`}
-            </td>
-            <td><b>${d.totalTrips}</b></td>
-            <td><b>${formatCurrency(d.totalRevenue)}</b></td>
-            <td><b>${formatCurrency(d.walletBalance)}</b></td>
-            <td><span class="status-tag ${d.isVerified ? 'completed' : 'pending'}">${d.isVerified ? 'OUI' : 'NON'}</span></td>
-            <td style="text-align:center;">${osIcon}</td>
-            <td>
-                <div style="display: flex; gap: 8px;">
-                    <button class="icon-btn glass" style="color:var(--primary);" title="Statistiques" onclick="window.openDriverDetails('${d.id}')"><i class="fas fa-chart-line"></i></button>
-                </div>
-            </td>
+        return `
+            <tr class="tr-link" style="cursor:pointer" data-driver-id="${did}">
+                <td><b>${escapeHtml(d.fullName)}</b><br><small>${escapeHtml(d.phone)}</small></td>
+                <td>
+                    ${d.companyId ? `<span class="badge blue">${escapeHtml(d.companyName)}</span>` : `<span class="badge gold">Indépendant</span>`}
+                </td>
+                <td><b>${d.totalTrips || 0}</b></td>
+                <td><b>${formatCurrency(d.totalRevenue)}</b></td>
+                <td><b>${formatCurrency(d.walletBalance)}</b></td>
+                <td><span class="status-tag ${d.isVerified ? 'completed' : 'pending'}">${d.isVerified ? 'OUI' : 'NON'}</span></td>
+                <td style="text-align:center;">${osIcon}</td>
+                <td>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="icon-btn glass" style="color:var(--primary);" title="Statistiques" onclick="window.openDriverDetails('${did}')"><i class="fas fa-chart-line"></i></button>
+                    </div>
+                </td>
+            </tr>
         `;
-        tbody.appendChild(tr);
-    });
+    }).join('');
+
+    const footerNote = filtered.length > 120
+        ? `<tr><td colspan="8" style="text-align:center; color:var(--text-dim); font-size:0.82rem; padding:12px;">Affichage des 120 premiers chauffeurs sur ${filtered.length}.</td></tr>`
+        : '';
+
+    tbody.innerHTML = rowsHtml + footerNote;
+    tbody.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        const tr = e.target.closest('tr[data-driver-id]');
+        if (tr) window.openDriverDetails(tr.dataset.driverId);
+    };
 }
 
 async function syncUsers() {
-    console.log("Syncing Clients from REST API...");
     try {
-        const res = await adminFetch('/api/admin/metrics/clients');
-        if (!res.ok) throw new Error("Impossible de charger les statistiques des clients.");
-        const clients = await res.json();
-        window.allClientsMetrics = clients;
-        
-        const totalClients = clients.length;
-        const totalSpent = clients.reduce((acc, curr) => acc + (curr.totalSpent || 0), 0);
-        const avgSpent = totalClients > 0 ? totalSpent / totalClients : 0;
-        
-        document.getElementById('metricsClientsTotal').innerText = totalClients;
-        document.getElementById('metricsClientsVolume').innerText = formatCurrency(totalSpent);
-        document.getElementById('metricsClientsAverage').innerText = formatCurrency(avgSpent);
-        
-        // Fetch OS downloads count from compartments endpoint
-        const resComp = await adminFetch('/api/admin/metrics/compartments');
-        if (resComp.ok) {
-            const data = await resComp.json();
+        const [clientsRes, compRes] = await Promise.allSettled([
+            adminFetch('/api/admin/metrics/clients'),
+            adminFetch('/api/admin/metrics/compartments')
+        ]);
+
+        if (clientsRes.status === 'fulfilled' && clientsRes.value.ok) {
+            const clients = await clientsRes.value.json();
+            window.allClientsMetrics = clients;
+
+            const totalClients = clients.length;
+            const totalSpent = clients.reduce((acc, curr) => acc + (curr.totalSpent || 0), 0);
+            const avgSpent = totalClients > 0 ? totalSpent / totalClients : 0;
+
+            document.getElementById('metricsClientsTotal').innerText = totalClients;
+            document.getElementById('metricsClientsVolume').innerText = formatCurrency(totalSpent);
+            document.getElementById('metricsClientsAverage').innerText = formatCurrency(avgSpent);
+        }
+
+        if (compRes.status === 'fulfilled' && compRes.value.ok) {
+            const data = await compRes.value.json();
             const channels = data.channels || {};
             document.getElementById('metricsAndroidDownloads').innerText = channels.androidUsers || 0;
             document.getElementById('metricsIosDownloads').innerText = channels.iosUsers || 0;
@@ -549,84 +716,90 @@ async function syncUsers() {
 
 function renderClientsList() {
     const tbody = document.getElementById('usersTableBody');
-    tbody.innerHTML = "";
-    
+    if (!tbody) return;
+
     const searchQuery = document.getElementById('clientSearchInput')?.value.toLowerCase() || '';
-    
+
     const filtered = window.allClientsMetrics.filter(c => {
-        return c.fullName.toLowerCase().includes(searchQuery) || 
-               c.phone.includes(searchQuery) || 
+        return (c.fullName || '').toLowerCase().includes(searchQuery) ||
+               (c.phone || '').includes(searchQuery) ||
                (c.email && c.email.toLowerCase().includes(searchQuery));
     });
-    
-    filtered.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.classList.add('tr-link');
-        tr.style.cursor = 'pointer';
-        tr.onclick = (e) => {
-            if (e.target.closest('button')) return;
-            window.openClientDetails(c.id);
-        };
-        
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:gray; padding:24px;">Aucun client trouvé.</td></tr>';
+        return;
+    }
+
+    const capped = filtered.slice(0, 120);
+    const rowsHtml = capped.map(c => {
         const dateStr = c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : 'Non renseigné';
-        
         let osIcon = '<i class="fab fa-android" style="color:#3b82f6; font-size:1.15rem;" title="Android"></i>';
         if (c.deviceSystem === 'IOS') {
             osIcon = '<i class="fab fa-apple" style="color:#ec4899; font-size:1.15rem;" title="iOS"></i>';
         } else if (c.deviceSystem === 'WEB') {
             osIcon = '<i class="fas fa-globe" style="color:#10b981; font-size:1.15rem;" title="Web"></i>';
         }
+        const cid = escapeHtml(c.id);
 
-        tr.innerHTML = `
-            <td><b>${c.fullName}</b><br><small>${c.phone}</small></td>
-            <td>${c.email || 'Non renseigné'}</td>
-            <td>${dateStr}</td>
-            <td><b>${c.totalTrips}</b></td>
-            <td><b>${formatCurrency(c.totalSpent)}</b></td>
-            <td><span class="badge blue">${c.favoriteCategory}</span></td>
-            <td style="text-align:center;">${osIcon}</td>
-            <td>
-                <button class="icon-btn glass" style="color:var(--primary);" title="Détails" onclick="window.openClientDetails('${c.id}')"><i class="fas fa-eye"></i></button>
-            </td>
+        return `
+            <tr class="tr-link" style="cursor:pointer" data-client-id="${cid}">
+                <td><b>${escapeHtml(c.fullName)}</b><br><small>${escapeHtml(c.phone)}</small></td>
+                <td>${escapeHtml(c.email || 'Non renseigné')}</td>
+                <td>${escapeHtml(dateStr)}</td>
+                <td><b>${c.totalTrips || 0}</b></td>
+                <td><b>${formatCurrency(c.totalSpent)}</b></td>
+                <td><span class="badge blue">${escapeHtml(c.favoriteCategory || 'Standard')}</span></td>
+                <td style="text-align:center;">${osIcon}</td>
+                <td>
+                    <button class="icon-btn glass" style="color:var(--primary);" title="Détails" onclick="window.openClientDetails('${cid}')"><i class="fas fa-eye"></i></button>
+                </td>
+            </tr>
         `;
-        tbody.appendChild(tr);
-    });
+    }).join('');
+
+    const footerNote = filtered.length > 120
+        ? `<tr><td colspan="8" style="text-align:center; color:var(--text-dim); font-size:0.82rem; padding:12px;">Affichage des 120 premiers clients sur ${filtered.length}.</td></tr>`
+        : '';
+
+    tbody.innerHTML = rowsHtml + footerNote;
+    tbody.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        const tr = e.target.closest('tr[data-client-id]');
+        if (tr) window.openClientDetails(tr.dataset.clientId);
+    };
 }
 
 async function syncAdmins() {
-    console.log("Syncing Administrators from REST API...");
     try {
         const res = await adminFetch('/api/admin/admins');
         if (!res.ok) throw new Error("Impossible de charger les administrateurs.");
         const admins = await res.json();
-        
+
         const tbody = document.getElementById('adminsTableBody');
-        tbody.innerHTML = "";
-        
+        if (!tbody) return;
+
         const loggedInUserStr = localStorage.getItem('adminUser');
         const loggedInUser = loggedInUserStr ? JSON.parse(loggedInUserStr) : null;
         const isMainAdmin = loggedInUser && loggedInUser.email && loggedInUser.email.toLowerCase() === 'mouhamadoufadiloundiaye@transen.org';
-        
-        admins.forEach(a => {
-            const tr = document.createElement('tr');
+
+        tbody.innerHTML = admins.map(a => {
             const dateStr = a.createdAt ? new Date(a.createdAt).toLocaleDateString('fr-FR') : '--';
-            
-            let actionHtml = '';
-            if (isMainAdmin && a.email.toLowerCase() !== 'mouhamadoufadiloundiaye@transen.org') {
-                actionHtml = `<button class="icon-btn glass" style="color:var(--red);" onclick="window.deleteAdmin('${a.id}')"><i class="fas fa-trash-alt"></i></button>`;
-            } else {
-                actionHtml = `<span style="color:gray; font-size:0.8rem;">--</span>`;
-            }
-            
-            tr.innerHTML = `
-                <td><b>${a.fullName}</b></td>
-                <td><span class="badge blue">${a.email}</span></td>
-                <td>${a.phone}</td>
-                <td>${dateStr}</td>
-                <td>${actionHtml}</td>
+            const aid = escapeHtml(a.id);
+            const actionHtml = (isMainAdmin && a.email && a.email.toLowerCase() !== 'mouhamadoufadiloundiaye@transen.org')
+                ? `<button class="icon-btn glass" style="color:var(--red);" onclick="window.deleteAdmin('${aid}')"><i class="fas fa-trash-alt"></i></button>`
+                : `<span style="color:gray; font-size:0.8rem;">--</span>`;
+
+            return `
+                <tr>
+                    <td><b>${escapeHtml(a.fullName)}</b></td>
+                    <td><span class="badge blue">${escapeHtml(a.email)}</span></td>
+                    <td>${escapeHtml(a.phone)}</td>
+                    <td>${escapeHtml(dateStr)}</td>
+                    <td>${actionHtml}</td>
+                </tr>
             `;
-            tbody.appendChild(tr);
-        });
+        }).join('');
     } catch (e) {
         console.error("Error fetching admins:", e);
     }
@@ -644,13 +817,13 @@ window.deleteAdmin = (id) => {
                 });
                 const data = await res.json();
                 if (res.ok) {
-                    alert(data.message || "Administrateur supprimé avec succès.");
+                    window.showNotificationDrawer("Succès", data.message || "Administrateur supprimé avec succès.", false);
                     syncAdmins();
                 } else {
-                    alert("Erreur: " + (data.error || "Impossible de supprimer l'administrateur."));
+                    window.showNotificationDrawer("Erreur", data.error || "Impossible de supprimer l'administrateur.", true);
                 }
             } catch (err) {
-                alert("Erreur de connexion au serveur.");
+                window.showNotificationDrawer("Erreur", err.message || "Erreur de connexion au serveur.", true);
                 console.error(err);
             }
         }
@@ -774,24 +947,32 @@ window.openCompanyKyc = async (id) => {
                     "Voulez-vous vraiment supprimer définitivement tous les documents physiques de cette compagnie ?",
                     true,
                     async () => {
-                        const actionRes = await adminFetch(`/api/admin/companies/${id}/delete-documents`, {
-                            method: 'POST'
-                        });
-                        if (actionRes.ok) {
-                            window.showNotificationDrawer("Succès", "Documents KYC supprimés définitivement !", false);
-                            modal.style.display = "none";
-                            
-                            // Cleanup preview
-                            const iframe = document.getElementById('kycDocIframe');
-                            if (iframe) iframe.remove();
-                            previewImg.src = 'https://via.placeholder.com/400x500?text=Sélectionnez+un+document';
-                            previewImg.style.display = 'block';
-                            if (externalLink) externalLink.style.display = 'none';
-                            
-                            syncCompanies();
-                        } else {
-                            const errMsg = await actionRes.text();
-                            window.showNotificationDrawer("Erreur", errMsg, true);
+                        if (deleteDocsBtn.disabled) return;
+                        deleteDocsBtn.disabled = true;
+                        try {
+                            const actionRes = await adminFetch(`/api/admin/companies/${id}/delete-documents`, {
+                                method: 'POST'
+                            });
+                            if (actionRes.ok) {
+                                window.showNotificationDrawer("Succès", "Documents KYC supprimés définitivement !", false);
+                                modal.style.display = "none";
+
+                                // Cleanup preview
+                                const iframe = document.getElementById('kycDocIframe');
+                                if (iframe) iframe.remove();
+                                previewImg.src = 'https://via.placeholder.com/400x500?text=Sélectionnez+un+document';
+                                previewImg.style.display = 'block';
+                                if (externalLink) externalLink.style.display = 'none';
+
+                                syncCompanies();
+                            } else {
+                                const errMsg = await actionRes.text();
+                                window.showNotificationDrawer("Erreur", errMsg, true);
+                            }
+                        } catch (err) {
+                            window.showNotificationDrawer("Erreur", err.message || "Erreur serveur.", true);
+                        } finally {
+                            deleteDocsBtn.disabled = false;
                         }
                     }
                 );
@@ -801,30 +982,41 @@ window.openCompanyKyc = async (id) => {
         }
 
         modal.style.display = "block";
-        
-        document.getElementById('approveCompanyBtn').onclick = () => {
+
+        const approveBtn = document.getElementById('approveCompanyBtn');
+        const rejectBtn = document.getElementById('rejectCompanyBtn');
+
+        approveBtn.onclick = () => {
             window.showConfirmDrawer(
                 "Approuver la Compagnie",
                 "Voulez-vous vraiment approuver et activer cette compagnie ?",
                 false,
                 async () => {
-                    const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=APPROVED`, {
-                        method: 'POST'
-                    });
-                    if (actionRes.ok) {
-                        window.showNotificationDrawer("Succès", "Compagnie approuvée et activée avec succès !", false);
-                        modal.style.display = "none";
-                        syncCompanies();
-                        syncDocumentsSection();
-                    } else {
-                        const errMsg = await actionRes.text();
-                        window.showNotificationDrawer("Erreur", errMsg, true);
+                    if (approveBtn.disabled) return;
+                    approveBtn.disabled = true;
+                    try {
+                        const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=APPROVED`, {
+                            method: 'POST'
+                        });
+                        if (actionRes.ok) {
+                            window.showNotificationDrawer("Succès", "Compagnie approuvée et activée avec succès !", false);
+                            modal.style.display = "none";
+                            syncCompanies();
+                            syncDocumentsSection();
+                        } else {
+                            const errMsg = await actionRes.text();
+                            window.showNotificationDrawer("Erreur", errMsg, true);
+                        }
+                    } catch (err) {
+                        window.showNotificationDrawer("Erreur", err.message || "Erreur serveur.", true);
+                    } finally {
+                        approveBtn.disabled = false;
                     }
                 }
             );
         };
-        
-        document.getElementById('rejectCompanyBtn').onclick = () => {
+
+        rejectBtn.onclick = () => {
             const reason = document.getElementById('companyRejectionReason').value.trim();
             if (!reason) {
                 window.showNotificationDrawer("Attention", "La raison du rejet est obligatoire pour refuser un dossier.", true);
@@ -835,24 +1027,32 @@ window.openCompanyKyc = async (id) => {
                 "Voulez-vous vraiment rejeter ce dossier ?",
                 true,
                 async () => {
-                    const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=REJECTED&rejectionReason=${encodeURIComponent(reason)}`, {
-                        method: 'POST'
-                    });
-                    if (actionRes.ok) {
-                        window.showNotificationDrawer("Succès", "Dossier KYC rejeté avec succès !", false);
-                        modal.style.display = "none";
-                        syncCompanies();
-                        syncDocumentsSection();
-                    } else {
-                        const errMsg = await actionRes.text();
-                        window.showNotificationDrawer("Erreur", errMsg, true);
+                    if (rejectBtn.disabled) return;
+                    rejectBtn.disabled = true;
+                    try {
+                        const actionRes = await adminFetch(`/api/admin/companies/${id}/verify?status=REJECTED&rejectionReason=${encodeURIComponent(reason)}`, {
+                            method: 'POST'
+                        });
+                        if (actionRes.ok) {
+                            window.showNotificationDrawer("Succès", "Dossier KYC rejeté avec succès !", false);
+                            modal.style.display = "none";
+                            syncCompanies();
+                            syncDocumentsSection();
+                        } else {
+                            const errMsg = await actionRes.text();
+                            window.showNotificationDrawer("Erreur", errMsg, true);
+                        }
+                    } catch (err) {
+                        window.showNotificationDrawer("Erreur", err.message || "Erreur serveur.", true);
+                    } finally {
+                        rejectBtn.disabled = false;
                     }
                 }
             );
         };
         
     } catch (e) {
-        alert("Erreur: " + e.message);
+        window.showNotificationDrawer("Erreur", e.message || "Impossible de charger le dossier.", true);
     }
 };
 
@@ -867,6 +1067,15 @@ document.getElementById('closeAdminCreateModal').onclick = () => {
 
 document.getElementById('createAdminForm').onsubmit = async (e) => {
     e.preventDefault();
+    const form = e.target;
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn && submitBtn.disabled) return;
+    const origHtml = submitBtn ? submitBtn.innerHTML : '';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Création...';
+    }
+
     const fullName = document.getElementById('adminFullName').value.trim();
     const email = document.getElementById('adminEmail').value.trim();
     const phone = document.getElementById('adminPhone').value.trim();
@@ -880,16 +1089,21 @@ document.getElementById('createAdminForm').onsubmit = async (e) => {
 
         const data = await res.json();
         if (res.ok) {
-            alert(data.message || "Administrateur enregistré avec succès !");
+            window.showNotificationDrawer("Succès", data.message || "Administrateur enregistré avec succès !", false);
             document.getElementById('adminCreateModal').style.display = "none";
-            document.getElementById('createAdminForm').reset();
+            form.reset();
             syncAdmins();
         } else {
-            alert("Erreur: " + (data.error || "Impossible d'enregistrer l'administrateur."));
+            window.showNotificationDrawer("Erreur", data.error || "Impossible d'enregistrer l'administrateur.", true);
         }
     } catch (err) {
-        alert("Erreur de connexion au serveur.");
+        window.showNotificationDrawer("Erreur", err.message || "Erreur de connexion au serveur.", true);
         console.error(err);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = origHtml;
+        }
     }
 };
 
@@ -1077,53 +1291,53 @@ window.renderDocumentsList = function() {
         return;
     }
     
-    // Render Companies
-    pendingCompaniesList.forEach(c => {
-        const card = document.createElement('div');
-        card.className = "glass-card";
-        card.style.cssText = "padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--glass-border); background: var(--glass-bg); position: relative; overflow: hidden; transition: var(--transition);";
-        card.innerHTML = `
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <span class="badge blue" style="background: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">COMPAGNIE</span>
-                    <span class="status-tag pending">EN ATTENTE</span>
+    // Render Companies + Drivers in batch with XSS escaping
+    const companiesHtml = pendingCompaniesList.map(c => {
+        const cid = escapeHtml(c.id);
+        return `
+            <div class="glass-card" style="padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--glass-border); background: var(--glass-bg); position: relative; overflow: hidden; transition: var(--transition);">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <span class="badge blue" style="background: rgba(52, 152, 219, 0.15); color: #3498db; border: 1px solid rgba(52, 152, 219, 0.3); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">COMPAGNIE</span>
+                        <span class="status-tag pending">EN ATTENTE</span>
+                    </div>
+                    <h3 style="margin: 0 0 10px 0; color: white; font-size: 1.15rem; font-weight: 700;">${escapeHtml(c.name)}</h3>
+                    <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+                        <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-user" style="width: 18px;"></i> Gérant : <b>${escapeHtml(c.managerName || 'Non spécifié')}</b></span>
+                        <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-phone" style="width: 18px;"></i> Tél : <b>${escapeHtml(c.managerPhone || 'N/A')}</b></span>
+                    </div>
                 </div>
-                <h3 style="margin: 0 0 10px 0; color: white; font-size: 1.15rem; font-weight: 700;">${c.name}</h3>
-                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
-                    <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-user" style="width: 18px;"></i> Gérant : <b>${c.managerName || 'Non spécifié'}</b></span>
-                    <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-phone" style="width: 18px;"></i> Tél : <b>${c.managerPhone || 'N/A'}</b></span>
-                </div>
+                <button class="btn-primary" style="width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);" onclick="window.openCompanyKyc('${cid}')">
+                    <i class="fas fa-file-signature"></i> Examiner Dossier
+                </button>
             </div>
-            <button class="btn-primary" style="width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);" onclick="window.openCompanyKyc('${c.id}')">
-                <i class="fas fa-file-signature"></i> Examiner Dossier
-            </button>
         `;
-        listContainer.appendChild(card);
-    });
-    
-    // Render Drivers
-    pendingDriversList.forEach(d => {
-        const card = document.createElement('div');
-        card.className = "glass-card";
-        card.style.cssText = "padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--glass-border); background: var(--glass-bg); position: relative; overflow: hidden; transition: var(--transition);";
-        card.innerHTML = `
-            <div>
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                    <span class="badge gold" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">CHAUFFEUR</span>
-                    <span class="status-tag pending">EN ATTENTE</span>
+    }).join('');
+
+    const driversHtml = pendingDriversList.map(d => {
+        const did = escapeHtml(d.id);
+        const docUrl = escapeHtml(d.licenseImageUrl || '');
+        return `
+            <div class="glass-card" style="padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid var(--glass-border); background: var(--glass-bg); position: relative; overflow: hidden; transition: var(--transition);">
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <span class="badge gold" style="background: rgba(241, 196, 15, 0.15); color: #f1c40f; border: 1px solid rgba(241, 196, 15, 0.3); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold;">CHAUFFEUR</span>
+                        <span class="status-tag pending">EN ATTENTE</span>
+                    </div>
+                    <h3 style="margin: 0 0 10px 0; color: white; font-size: 1.15rem; font-weight: 700;">${escapeHtml(d.name || d.fullName || 'Chauffeur')}</h3>
+                    <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
+                        <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-car" style="width: 18px;"></i> Véhicule : <b>${escapeHtml(d.vehicleModel || 'N/A')} (${escapeHtml(d.vehiclePlate || '')})</b></span>
+                        <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-phone" style="width: 18px;"></i> Tél : <b>${escapeHtml(d.phone || 'N/A')}</b></span>
+                    </div>
                 </div>
-                <h3 style="margin: 0 0 10px 0; color: white; font-size: 1.15rem; font-weight: 700;">${d.name}</h3>
-                <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px;">
-                    <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-car" style="width: 18px;"></i> Véhicule : <b>${d.vehicleModel || 'N/A'} (${d.vehiclePlate || ''})</b></span>
-                    <span style="font-size: 0.85rem; color: var(--text-dim);"><i class="fas fa-phone" style="width: 18px;"></i> Tél : <b>${d.phone || 'N/A'}</b></span>
-                </div>
+                <button class="btn-primary" style="width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);" onclick="window.openDoc('${did}', '${docUrl}')">
+                    <i class="fas fa-id-card"></i> Examiner Permis
+                </button>
             </div>
-            <button class="btn-primary" style="width: 100%; padding: 12px; border: none; border-radius: 10px; background: var(--primary); color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: var(--transition);" onclick="window.openDoc('${d.id}', '${d.licenseImageUrl}')">
-                <i class="fas fa-id-card"></i> Examiner Permis
-            </button>
         `;
-        listContainer.appendChild(card);
-    });
+    }).join('');
+
+    listContainer.innerHTML = companiesHtml + driversHtml;
 };
 
 window.syncFinanceSection = async function() {
@@ -1180,71 +1394,71 @@ window.syncFinanceSection = async function() {
         document.getElementById('orangeNetworkProgress').style.width = `${omPct}%`;
         document.getElementById('freeNetworkProgress').style.width = `${freePct}%`;
 
-        // 4. Render Table
+        // 4. Render Table (capped & batch rendered with XSS protection)
         const tbody = document.getElementById('financeTransactionsTableBody');
-        tbody.innerHTML = "";
+        if (!tbody) return;
 
         if (!data.transactions || data.transactions.length === 0) {
             tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray;">Aucune transaction enregistrée.</td></tr>`;
             return;
         }
 
-        data.transactions.forEach(t => {
-            const tr = document.createElement('tr');
+        const cappedTxs = data.transactions.slice(0, 120);
+        const rowsHtml = cappedTxs.map((t, idx) => {
             const dateStr = t.createdAt ? new Date(t.createdAt).toLocaleString('fr-FR') : '--';
-            
-            // Format detenteur
-            let ownerHtml = '';
+
+            let ownerHtml = `<span style="color:gray;">N/A</span>`;
             if (t.ownerName && t.ownerName !== 'N/A') {
                 const ownerBadgeClass = t.walletOwnerType === 'COMPANY' ? 'blue' : 'gold';
-                ownerHtml = `<b>${t.ownerName}</b> <span class="badge ${ownerBadgeClass}" style="font-size:0.65rem; padding:2px 4px; margin-left:5px;">${t.walletOwnerType}</span>`;
-            } else {
-                ownerHtml = `<span style="color:gray;">N/A</span>`;
+                ownerHtml = `<b>${escapeHtml(t.ownerName)}</b> <span class="badge ${ownerBadgeClass}" style="font-size:0.65rem; padding:2px 4px; margin-left:5px;">${escapeHtml(t.walletOwnerType)}</span>`;
             }
 
-            // Format Type
             let typeBadge = '';
             if (t.type === 'TOP_UP') typeBadge = '<span class="status-tag completed" style="background:rgba(46,204,113,0.1); color:#2ecc71; border:1px solid rgba(46,204,113,0.2);">RECHARGEMENT</span>';
-            else if (t.type === 'COMMISSION_FEE') typeBadge = '<span class="status-tag pending" style="background:rgba(52,152,219,0.1); color:#3498db; border:1px solid rgba(52,152,219,0.2);">COMMISSION (1%)</span>';
+            else if (t.type === 'COMMISSION_FEE') typeBadge = '<span class="status-tag pending" style="background:rgba(52,152,219,0.1); color:#3498db; border:1px solid rgba(52,152,219,0.2);">COMMISSION (2%)</span>';
+            else if (t.type === 'SUBSCRIPTION') typeBadge = '<span class="status-tag completed" style="background:rgba(6,182,212,0.12); color:#06b6d4; border:1px solid rgba(6,182,212,0.25);">ABONNEMENT</span>';
             else if (t.type === 'PAYOUT') typeBadge = '<span class="status-tag failed" style="background:rgba(231,76,60,0.1); color:#e74c3c; border:1px solid rgba(231,76,60,0.2);">RETRAIT</span>';
             else if (t.type === 'TICKET_REVENUE') typeBadge = '<span class="status-tag completed" style="background:rgba(241,196,15,0.1); color:#f1c40f; border:1px solid rgba(241,196,15,0.2);">TICKET REVENUE</span>';
             else if (t.type === 'INVESTMENT') typeBadge = '<span class="status-tag completed" style="background:rgba(155,89,182,0.1); color:#9b59b6; border:1px solid rgba(155,89,182,0.2);">INVESTISSEMENT</span>';
-            else typeBadge = `<span class="badge gray">${t.type}</span>`;
+            else typeBadge = `<span class="badge gray">${escapeHtml(t.type)}</span>`;
 
-            // Format Amount
             const isPositive = t.type === 'TOP_UP' || t.type === 'TICKET_REVENUE' || t.type === 'INVESTMENT';
             const amountColor = isPositive ? '#2ecc71' : '#e74c3c';
             const amountPrefix = isPositive ? '+' : '-';
             const amountHtml = `<span style="color:${amountColor}; font-weight:bold; font-family:monospace;">${amountPrefix} ${formatCurrency(Math.abs(t.amount))}</span>`;
 
-            // Format Status
             let statusClass = 'pending';
             if (t.status === 'COMPLETED') statusClass = 'completed';
             if (t.status === 'FAILED') statusClass = 'failed';
-            const statusTag = `<span class="status-tag ${statusClass}">${t.status}</span>`;
+            const statusTag = `<span class="status-tag ${statusClass}">${escapeHtml(t.status)}</span>`;
 
-            tr.style.cursor = 'pointer';
-            tr.title = 'Cliquez pour voir les détails de la transaction';
-            tr.onclick = () => {
-                window.openReceiptModal({
-                    status: t.status,
-                    amount: t.amount,
-                    type: t.type,
-                    ownerName: t.ownerName !== 'N/A' ? t.ownerName : 'Système TranSen',
-                    createdAt: t.createdAt,
-                    reference: t.reference || 'direct'
-                });
-            };
-            tr.innerHTML = `
-                <td>${dateStr}</td>
-                <td>${ownerHtml}</td>
-                <td>${typeBadge}</td>
-                <td><code style="font-size:0.8rem; background:rgba(255,255,255,0.05); padding:2px 5px; border-radius:4px;">${t.reference || 'direct'}</code></td>
-                <td>${amountHtml}</td>
-                <td>${statusTag}</td>
+            return `
+                <tr data-tx-idx="${idx}" style="cursor:pointer" title="Cliquez pour voir les détails de la transaction">
+                    <td>${escapeHtml(dateStr)}</td>
+                    <td>${ownerHtml}</td>
+                    <td>${typeBadge}</td>
+                    <td><code style="font-size:0.8rem; background:rgba(255,255,255,0.05); padding:2px 5px; border-radius:4px;">${escapeHtml(t.reference || 'direct')}</code></td>
+                    <td>${amountHtml}</td>
+                    <td>${statusTag}</td>
+                </tr>
             `;
-            tbody.appendChild(tr);
-        });
+        }).join('');
+
+        tbody.innerHTML = rowsHtml;
+        tbody.onclick = (e) => {
+            const tr = e.target.closest('tr[data-tx-idx]');
+            if (!tr) return;
+            const t = cappedTxs[Number(tr.dataset.txIdx)];
+            if (!t) return;
+            window.openReceiptModal({
+                status: t.status,
+                amount: t.amount,
+                type: t.type,
+                ownerName: t.ownerName !== 'N/A' ? t.ownerName : 'Système TranSen',
+                createdAt: t.createdAt,
+                reference: t.reference || 'direct'
+            });
+        };
 
     } catch (err) {
         console.error("Error fetching financial stats:", err);
@@ -1343,7 +1557,7 @@ window.openReceiptModal = function(transaction) {
     }
 
     // Amount formatting
-    const isPositive = transaction.type === 'TOP_UP' || transaction.type === 'TICKET_REVENUE';
+    const isPositive = transaction.type === 'TOP_UP' || transaction.type === 'TICKET_REVENUE' || transaction.type === 'INVESTMENT';
     const amountPrefix = isPositive ? '+' : '-';
     const amountVal = `${amountPrefix} ${formatCurrencyGlobal(Math.abs(transaction.amount))}`;
     document.getElementById('receiptAmount').innerText = amountVal;
@@ -1355,8 +1569,10 @@ window.openReceiptModal = function(transaction) {
     let typeText = transaction.type;
     if (transaction.type === 'TOP_UP') typeText = 'Dépôt / Rechargement';
     else if (transaction.type === 'PAYOUT') typeText = 'Retrait / Virement';
-    else if (transaction.type === 'COMMISSION_FEE') typeText = 'Commission de Service';
+    else if (transaction.type === 'COMMISSION_FEE') typeText = 'Commission de Service (2%)';
+    else if (transaction.type === 'SUBSCRIPTION') typeText = 'Abonnement Chauffeur';
     else if (transaction.type === 'TICKET_REVENUE') typeText = 'Revenu Vente Ticket';
+    else if (transaction.type === 'INVESTMENT') typeText = 'Souscription Capital';
     document.getElementById('receiptType').innerText = typeText;
     
     document.getElementById('receiptDate').innerText = transaction.createdAt ? new Date(transaction.createdAt).toLocaleString('fr-FR') : '--';
@@ -1422,9 +1638,9 @@ function setupFiltersAndSearch() {
         });
     });
     
-    document.getElementById('companySearchInput')?.addEventListener('input', () => {
+    document.getElementById('companySearchInput')?.addEventListener('input', _debounce(() => {
         renderCompaniesList();
-    });
+    }, 220));
     
     // Drivers filters
     document.querySelectorAll('#driverMarketFilters .filter-chip').forEach(chip => {
@@ -1435,14 +1651,14 @@ function setupFiltersAndSearch() {
         });
     });
     
-    document.getElementById('driverSearchInput')?.addEventListener('input', () => {
+    document.getElementById('driverSearchInput')?.addEventListener('input', _debounce(() => {
         renderDriversList();
-    });
+    }, 220));
     
     // Clients search
-    document.getElementById('clientSearchInput')?.addEventListener('input', () => {
+    document.getElementById('clientSearchInput')?.addEventListener('input', _debounce(() => {
         renderClientsList();
-    });
+    }, 220));
 
     // Investments filters
     document.querySelectorAll('#investmentStatusFilters .filter-chip').forEach(chip => {
@@ -1453,9 +1669,9 @@ function setupFiltersAndSearch() {
         });
     });
     
-    document.getElementById('investmentSearchInput')?.addEventListener('input', () => {
+    document.getElementById('investmentSearchInput')?.addEventListener('input', _debounce(() => {
         renderInvestmentsList();
-    });
+    }, 220));
 }
 
 // Markets section sync
@@ -1555,95 +1771,201 @@ async function syncChannelsSection() {
     }
 }
 
+async function _runLockedAction(btn, actionFn) {
+    if (!btn || btn.disabled) return;
+    const origHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Traitement...';
+    try {
+        await actionFn();
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = origHtml;
+    }
+}
+
+function _bindUserModerationButtons({
+    userId,
+    displayName,
+    roleLabel,
+    isActive,
+    warnBtn,
+    blockBtn,
+    deleteBtn,
+    modalId,
+    refreshFn
+}) {
+    warnBtn.onclick = () => {
+        window.showConfirmDrawer(
+            `Avertir ce ${roleLabel}`,
+            `Envoyer un avertissement officiel à ${displayName} ?`,
+            false,
+            () => _runLockedAction(warnBtn, async () => {
+                try {
+                    const res = await adminFetch(`/api/admin/users/${userId}/warn`, { method: 'POST' });
+                    if (!res.ok) throw new Error("Erreur de requête");
+                    const resData = await res.json();
+                    try {
+                        await updateDoc(doc(db, "users", userId), {
+                            warningsCount: resData.warningsCount || 1,
+                            lastWarningAt: new Date().toISOString()
+                        });
+                    } catch (err) {
+                        console.warn("Firestore sync warning failed:", err);
+                    }
+                    window.showToast("Avertissement envoyé !");
+                    document.getElementById(modalId).style.display = "none";
+                    await refreshFn();
+                } catch (e) {
+                    window.showToast("Erreur : " + e.message, "error");
+                }
+            })
+        );
+    };
+
+    blockBtn.onclick = () => {
+        const action = isActive ? 'block' : 'unblock';
+        const verb = isActive ? 'bloquer' : 'débloquer';
+        window.showConfirmDrawer(
+            `${isActive ? 'Bloquer' : 'Débloquer'} ce ${roleLabel}`,
+            `Voulez-vous vraiment ${verb} ${displayName} ?`,
+            isActive,
+            () => _runLockedAction(blockBtn, async () => {
+                try {
+                    const res = await adminFetch(`/api/admin/users/${userId}/${action}`, { method: 'POST' });
+                    if (!res.ok) throw new Error("Erreur de requête");
+                    try {
+                        await updateDoc(doc(db, "users", userId), {
+                            status: isActive ? 'blocked' : 'active',
+                            isActive: !isActive
+                        });
+                    } catch (err) {
+                        console.warn("Firestore sync status failed:", err);
+                    }
+                    window.showToast(`${roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1)} ${isActive ? 'bloqué' : 'débloqué'} avec succès !`);
+                    document.getElementById(modalId).style.display = "none";
+                    await refreshFn();
+                } catch (e) {
+                    window.showToast("Erreur : " + e.message, "error");
+                }
+            })
+        );
+    };
+
+    deleteBtn.onclick = () => {
+        window.showConfirmDrawer(
+            `Supprimer ce ${roleLabel}`,
+            `Voulez-vous vraiment SUPPRIMER définitivement le compte de ${displayName} ? Cette action est irréversible.`,
+            true,
+            () => _runLockedAction(deleteBtn, async () => {
+                try {
+                    const res = await adminFetch(`/api/admin/users/${userId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error("Erreur de requête");
+                    try {
+                        await updateDoc(doc(db, "users", userId), {
+                            status: 'deleted',
+                            isActive: false
+                        });
+                    } catch (err) {
+                        console.warn("Firestore sync deletion failed:", err);
+                    }
+                    window.showToast(`Compte ${roleLabel} supprimé définitivement !`);
+                    document.getElementById(modalId).style.display = "none";
+                    await refreshFn();
+                } catch (e) {
+                    window.showToast("Erreur : " + e.message, "error");
+                }
+            })
+        );
+    };
+}
+
 // Company details modal
-window.openCompanyDetails = (companyId) => {
+window.openCompanyDetails = async (companyId) => {
     const company = window.allCompaniesMetrics.find(c => c.id === companyId);
     if (!company) return;
-    
+
+    if (window.allDriversMetrics.length === 0) {
+        await syncDrivers();
+    }
+
     document.getElementById('compDetailName').innerText = `Détails de ${company.name}`;
     document.getElementById('compDetailId').innerText = companyId;
     document.getElementById('compDetailDrivers').innerText = company.totalDrivers;
     document.getElementById('compDetailVolume').innerText = formatCurrency(company.totalRevenue);
     document.getElementById('compDetailWallet').innerText = formatCurrency(company.walletBalance);
-    
+
     document.getElementById('compDetailFullName').innerText = company.name || '-';
     document.getElementById('compDetailType').innerText = company.type || '-';
     document.getElementById('compDetailAccessCode').innerText = company.accessCode || 'Aucun';
     document.getElementById('compDetailManagerName').innerText = company.managerName || 'Non lié';
     document.getElementById('compDetailManagerPhone').innerText = company.managerPhone || '-';
     document.getElementById('compDetailManagerEmail').innerText = company.managerEmail || '-';
-    
+
     // Render drivers
     const driversBody = document.getElementById('compDetailDriversBody');
-    driversBody.innerHTML = "";
-    
     const companyDrivers = window.allDriversMetrics.filter(d => d.companyId === companyId);
     if (companyDrivers.length === 0) {
         driversBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:gray; padding: 20px;">Aucun chauffeur rattaché</td></tr>`;
     } else {
-        companyDrivers.forEach(d => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><b>${d.fullName}</b><br><small>${d.phone}</small></td>
-                <td><b>${d.totalTrips}</b></td>
+        driversBody.innerHTML = companyDrivers.slice(0, 80).map(d => `
+            <tr>
+                <td><b>${escapeHtml(d.fullName)}</b><br><small>${escapeHtml(d.phone)}</small></td>
+                <td><b>${d.totalTrips || 0}</b></td>
                 <td><b>${formatCurrency(d.totalRevenue)}</b></td>
                 <td><span class="status-tag ${d.isVerified ? 'completed' : 'pending'}">${d.isVerified ? 'OUI' : 'NON'}</span></td>
-            `;
-            driversBody.appendChild(tr);
-        });
+            </tr>
+        `).join('');
     }
-    
+
     // Render transactions
     const txsBody = document.getElementById('compDetailTxsBody');
-    txsBody.innerHTML = "";
-    
     const txs = company.recentTransactions || [];
     if (txs.length === 0) {
         txsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray; padding: 20px;">Aucune transaction récente</td></tr>`;
     } else {
-        txs.forEach(t => {
-            const tr = document.createElement('tr');
+        txsBody.innerHTML = txs.slice(0, 80).map(t => {
             const dateStr = new Date(t.createdAt).toLocaleDateString('fr-FR');
             let statusClass = 'pending';
             if (t.status === 'COMPLETED') statusClass = 'completed';
             if (t.status === 'FAILED') statusClass = 'failed';
-            
-            tr.innerHTML = `
-                <td>${dateStr}</td>
-                <td><span class="badge blue">${t.type}</span></td>
-                <td><b>${formatCurrency(t.amount)}</b></td>
-                <td><span class="status-tag ${statusClass}">${t.status}</span></td>
-                <td><small style="font-family:monospace;">${t.reference || 'N/A'}</small></td>
+            return `
+                <tr>
+                    <td>${escapeHtml(dateStr)}</td>
+                    <td><span class="badge blue">${escapeHtml(t.type)}</span></td>
+                    <td><b>${formatCurrency(t.amount)}</b></td>
+                    <td><span class="status-tag ${statusClass}">${escapeHtml(t.status)}</span></td>
+                    <td><small style="font-family:monospace;">${escapeHtml(t.reference || 'N/A')}</small></td>
+                </tr>
             `;
-            txsBody.appendChild(tr);
-        });
+        }).join('');
     }
-    
+
     // Tab switching inside company details modal
     const btnDrivers = document.getElementById('btnTabCompDrivers');
     const btnTxs = document.getElementById('btnTabCompTxs');
     const tabDrivers = document.getElementById('tabCompDrivers');
     const tabTxs = document.getElementById('tabCompTxs');
-    
+
     btnDrivers.classList.add('active');
     btnTxs.classList.remove('active');
     tabDrivers.style.display = 'block';
     tabTxs.style.display = 'none';
-    
+
     btnDrivers.onclick = () => {
         btnDrivers.classList.add('active');
         btnTxs.classList.remove('active');
         tabDrivers.style.display = 'block';
         tabTxs.style.display = 'none';
     };
-    
+
     btnTxs.onclick = () => {
         btnTxs.classList.add('active');
         btnDrivers.classList.remove('active');
         tabTxs.style.display = 'block';
         tabDrivers.style.display = 'none';
     };
-    
+
     // Setup administrative actions for Company
     const statusTextComp = document.getElementById('companyDetailStatusText');
     const blockBtnComp = document.getElementById('btnToggleBlockCompany');
@@ -1652,44 +1974,51 @@ window.openCompanyDetails = (companyId) => {
     const isCompActive = company.isActive !== false;
     statusTextComp.innerText = `Statut : ${isCompActive ? 'ACTIF' : 'BLOQUÉ'}`;
     statusTextComp.style.color = isCompActive ? '#10b981' : '#ef4444';
-    
+
     blockBtnComp.innerHTML = isCompActive ? `<i class="fas fa-ban"></i> Bloquer` : `<i class="fas fa-check"></i> Débloquer`;
     blockBtnComp.style.color = isCompActive ? 'var(--red)' : '#10b981';
     blockBtnComp.style.borderColor = isCompActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)';
     blockBtnComp.style.background = isCompActive ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)';
 
-    blockBtnComp.onclick = async () => {
+    blockBtnComp.onclick = () => {
         const action = isCompActive ? 'block' : 'unblock';
-        if (confirm(`Voulez-vous vraiment ${isCompActive ? 'bloquer' : 'débloquer'} cette compagnie ?`)) {
-            try {
-                const res = await adminFetch(`/api/admin/companies/${companyId}/${action}`, { method: 'POST' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                showToast(`Compagnie ${isCompActive ? 'bloquée' : 'débloquée'} avec succès !`);
-                document.getElementById('companyDetailsModal').style.display = "none";
-                await syncGlobalStats();
-                await syncCompanies();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
+        window.showConfirmDrawer(
+            `${isCompActive ? 'Bloquer' : 'Débloquer'} la Compagnie`,
+            `Voulez-vous vraiment ${isCompActive ? 'bloquer' : 'débloquer'} cette compagnie ?`,
+            isCompActive,
+            () => _runLockedAction(blockBtnComp, async () => {
+                try {
+                    const res = await adminFetch(`/api/admin/companies/${companyId}/${action}`, { method: 'POST' });
+                    if (!res.ok) throw new Error("Erreur de requête");
+                    window.showToast(`Compagnie ${isCompActive ? 'bloquée' : 'débloquée'} avec succès !`);
+                    document.getElementById('companyDetailsModal').style.display = "none";
+                    await Promise.allSettled([syncGlobalStats(), syncCompanies()]);
+                } catch (e) {
+                    window.showToast("Erreur : " + e.message, "error");
+                }
+            })
+        );
     };
 
-    deleteBtnComp.onclick = async () => {
-        if (confirm("Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ? Cette action est irréversible et déliera ses chauffeurs.")) {
-            try {
-                const res = await adminFetch(`/api/admin/companies/${companyId}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                showToast("Compagnie supprimée avec succès !");
-                document.getElementById('companyDetailsModal').style.display = "none";
-                await syncGlobalStats();
-                await syncCompanies();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
+    deleteBtnComp.onclick = () => {
+        window.showConfirmDrawer(
+            "Supprimer la Compagnie",
+            "Voulez-vous vraiment SUPPRIMER définitivement cette compagnie ? Cette action est irréversible et déliera ses chauffeurs.",
+            true,
+            () => _runLockedAction(deleteBtnComp, async () => {
+                try {
+                    const res = await adminFetch(`/api/admin/companies/${companyId}`, { method: 'DELETE' });
+                    if (!res.ok) throw new Error("Erreur de requête");
+                    window.showToast("Compagnie supprimée avec succès !");
+                    document.getElementById('companyDetailsModal').style.display = "none";
+                    await Promise.allSettled([syncGlobalStats(), syncCompanies()]);
+                } catch (e) {
+                    window.showToast("Erreur : " + e.message, "error");
+                }
+            })
+        );
     };
 
-    // Show modal
     document.getElementById('companyDetailsModal').style.display = "block";
 };
 
@@ -1697,42 +2026,39 @@ window.openCompanyDetails = (companyId) => {
 window.openDriverDetails = (driverId) => {
     const driver = window.allDriversMetrics.find(d => d.id === driverId);
     if (!driver) return;
-    
+
     document.getElementById('driverDetailName').innerText = `Détails de ${driver.fullName}`;
     document.getElementById('driverDetailId').innerText = driverId;
     document.getElementById('driverDetailTrips').innerText = driver.totalTrips;
     document.getElementById('driverDetailVolume').innerText = formatCurrency(driver.totalRevenue);
     document.getElementById('driverDetailWallet').innerText = formatCurrency(driver.walletBalance);
-    
+
     document.getElementById('driverDetailFullName').innerText = driver.fullName || '-';
     document.getElementById('driverDetailPhone').innerText = driver.phone || '-';
     document.getElementById('driverDetailEmail').innerText = driver.email || '-';
     document.getElementById('driverDetailCompName').innerText = driver.companyName || 'Indépendant';
     document.getElementById('driverDetailOS').innerText = driver.deviceSystem || 'ANDROID';
     document.getElementById('driverDetailCreated').innerText = driver.createdAt ? new Date(driver.createdAt).toLocaleDateString('fr-FR') : '-';
-    
+
     const tripsBody = document.getElementById('driverDetailTripsBody');
-    tripsBody.innerHTML = "";
-    
     const trips = driver.recentTrips || [];
     if (trips.length === 0) {
         tripsBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:gray; padding: 20px;">Aucun trajet complété</td></tr>`;
     } else {
-        trips.forEach(t => {
-            const tr = document.createElement('tr');
+        tripsBody.innerHTML = trips.slice(0, 80).map(t => {
             const dateStr = new Date(t.createdAt).toLocaleDateString('fr-FR');
-            tr.innerHTML = `
-                <td>${dateStr}</td>
-                <td><span class="badge blue">${t.category}</span></td>
-                <td>${t.pickupLocation}</td>
-                <td>${t.dropoffLocation}</td>
-                <td><b>${formatCurrency(t.price)}</b></td>
+            return `
+                <tr>
+                    <td>${escapeHtml(dateStr)}</td>
+                    <td><span class="badge blue">${escapeHtml(t.category)}</span></td>
+                    <td>${escapeHtml(t.pickupLocation)}</td>
+                    <td>${escapeHtml(t.dropoffLocation)}</td>
+                    <td><b>${formatCurrency(t.price)}</b></td>
+                </tr>
             `;
-            tripsBody.appendChild(tr);
-        });
+        }).join('');
     }
 
-    // Setup actions for driver
     const statusTextDrv = document.getElementById('driverDetailStatusText');
     const warnCountSpanDrv = document.getElementById('driverDetailWarnCount');
     const btnWarnDrv = document.getElementById('btnWarnDriver');
@@ -1742,91 +2068,25 @@ window.openDriverDetails = (driverId) => {
     const isDrvActive = driver.isActive !== false;
     statusTextDrv.innerText = `Statut : ${isDrvActive ? 'ACTIF' : 'BLOQUÉ'}`;
     statusTextDrv.style.color = isDrvActive ? '#10b981' : '#ef4444';
-    
     warnCountSpanDrv.innerText = driver.warningsCount || 0;
-    
+
     btnBlockDrv.innerHTML = isDrvActive ? `<i class="fas fa-ban"></i> Bloquer` : `<i class="fas fa-check"></i> Débloquer`;
     btnBlockDrv.style.color = isDrvActive ? 'var(--red)' : '#10b981';
     btnBlockDrv.style.borderColor = isDrvActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)';
     btnBlockDrv.style.background = isDrvActive ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)';
 
-    btnWarnDrv.onclick = async () => {
-        if (confirm(`Envoyer un avertissement officiel à ${driver.fullName} ?`)) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${driverId}/warn`, { method: 'POST' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                const resData = await res.json();
-                
-                // Firestore warning sync
-                try {
-                    await updateDoc(doc(db, "users", driverId), { 
-                        warningsCount: resData.warningsCount || 1,
-                        lastWarningAt: new Date().toISOString()
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync warning failed:", err);
-                }
+    _bindUserModerationButtons({
+        userId: driverId,
+        displayName: driver.fullName,
+        roleLabel: 'chauffeur',
+        isActive: isDrvActive,
+        warnBtn: btnWarnDrv,
+        blockBtn: btnBlockDrv,
+        deleteBtn: btnDeleteDrv,
+        modalId: 'driverDetailsModal',
+        refreshFn: syncDrivers
+    });
 
-                showToast("Avertissement envoyé !");
-                document.getElementById('driverDetailsModal').style.display = "none";
-                await syncDrivers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-
-    btnBlockDrv.onclick = async () => {
-        const action = isDrvActive ? 'block' : 'unblock';
-        if (confirm(`Voulez-vous vraiment ${isDrvActive ? 'bloquer' : 'débloquer'} ce chauffeur ?`)) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${driverId}/${action}`, { method: 'POST' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                
-                // Firestore block/unblock sync
-                try {
-                    await updateDoc(doc(db, "users", driverId), { 
-                        status: isDrvActive ? 'blocked' : 'active',
-                        isActive: !isDrvActive
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync status failed:", err);
-                }
-
-                showToast(`Chauffeur ${isDrvActive ? 'bloqué' : 'débloqué'} avec succès !`);
-                document.getElementById('driverDetailsModal').style.display = "none";
-                await syncDrivers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-
-    btnDeleteDrv.onclick = async () => {
-        if (confirm("Voulez-vous vraiment SUPPRIMER définitivement ce compte chauffeur ? Cette action est définitive et irréversible.")) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${driverId}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                
-                // Firestore deletion sync
-                try {
-                    await updateDoc(doc(db, "users", driverId), { 
-                        status: 'deleted',
-                        isActive: false
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync deletion failed:", err);
-                }
-
-                showToast("Compte chauffeur supprimé définitivement !");
-                document.getElementById('driverDetailsModal').style.display = "none";
-                await syncDrivers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-    
     document.getElementById('driverDetailsModal').style.display = "block";
 };
 
@@ -1834,42 +2094,39 @@ window.openDriverDetails = (driverId) => {
 window.openClientDetails = (clientId) => {
     const client = window.allClientsMetrics.find(c => c.id === clientId);
     if (!client) return;
-    
+
     document.getElementById('clientDetailName').innerText = `Détails de ${client.fullName}`;
     document.getElementById('clientDetailId').innerText = clientId;
     document.getElementById('clientDetailTrips').innerText = client.totalTrips;
     document.getElementById('clientDetailVolume').innerText = formatCurrency(client.totalSpent);
     document.getElementById('clientDetailFav').innerText = client.favoriteCategory || 'Aucun';
-    
+
     document.getElementById('clientDetailFullName').innerText = client.fullName || '-';
     document.getElementById('clientDetailPhone').innerText = client.phone || '-';
     document.getElementById('clientDetailEmail').innerText = client.email || '-';
     document.getElementById('clientDetailOS').innerText = client.deviceSystem || 'ANDROID';
     document.getElementById('clientDetailCreated').innerText = client.createdAt ? new Date(client.createdAt).toLocaleDateString('fr-FR') : '-';
-    
+
     const bookingsBody = document.getElementById('clientDetailTripsBody');
-    bookingsBody.innerHTML = "";
-    
     const bookings = client.recentBookings || [];
     if (bookings.length === 0) {
         bookingsBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:gray; padding: 20px;">Aucune réservation complétée</td></tr>`;
     } else {
-        bookings.forEach(b => {
-            const tr = document.createElement('tr');
+        bookingsBody.innerHTML = bookings.slice(0, 80).map(b => {
             const dateStr = new Date(b.createdAt).toLocaleDateString('fr-FR');
-            tr.innerHTML = `
-                <td>${dateStr}</td>
-                <td><span class="badge blue">${b.category}</span></td>
-                <td><b>${b.driverName || 'N/A'}</b></td>
-                <td>${b.pickupLocation}</td>
-                <td>${b.dropoffLocation}</td>
-                <td><b>${formatCurrency(b.price)}</b></td>
+            return `
+                <tr>
+                    <td>${escapeHtml(dateStr)}</td>
+                    <td><span class="badge blue">${escapeHtml(b.category)}</span></td>
+                    <td><b>${escapeHtml(b.driverName || 'N/A')}</b></td>
+                    <td>${escapeHtml(b.pickupLocation)}</td>
+                    <td>${escapeHtml(b.dropoffLocation)}</td>
+                    <td><b>${formatCurrency(b.price)}</b></td>
+                </tr>
             `;
-            bookingsBody.appendChild(tr);
-        });
+        }).join('');
     }
 
-    // Setup actions for client
     const statusTextClt = document.getElementById('clientDetailStatusText');
     const warnCountSpanClt = document.getElementById('clientDetailWarnCount');
     const btnWarnClt = document.getElementById('btnWarnClient');
@@ -1879,91 +2136,25 @@ window.openClientDetails = (clientId) => {
     const isCltActive = client.isActive !== false;
     statusTextClt.innerText = `Statut : ${isCltActive ? 'ACTIF' : 'BLOQUÉ'}`;
     statusTextClt.style.color = isCltActive ? '#10b981' : '#ef4444';
-    
     warnCountSpanClt.innerText = client.warningsCount || 0;
-    
+
     btnBlockClt.innerHTML = isCltActive ? `<i class="fas fa-ban"></i> Bloquer` : `<i class="fas fa-check"></i> Débloquer`;
     btnBlockClt.style.color = isCltActive ? 'var(--red)' : '#10b981';
     btnBlockClt.style.borderColor = isCltActive ? 'rgba(239, 68, 68, 0.2)' : 'rgba(16, 185, 129, 0.2)';
     btnBlockClt.style.background = isCltActive ? 'rgba(239, 68, 68, 0.05)' : 'rgba(16, 185, 129, 0.05)';
 
-    btnWarnClt.onclick = async () => {
-        if (confirm(`Envoyer un avertissement officiel à ${client.fullName} ?`)) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${clientId}/warn`, { method: 'POST' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                const resData = await res.json();
-                
-                // Firestore warning sync
-                try {
-                    await updateDoc(doc(db, "users", clientId), { 
-                        warningsCount: resData.warningsCount || 1,
-                        lastWarningAt: new Date().toISOString()
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync warning failed:", err);
-                }
+    _bindUserModerationButtons({
+        userId: clientId,
+        displayName: client.fullName,
+        roleLabel: 'client',
+        isActive: isCltActive,
+        warnBtn: btnWarnClt,
+        blockBtn: btnBlockClt,
+        deleteBtn: btnDeleteClt,
+        modalId: 'clientDetailsModal',
+        refreshFn: syncUsers
+    });
 
-                showToast("Avertissement envoyé !");
-                document.getElementById('clientDetailsModal').style.display = "none";
-                await syncUsers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-
-    btnBlockClt.onclick = async () => {
-        const action = isCltActive ? 'block' : 'unblock';
-        if (confirm(`Voulez-vous vraiment ${isCltActive ? 'bloquer' : 'débloquer'} ce client ?`)) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${clientId}/${action}`, { method: 'POST' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                
-                // Firestore block/unblock sync
-                try {
-                    await updateDoc(doc(db, "users", clientId), { 
-                        status: isCltActive ? 'blocked' : 'active',
-                        isActive: !isCltActive
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync status failed:", err);
-                }
-
-                showToast(`Client ${isCltActive ? 'bloqué' : 'débloqué'} avec succès !`);
-                document.getElementById('clientDetailsModal').style.display = "none";
-                await syncUsers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-
-    btnDeleteClt.onclick = async () => {
-        if (confirm("Voulez-vous vraiment SUPPRIMER définitivement ce compte client ? Cette action est définitive et irréversible.")) {
-            try {
-                const res = await adminFetch(`/api/admin/users/${clientId}`, { method: 'DELETE' });
-                if (!res.ok) throw new Error("Erreur de requête");
-                
-                // Firestore deletion sync
-                try {
-                    await updateDoc(doc(db, "users", clientId), { 
-                        status: 'deleted',
-                        isActive: false
-                    });
-                } catch(err) {
-                    console.warn("Firestore sync deletion failed:", err);
-                }
-
-                showToast("Compte client supprimé définitivement !");
-                document.getElementById('clientDetailsModal').style.display = "none";
-                await syncUsers();
-            } catch(e) {
-                showToast("Erreur : " + e.message, "error");
-            }
-        }
-    };
-    
     document.getElementById('clientDetailsModal').style.display = "block";
 };
 
@@ -2012,22 +2203,26 @@ window.syncInvestments = async () => {
 
 window.renderInvestmentsList = () => {
     const tbody = document.getElementById('investmentsTableBody');
-    tbody.innerHTML = "";
+    if (!tbody) return;
 
     const filterStatus = document.querySelector('#investmentStatusFilters .filter-chip.active')?.getAttribute('data-invest-status') || 'all';
     const searchQuery = document.getElementById('investmentSearchInput')?.value.toLowerCase() || '';
 
     const filtered = window.allInvestments.filter(item => {
         const matchesStatus = filterStatus === 'all' || item.status === filterStatus;
-        const matchesSearch = item.fullName.toLowerCase().includes(searchQuery) ||
+        const matchesSearch = (item.fullName || '').toLowerCase().includes(searchQuery) ||
                               (item.email && item.email.toLowerCase().includes(searchQuery)) ||
-                              item.phone.includes(searchQuery);
+                              (item.phone || '').includes(searchQuery);
         return matchesStatus && matchesSearch;
     });
 
-    filtered.forEach(item => {
-        const tr = document.createElement('tr');
-        
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:gray; padding:24px;">Aucun investissement trouvé.</td></tr>';
+        return;
+    }
+
+    const capped = filtered.slice(0, 120);
+    tbody.innerHTML = capped.map((item, idx) => {
         const dateStr = item.createdAt ? new Date(item.createdAt).toLocaleDateString('fr-FR', {
             day: 'numeric',
             month: 'short',
@@ -2049,43 +2244,43 @@ window.renderInvestmentsList = () => {
             statusLabel = 'ANNULÉ';
         }
 
+        const iid = escapeHtml(item.id);
         const statusTag = `<span class="status-tag ${statusClass}">${statusLabel}</span>`;
+        const docHtml = item.kycDocUrl
+            ? `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="event.stopPropagation(); window.openInvestmentKyc('${iid}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`
+            : `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
 
-        let docHtml = '';
-        if (item.kycDocUrl) {
-            docHtml = `<button class="btn-text" style="color:var(--primary); border:none; background:none; cursor:pointer; font-weight:bold; font-family:inherit;" onclick="event.stopPropagation(); window.openInvestmentKyc('${item.id}')"><i class="fas fa-file-invoice"></i> Examiner KYC</button>`;
-        } else {
-            docHtml = `<span style="color:gray; font-size:0.85rem;">Aucun document</span>`;
-        }
+        const actionsHtml = item.status === 'PENDING'
+            ? `<div style="display: flex; gap: 8px;">
+                    <button class="icon-btn glass" style="color:var(--primary);" title="Approuver l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${iid}', 'APPROVED')"><i class="fas fa-check"></i></button>
+                    <button class="icon-btn glass" style="color:var(--red);" title="Annuler l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${iid}', 'CANCELLED')"><i class="fas fa-times"></i></button>
+               </div>`
+            : '--';
 
-        let actionsHtml = '--';
-        if (item.status === 'PENDING') {
-            actionsHtml = `
-                <div style="display: flex; gap: 8px;">
-                    <button class="icon-btn glass" style="color:var(--primary);" title="Approuver l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${item.id}', 'APPROVED')"><i class="fas fa-check"></i></button>
-                    <button class="icon-btn glass" style="color:var(--red);" title="Annuler l'investissement" onclick="event.stopPropagation(); window.updateInvestmentStatus('${item.id}', 'CANCELLED')"><i class="fas fa-times"></i></button>
-                </div>
-            `;
-        }
-
-        tr.style.cursor = 'pointer';
-        tr.title = 'Cliquez pour voir les détails de cette souscription';
-        tr.innerHTML = `
-            <td><b>${item.fullName}</b></td>
-            <td>
-                <b>${item.phone}</b><br>
-                <small style="color:var(--text-dim);">${item.email || 'Pas d\'email'}</small>
-            </td>
-            <td><b>${item.sharesCount.toLocaleString('fr-FR')}</b></td>
-            <td><b>${formatCurrency(item.amount)}</b></td>
-            <td>${dateStr}</td>
-            <td>${statusTag}</td>
-            <td>${docHtml}</td>
-            <td>${actionsHtml}</td>
+        return `
+            <tr data-invest-idx="${idx}" style="cursor:pointer" title="Cliquez pour voir les détails de cette souscription">
+                <td><b>${escapeHtml(item.fullName)}</b></td>
+                <td>
+                    <b>${escapeHtml(item.phone)}</b><br>
+                    <small style="color:var(--text-dim);">${escapeHtml(item.email || "Pas d'email")}</small>
+                </td>
+                <td><b>${(item.sharesCount || 0).toLocaleString('fr-FR')}</b></td>
+                <td><b>${formatCurrency(item.amount)}</b></td>
+                <td>${escapeHtml(dateStr)}</td>
+                <td>${statusTag}</td>
+                <td>${docHtml}</td>
+                <td>${actionsHtml}</td>
+            </tr>
         `;
-        tr.onclick = () => window.openInvestmentDetails(item);
-        tbody.appendChild(tr);
-    });
+    }).join('');
+
+    tbody.onclick = (e) => {
+        if (e.target.closest('button')) return;
+        const tr = e.target.closest('tr[data-invest-idx]');
+        if (!tr) return;
+        const item = capped[Number(tr.dataset.investIdx)];
+        if (item) window.openInvestmentDetails(item);
+    };
 };
 
 window.openInvestmentKyc = (id) => {
@@ -2811,21 +3006,28 @@ document.getElementById('btnDeleteAudioFile').onclick = () => {
 
 // Confirm and Delete announcement from Firestore
 function confirmDeleteAnnouncement(item) {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer l'annonce "${item.title}" ?`)) {
-        stopAllAudioPreview();
-        deleteDoc(doc(db, "announcements", item.id))
-            .then(() => {
-                window.showNotificationDrawer('Annonce Supprimée', 'L\'annonce a été retirée du Hub Média.', false);
-            })
-            .catch(err => {
-                console.error("Error deleting announcement:", err);
-                window.showNotificationDrawer('Erreur', 'Impossible de supprimer l'annonce.', true);
-            });
-    }
+    window.showConfirmDrawer(
+        "Supprimer l'annonce",
+        `Êtes-vous sûr de vouloir supprimer l'annonce "${item.title}" ?`,
+        true,
+        () => {
+            stopAllAudioPreview();
+            deleteDoc(doc(db, "announcements", item.id))
+                .then(() => {
+                    window.showNotificationDrawer('Annonce Supprimée', "L'annonce a été retirée du Hub Média.", false);
+                })
+                .catch(err => {
+                    console.error("Error deleting announcement:", err);
+                    window.showNotificationDrawer('Erreur', "Impossible de supprimer l'annonce.", true);
+                });
+        }
+    );
 }
 
 // Save or Update Announcement in Firestore
 document.getElementById('btnSaveMedia').onclick = async () => {
+    const saveBtn = document.getElementById('btnSaveMedia');
+    if (saveBtn && saveBtn.disabled) return;
     // Validate
     const title = document.getElementById('mediaTitle').value.trim();
     const description = document.getElementById('mediaDescription').value.trim();
@@ -2883,24 +3085,23 @@ document.getElementById('btnSaveMedia').onclick = async () => {
     };
     
     const mediaId = document.getElementById('mediaId').value;
-    
-    try {
-        stopAllAudioPreview();
-        if (mediaId) {
-            // Update
-            await updateDoc(doc(db, "announcements", mediaId), data);
-            window.showNotificationDrawer('Annonce Modifiée', 'L\'annonce a été mise à jour avec succès.', false);
-        } else {
-            // Create
-            data.createdAt = new Date().toISOString();
-            await addDoc(collection(db, "announcements"), data);
-            window.showNotificationDrawer('Annonce Créée', 'Nouvelle annonce publiée dans le Hub Média.', false);
+    await _runLockedAction(saveBtn, async () => {
+        try {
+            stopAllAudioPreview();
+            if (mediaId) {
+                await updateDoc(doc(db, "announcements", mediaId), data);
+                window.showNotificationDrawer('Annonce Modifiée', "L'annonce a été mise à jour avec succès.", false);
+            } else {
+                data.createdAt = new Date().toISOString();
+                await addDoc(collection(db, "announcements"), data);
+                window.showNotificationDrawer('Annonce Créée', 'Nouvelle annonce publiée dans le Hub Média.', false);
+            }
+            closeMediaModalWindow();
+        } catch (err) {
+            console.error("Error saving announcement:", err);
+            window.showNotificationDrawer('Erreur Firestore', "Impossible d'enregistrer l'annonce.", true);
         }
-        closeMediaModalWindow();
-    } catch (err) {
-        console.error("Error saving announcement:", err);
-        window.showNotificationDrawer('Erreur Firestore', 'Impossible d\'enregistrer l\'annonce.', true);
-    }
+    });
 };
 
 

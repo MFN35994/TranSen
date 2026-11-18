@@ -141,26 +141,25 @@ export function Services() {
     <div>
       {/* ── Hero ────────────────────────────────────────────────────────── */}
       <section
-        className="py-24"
-        style={{ background: "linear-gradient(135deg, #062617 0%, #14A44D 100%)" }}
+        className="py-24 relative overflow-hidden"
+        style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)" }}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <div className="cyber-grid absolute inset-0 opacity-65 pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center z-10">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <div className="inline-block px-4 py-1.5 rounded-full text-sm mb-6"
-              style={{ backgroundColor: "rgba(255,215,0,0.2)", color: "var(--brand-gold)" }}
-            >
+            <div className="inline-block px-4 py-1.5 rounded-full text-xs sm:text-sm font-bold mb-6 bg-emerald-950/60 border border-emerald-400/35 text-amber-300 backdrop-blur-md">
               Découvrez nos services
             </div>
-            <h1 className="text-4xl md:text-5xl text-white mb-5">
-              Une plateforme,<br />trois solutions de transport
+            <h1 className="text-4xl md:text-5xl font-extrabold text-white mb-5 tracking-tight">
+              Une plateforme,<br /><span className="bg-gradient-to-r from-amber-300 via-emerald-300 to-cyan-300 bg-clip-text text-transparent">trois solutions de transport</span>
             </h1>
-            <p className="text-white/70 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-slate-300 max-w-2xl mx-auto leading-relaxed">
               Allô Dakar pour les courses directes, Compagnies Partenaires pour les voyages planifiés,
-              et Yobante pour l'envoi de colis interurbain.
+              et Yobanté pour l'envoi de colis interurbain.
             </p>
           </motion.div>
         </div>

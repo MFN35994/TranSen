@@ -12,9 +12,9 @@ export function CommissionCalculator() {
   const [dailyTrips, setDailyTrips] = useState(25);
   const [avgTicketPrice, setAvgTicketPrice] = useState(4500);
 
-  // Standard platform fee (e.g. 15%) vs TranSen Fee (1%)
+  // Standard platform fee (e.g. 15%) vs TranSen Fee (2%)
   const standardFeeRate = 0.15;
-  const transenFeeRate = 0.01;
+  const transenFeeRate = 0.02;
 
   const totalVolumeDay = dailyTrips * avgTicketPrice;
   const standardCost = totalVolumeDay * standardFeeRate;
@@ -40,7 +40,7 @@ export function CommissionCalculator() {
       </div>
 
       <p className="text-sm text-gray-500 leading-relaxed mb-8">
-        Calculez la plus-value de notre tarif unique à <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-xs select-all">1% de commission</span> comparé au taux standard du marché (15%). Voyez le capital supplémentaire récupéré par vos chauffeurs !
+        Calculez la plus-value de notre tarif unique à <span className="font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded text-xs select-all">2% de commission</span> comparé au taux standard du marché (15%). Voyez le capital supplémentaire récupéré par vos chauffeurs !
       </p>
 
       <div className="grid lg:grid-cols-12 gap-8 items-center">
@@ -121,7 +121,7 @@ export function CommissionCalculator() {
                 <span className="text-sm font-bold text-red-200">{standardCost.toLocaleString()} FCFA/j</span>
               </div>
               <div className="p-3 bg-emerald-950/20 border border-emerald-900/40 rounded-xl">
-                <span className="text-[10px] font-mono text-emerald-400 block">Frais TranSen (1%)</span>
+                <span className="text-[10px] font-mono text-emerald-400 block">Frais TranSen (2%)</span>
                 <span className="text-md font-bold text-emerald-300">{transenCost.toLocaleString()} FCFA/j</span>
               </div>
             </div>

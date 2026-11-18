@@ -524,7 +524,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 userLatitude: _userLat,
                 userLongitude: _userLng,
                 onRouteSelected: (destination, distance, duration) {
-                  // Tracer l'itinéraire sur la carte
+                  // Route info selected
+                },
+                onRouteCoordinatesSelected: (destLat, destLng) {
+                  _drawVtcRouteOnMap(destLat, destLng);
                 },
                 onBackToHome: () {
                   _setJourneyState(HomeJourneyState.selectService);
@@ -550,6 +553,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ],
       ),
     ),
+      bottomNavigationBar: _journeyState == HomeJourneyState.selectService
+          ? _buildBottomNavBar(isDark)
+          : null,
       floatingActionButton: _journeyState == HomeJourneyState.selectVtcDestination
           ? FloatingActionButton(
               mini: true,
@@ -568,27 +574,224 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               foregroundColor: TranSenColors.primaryGreen,
               child: const Icon(Icons.my_location),
             )
-          : (_journeyState == HomeJourneyState.selectService
-              ? FloatingActionButton.extended(
-                  onPressed: () {
-                    HapticFeedback.mediumImpact();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const ChatAssistantScreen()),
-                    );
-                  },
-                  backgroundColor: TranSenColors.primaryGreen,
-                  foregroundColor: Colors.white,
-                  icon: const Icon(Icons.psychology),
-                  label: const Text("IA Assistant"),
-                  elevation: 6,
-                )
-              : null),
+          : null,
+    );
+  }
+
+  Future<void> _drawVtcRouteOnMap(double destLat, double destLng) async {
+    if (_mapController == null) return;
+    final double startLat = _userLat ?? 14.7167;
+    final double startLng = _userLng ?? -17.4677;
+
+    try {
+      final dio = Dio();
+      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final url =
+          "https://api.mapbox.com/directions/v5/mapbox/driving/$startLng,$startLat;$destLng,$destLat?geometries=geojson&overview=full&access_token=$mapboxToken";
+      final response = await dio.get(url);
+
+      if (response.statusCode == 200 && response.data != null) {
+        final routes = response.data['routes'] as List?;
+        if (routes != null && routes.isNotEmpty) {
+          final geometry = routes[0]['geometry'];
+          final geoJson = {
+            "type": "Feature",
+            "properties": {},
+            "geometry": geometry,
+          };
+
+          try {
+            await _mapController!.style.removeStyleLayer("vtc-route-layer");
+          } catch (_) {}
+          try {
+            await _mapController!.style.removeStyleSource("vtc-route-source");
+          } catch (_) {}
+
+          final source = GeoJsonSource(
+            id: "vtc-route-source",
+            data: jsonEncode(geoJson),
+          );
+          await _mapController!.style.addSource(source);
+
+          final layer = LineLayer(
+            id: "vtc-route-layer",
+            sourceId: "vtc-route-source",
+            lineColor: TranSenColors.primaryGreen.value,
+            lineWidth: 5.0,
+            lineCap: LineCap.ROUND,
+            lineJoin: LineJoin.ROUND,
+          );
+          await _mapController!.style.addLayer(layer);
+
+          // Center camera between start and destination
+          final midLat = (startLat + destLat) / 2;
+          final midLng = (startLng + destLng) / 2;
+          await _mapController!.flyTo(
+            CameraOptions(
+              center: Point(coordinates: Position(midLng, midLat)),
+              zoom: 12.2,
+              padding: MbxEdgeInsets(top: 80, left: 40, bottom: 320, right: 40),
+            ),
+            MapAnimationOptions(duration: 1200),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Erreur tracé itinéraire VTC: $e");
+    }
+  }
+
+  Widget _buildBottomNavBar(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF14181D) : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+            blurRadius: 20,
+            offset: const Offset(0, -4),
+          ),
+        ],
+        border: Border(
+          top: BorderSide(
+            color: isDark ? Colors.white10 : Colors.grey.shade200,
+            width: 0.8,
+          ),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildBottomNavItem(
+                icon: Icons.home_rounded,
+                label: 'Accueil',
+                isActive: true,
+                isDark: isDark,
+                onTap: () {},
+              ),
+              _buildBottomNavItem(
+                icon: Icons.confirmation_number_outlined,
+                label: 'Mes Trajets',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                },
+              ),
+              _buildBottomNavCenterButton(),
+              _buildBottomNavItem(
+                icon: Icons.account_balance_wallet_outlined,
+                label: 'TransPay',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+                },
+              ),
+              _buildBottomNavItem(
+                icon: Icons.psychology_outlined,
+                label: 'IA Guide',
+                isActive: false,
+                isDark: isDark,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const ChatAssistantScreen()));
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    final color = isActive
+        ? TranSenColors.primaryGreen
+        : (isDark ? Colors.white60 : Colors.black54);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(height: 3),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNavCenterButton() {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        OrderSheet.show(context);
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [TranSenColors.primaryGreen, TranSenColors.darkGreen],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: TranSenColors.primaryGreen.withValues(alpha: 0.4),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.bolt_rounded, color: Colors.white, size: 18),
+            SizedBox(width: 4),
+            Text(
+              "Réserver",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildHeader(BuildContext context, String clientName) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final walletAsync = ref.watch(walletProvider);
+    final int walletBalance = walletAsync.value?.balance.toInt() ?? 0;
+
     return Row(
       children: [
         // Menu Button / Avatar
@@ -601,35 +804,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: _activeMediaGlowColor.withValues(alpha: 0.3),
+                color: _activeMediaGlowColor.withValues(alpha: 0.4),
                 width: 2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: _activeMediaGlowColor.withValues(alpha: 0.15),
+                  color: _activeMediaGlowColor.withValues(alpha: 0.2),
                   blurRadius: 8,
                 ),
               ],
             ),
             child: CircleAvatar(
               radius: 20,
-              backgroundColor: isDark ? Colors.grey.shade800 : Colors.grey.shade300,
-              child: Icon(Icons.person, color: isDark ? Colors.white : Colors.black87, size: 20),
+              backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+              child: Icon(Icons.menu_rounded, color: isDark ? Colors.white : TranSenColors.primaryGreen, size: 22),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         // Welcome Text
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                "Bonjour 👋",
+                "Salam Alaykoum 👋",
                 style: TextStyle(
-                  color: isDark ? Colors.white54 : Colors.black54,
+                  color: isDark ? Colors.white60 : Colors.black54,
                   fontSize: 11,
-                  fontWeight: FontWeight.w500,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(height: 2),
@@ -637,20 +840,302 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 clientName,
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black87,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
         ),
+        // Live TransPay Balance Pill
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? TranSenColors.primaryGreen.withValues(alpha: 0.2)
+                  : TranSenColors.primaryGreen.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: TranSenColors.primaryGreen.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.account_balance_wallet_rounded, color: TranSenColors.primaryGreen, size: 15),
+                const SizedBox(width: 6),
+                Text(
+                  "$walletBalance F",
+                  style: TextStyle(
+                    color: isDark ? Colors.white : TranSenColors.darkGreen,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         // Notification Button
         IconButton(
-          icon: Icon(Icons.notifications_none, color: isDark ? Colors.white : Colors.black87, size: 22),
-          onPressed: () {},
+          icon: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Icon(Icons.notifications_none_rounded, color: isDark ? Colors.white : Colors.black87, size: 24),
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: const BoxDecoration(
+                    color: TranSenColors.primaryGreen,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            _showNotificationsSheet(context, isDark);
+          },
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(),
+        ),
+      ],
+    );
+  }
+
+  void _showNotificationsSheet(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1A1E24) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                const Icon(Icons.notifications_active_rounded, color: TranSenColors.primaryGreen),
+                const SizedBox(width: 10),
+                Text(
+                  "Centre de Notifications",
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: TranSenColors.primaryGreen.withValues(alpha: 0.15),
+                child: const Icon(Icons.verified_user_rounded, color: TranSenColors.primaryGreen),
+              ),
+              title: const Text("Bienvenue sur TranSen Super-App", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text("Réservez vos courses VTC, voyages interurbains et envois de colis Yobanté en 1 clic.", style: TextStyle(fontSize: 12)),
+            ),
+            const Divider(),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: Colors.orange.withValues(alpha: 0.15),
+                child: const Icon(Icons.card_giftcard_rounded, color: Colors.orange),
+              ),
+              title: const Text("Bonus Parrainage Actif", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+              subtitle: const Text("Invitez vos proches et gagnez des réductions sur vos prochains trajets.", style: TextStyle(fontSize: 12)),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ReferralScreen()));
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInstantSearchBar(BuildContext context, bool isDark) {
+    final quickDestinations = [
+      {'label': '✈️ Aéroport AIBD', 'region': 'Thiès', 'mode': 'vtc'},
+      {'label': '🕌 Touba', 'region': 'Diourbel', 'mode': 'interurbain'},
+      {'label': '🚄 Thiès', 'region': 'Thiès', 'mode': 'interurbain'},
+      {'label': '🏖️ Saly / Mbour', 'region': 'Thiès', 'mode': 'interurbain'},
+      {'label': '🌉 Saint-Louis', 'region': 'Saint-Louis', 'mode': 'interurbain'},
+      {'label': '🌴 Ziguinchor', 'region': 'Ziguinchor', 'mode': 'interurbain'},
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Main "Où allez-vous ?" Uber/BlaBlaCar Search Bar
+        GestureDetector(
+          onTap: () {
+            HapticFeedback.mediumImpact();
+            OrderSheet.show(context);
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.14)
+                    : TranSenColors.primaryGreen.withValues(alpha: 0.25),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: TranSenColors.primaryGreen.withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.search_rounded,
+                    color: TranSenColors.primaryGreen,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Où allez-vous aujourd'hui ?",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Course VTC immédiate • Bus • Covoiturage 7-places",
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? Colors.white60 : Colors.black54,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Direct VTC Map button inside the bar
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.mediumImpact();
+                    _setJourneyState(HomeJourneyState.selectVtcDestination);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: TranSenColors.primaryGreen,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_taxi_rounded, color: Colors.white, size: 15),
+                        SizedBox(width: 5),
+                        Text(
+                          "VTC",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        // 1-Tap Quick Destinations Chips
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
+          child: Row(
+            children: quickDestinations.map((dest) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    OrderSheet.show(
+                      context,
+                      destination: dest['region'],
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.07)
+                          : Colors.white.withValues(alpha: 0.85),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isDark ? Colors.white12 : Colors.black12,
+                      ),
+                    ),
+                    child: Text(
+                      dest['label']!,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
         ),
       ],
     );
@@ -676,7 +1161,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildHeader(context, clientName),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        // Uber x BlaBlaCar Instant Search Bar & 1-Tap Quick Destinations
+        _buildInstantSearchBar(context, isDark),
+        const SizedBox(height: 18),
         // Premium Smart Media Hub card (Dynamic announcements, visual carousel & audio synthesis)
         SmartMediaHubCard(
           channel: 'client',
@@ -777,7 +1265,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       iconColor: const Color(0xFFE1BEE7),
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen()));
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
                       },
                       animated: false,
                     ),

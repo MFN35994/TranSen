@@ -13,24 +13,49 @@
     </script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#064E3B">
     <title>Espace Compagnie - TranSen</title>
     <meta name="description" content="Espace Compagnie TranSen - Portail d'administration et de gestion pour les partenaires B2B. Gérez votre flotte de chauffeurs, suivez vos courses en temps réel et optimisez vos opérations de transport au Sénégal.">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="TranSen Compagnie">
+    <meta property="og:title" content="TranSen B2B - Console Compagnies de Transport">
+    <meta property="og:description" content="Pilotage en temps réel des flottes, réservations, passagers et revenus à 2% de commission.">
+    <meta property="og:url" content="https://compagnie.transen.org/">
+    <meta property="og:image" content="https://compagnie.transen.org/assets/transen-logo.png">
     <meta name="keywords" content="transen, espace compagnie, gestion de flotte, chauffeurs, transport, logistique, B2B, Sénégal, Dakar">
     <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://compagnie.transen.org/">
+    <link rel="preconnect" href="https://api.transen.org" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="icon" type="image/png" href="https://transen.org/assets/transen-logo.png">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "TranSen Compagnie",
+        "url": "https://compagnie.transen.org"
+      }
+    </script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
-    <script src='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js'></script>
-    <link href='https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css' rel='stylesheet' />
-    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <script defer type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script defer src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
+    <script defer src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/introjs.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/intro.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/intro.js@7.2.0/intro.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
 </head>
 <body>
     <!-- Login Section -->
@@ -53,7 +78,7 @@
                     <div class="showcase-stats-grid">
                         <div class="showcase-stat-card">
                             <div class="stat-icon-container">
-                                <i class="fas fa-shield-halved"></i>
+                                <i class="fas fa-shield-alt"></i>
                             </div>
                             <div>
                                 <h4 class="stat-headline">Souveraineté & Sécurité</h4>
@@ -159,7 +184,7 @@
                             <input type="email" id="regEmail" placeholder="Adresse email (Identifiant)" required>
                         </div>
                         <div class="input-group" style="position: relative; margin-bottom: 12px;">
-                            <i class="fas fa-shield-halved"></i>
+                            <i class="fas fa-shield-alt"></i>
                             <input type="password" id="regPassword" placeholder="Mot de passe (8+ caractères)" required minlength="8" oninput="window.checkPasswordStrength(this.value)">
                             <button type="button" class="eye-toggle-btn" tabindex="-1" onclick="window.togglePasswordVisibility('regPassword', this)">
                                 <i class="far fa-eye"></i>
@@ -1084,7 +1109,7 @@
                     <div class="glass-card" style="padding: 24px; border: 1px solid #DADCE0; box-shadow: none; display: flex; flex-direction: column; justify-content: space-between;">
                         <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 12px;">
                             <div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(217, 119, 6, 0.1); color: #D97706; display: flex; align-items: center; justify-content: center; font-size: 1.15rem;">
-                                <i class="fas fa-shield-halved"></i>
+                                <i class="fas fa-shield-alt"></i>
                             </div>
                             <div>
                                 <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-main); margin: 0; text-transform: uppercase;">Sécurité & Conformité</h3>

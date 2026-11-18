@@ -91,7 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Validate file size (max 10MB)
         const maxSize = 10 * 1024 * 1024;
         if (file.size > maxSize) {
-            alert("La taille du fichier dépasse la limite autorisée (10 Mo).");
+            window.showNotificationDrawer("Fichier trop volumineux", "La taille du fichier dépasse la limite autorisée (10 Mo).", true);
             kycFileInput.value = '';
             fileInfo.innerText = "Aucun fichier sélectionné (PDF, PNG, JPG max. 10 Mo)";
             uploadBox.classList.remove('has-file');
@@ -103,18 +103,23 @@ document.addEventListener('DOMContentLoaded', () => {
         uploadBox.classList.add('has-file');
     }
 
+    const requestFn = (url, opts) => window.TransenInvestApi
+        ? window.TransenInvestApi.fetchWithSafety(url, opts)
+        : fetch(`${API_HOST}${url}`, opts);
+
     // 3. Form Submission
     investmentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (submitBtn.disabled) return;
 
         const fullName = document.getElementById('fullName').value.trim();
         const email = document.getElementById('email').value.trim();
         const phone = document.getElementById('phone').value.trim();
-        const sharesCount = parseInt(formSharesCount.value);
+        const sharesCount = parseInt(formSharesCount.value, 10);
         const kycFile = kycFileInput.files[0];
 
-        if (!fullName || !email || !phone || !sharesCount || !kycFile) {
-            alert("Veuillez remplir tous les champs obligatoires (y compris l'e-mail) et ajouter votre pièce d'identité.");
+        if (!fullName || !email || !phone || !sharesCount || sharesCount < 1 || !kycFile) {
+            window.showNotificationDrawer("Dossier Incomplet", "Veuillez remplir tous les champs obligatoires (y compris l'e-mail) et ajouter votre pièce d'identité.", true);
             return;
         }
 
@@ -131,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
         formData.append('kycFile', kycFile);
 
         try {
-            const response = await fetch(`${API_HOST}/api/investments`, {
+            const response = await requestFn('/api/investments', {
                 method: 'POST',
                 body: formData
             });
@@ -151,11 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 uploadBox.classList.remove('has-file');
                 updateCalculations(100);
             } else {
-                alert("Erreur: " + (data.error || "Une erreur inattendue est survenue."));
+                window.showNotificationDrawer("Erreur de Souscription", data.error || "Une erreur inattendue est survenue.", true);
             }
         } catch (error) {
             console.error("Submission error:", error);
-            alert("Erreur de connexion avec le serveur. Veuillez réessayer plus tard.");
+            window.showNotificationDrawer("Erreur Réseau", error.message || "Erreur de connexion avec le serveur. Veuillez réessayer plus tard.", true);
         } finally {
             // Restore button
             submitBtn.disabled = false;
@@ -197,12 +202,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (loginSubmitBtn.disabled) return;
 
         const email = document.getElementById('loginEmail').value.trim();
         const phone = document.getElementById('loginPhone').value.trim();
 
         if (!email && !phone) {
-            alert("Veuillez renseigner votre e-mail ou votre numéro de téléphone.");
+            window.showNotificationDrawer("Identifiants Requis", "Veuillez renseigner votre e-mail ou votre numéro de téléphone.", true);
             return;
         }
 
@@ -211,9 +217,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loginSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Connexion...';
 
         try {
-            const response = await fetch(`${API_HOST}/api/investments/login`, {
+            const response = await requestFn('/api/investments/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: email || null, phone: phone || null })
             });
 
@@ -225,11 +230,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (phone) localStorage.setItem('transenInvestorPhone', phone);
                 window.location.href = 'dashboard.html';
             } else {
-                alert(data.error || "Aucun investissement trouvé avec ces identifiants.");
+                window.showNotificationDrawer("Aucun Dossier Trouvé", data.error || "Aucun investissement trouvé avec ces identifiants.", true);
             }
         } catch (error) {
             console.error("Login error:", error);
-            alert("Erreur de connexion. Veuillez réessayer.");
+            window.showNotificationDrawer("Erreur de Connexion", error.message || "Erreur de connexion. Veuillez réessayer.", true);
         } finally {
             loginSubmitBtn.disabled = false;
             loginSubmitBtn.innerHTML = originalBtnHtml;

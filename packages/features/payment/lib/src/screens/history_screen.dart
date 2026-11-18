@@ -13,7 +13,7 @@ class HistoryScreen extends ConsumerStatefulWidget {
 
 class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   String _selectedType = 'Tous';
-  final List<String> _types = ['Tous', 'Covoiturage', 'Course', 'Yobanté'];
+  final List<String> _types = ['Tous', 'Bus / Compagnie', 'Covoiturage', 'Course', 'Yobanté'];
 
   @override
   Widget build(BuildContext context) {
@@ -87,9 +87,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         // Appliquer le filtre
         if (_selectedType != 'Tous') {
           trips = trips.where((t) {
+            if (_selectedType == 'Bus / Compagnie') return t.category == 'BUS_COMPANY';
             if (_selectedType == 'Covoiturage') return t.type.contains('Covoiturage');
-            if (_selectedType == 'Course') return t.type == 'Course';
-            if (_selectedType == 'Yobanté') return t.type.contains('Livraison');
+            if (_selectedType == 'Course') return t.type == 'Course' && t.category != 'BUS_COMPANY';
+            if (_selectedType == 'Yobanté') return t.type.contains('Livraison') || t.type.contains('Yobanté');
             return true;
           }).toList();
         }
@@ -112,13 +113,18 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
         final monthlyTrips = trips.where((t) => t.createdAt.month == now.month && t.createdAt.year == now.year).toList();
         final double monthlyTotal = monthlyTrips.fold(0, (sum, t) => sum + t.price);
         
-        return ListView(
+        return ListView.builder(
           padding: const EdgeInsets.all(15),
-          children: [
-            _buildSummaryCard(monthlyTotal, monthlyTrips.length, isDriver),
-            const SizedBox(height: 20),
-            ...trips.map((trip) => _buildTripCard(trip, isDriver)),
-          ],
+          itemCount: trips.length + 1,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 20),
+                child: _buildSummaryCard(monthlyTotal, monthlyTrips.length, isDriver),
+              );
+            }
+            return _buildTripCard(trips[index - 1], isDriver);
+          },
         );
       },
     );
@@ -173,9 +179,31 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
   Widget _buildTripCard(TripModel trip, bool isDriver) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bool isBusBilling = trip.category == 'BUS_COMPANY';
+    final String statusLower = trip.status.toLowerCase();
+    final bool isActiveTrip = statusLower == 'accepted' ||
+        statusLower == 'in_progress' ||
+        statusLower == 'reserved' ||
+        statusLower == 'pending';
+
+    Color statusColor = TranSenColors.primaryGreen;
+    String statusLabel = 'Terminé';
+    if (statusLower == 'cancelled' || statusLower == 'failed') {
+      statusColor = Colors.redAccent;
+      statusLabel = 'Annulé';
+    } else if (statusLower == 'in_progress' || statusLower == 'departed') {
+      statusColor = Colors.blue;
+      statusLabel = 'En route';
+    } else if (statusLower == 'accepted' || statusLower == 'reserved' || statusLower == 'boarded') {
+      statusColor = Colors.teal;
+      statusLabel = 'Confirmé';
+    } else if (statusLower == 'pending') {
+      statusColor = Colors.orange;
+      statusLabel = 'En attente';
+    }
+
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       elevation: 0,
       color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       child: Column(
@@ -197,16 +225,43 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
             title: Text("${trip.departure} ➔ ${trip.destination}",
                 style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 13,
+                    fontSize: 13.5,
                     color: isDark ? Colors.white : Colors.black)),
-            subtitle: Text(
-              '${trip.createdAt.day}/${trip.createdAt.month}/${trip.createdAt.year} • ${trip.type}',
-              style: const TextStyle(fontSize: 11, color: Colors.grey),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      statusLabel,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: statusColor,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${trip.createdAt.day}/${trip.createdAt.month}/${trip.createdAt.year} • ${trip.type}',
+                      style: const TextStyle(fontSize: 11, color: Colors.grey),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
             trailing: Text(
               '${trip.price.toInt()} F',
               style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 14,
                   color: isDark ? Colors.white : Colors.black),
             ),
           ),
@@ -216,6 +271,29 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
+                  if (isActiveTrip) ...[
+                    OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TripTrackingScreen(tripId: trip.id),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.my_location_rounded, size: 15),
+                      label: const Text('SUIVRE',
+                          style: TextStyle(
+                              fontSize: 10, fontWeight: FontWeight.bold)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.teal,
+                        side: const BorderSide(color: Colors.teal),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   if (isBusBilling)
                     OutlinedButton.icon(
                       onPressed: () => _openMyTicket(trip),

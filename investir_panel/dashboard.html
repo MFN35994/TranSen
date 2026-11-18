@@ -5,26 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#050811">
+    <meta name="robots" content="noindex, nofollow">
     <title>Mon Portefeuille - TranSen Invest</title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="icon" href="/favicon.ico" sizes="any">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192x192.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="preconnect" href="https://api.transen.org" crossorigin>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
         :root {
-            --bg-dark: #0a0b0d; --bg-card: rgba(20, 22, 28, 0.6);
-            --primary-gold: #f1c40f; --primary-gold-hover: #f39c12;
-            --glass-border: rgba(255, 255, 255, 0.08); --text-main: #f5f6f8; --text-dim: #9ca3af;
-            --green: #2ecc71; --red: #e74c3c; --blue: #3498db;
-            --shadow-premium: 0 20px 40px rgba(0, 0, 0, 0.4);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            --bg-dark: #050811; --bg-card: rgba(13, 18, 30, 0.72);
+            --primary-gold: #F59E0B; --primary-gold-hover: #D97706;
+            --glass-border: rgba(245, 158, 11, 0.16); --text-main: #F8FAFC; --text-dim: #94A3B8;
+            --green: #10B981; --red: #EF4444; --blue: #06B6D4;
+            --shadow-premium: 0 22px 50px rgba(0, 0, 0, 0.52);
+            --transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
             --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; } }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-dark); color: var(--text-main); overflow-x: hidden; min-height: 100vh; min-height: 100dvh; -webkit-font-smoothing: antialiased; }
+        body { font-family: 'Outfit', sans-serif; background: radial-gradient(circle at 80% 0%, #171207 0%, var(--bg-dark) 50%, #030908 100%); color: var(--text-main); overflow-x: hidden; min-height: 100vh; min-height: 100dvh; -webkit-font-smoothing: antialiased; position: relative; }
+        body::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(to right, rgba(245, 158, 11, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(16, 185, 129, 0.035) 1px, transparent 1px); background-size: 52px 52px; pointer-events: none; z-index: -1; }
 
-        .glow-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; overflow: hidden; pointer-events: none; }
-        .glow-orb { position: absolute; border-radius: 50%; filter: blur(120px); opacity: 0.12; animation: pulse 8s infinite alternate ease-in-out; }
-        .orb-gold { width: 350px; height: 350px; background: var(--primary-gold); top: -80px; right: -80px; }
-        .orb-purple { width: 400px; height: 400px; background: #8e44ad; bottom: -120px; left: -120px; animation-delay: 2s; }
+        .glow-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -2; overflow: hidden; pointer-events: none; }
+        .glow-orb { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.16; will-change: transform; animation: pulse 9s infinite alternate ease-in-out; }
+        .orb-gold { width: 360px; height: 360px; background: var(--primary-gold); top: -80px; right: -80px; }
+        .orb-purple { width: 420px; height: 420px; background: var(--green); bottom: -120px; left: -120px; animation-delay: 2s; }
         @keyframes pulse { 0% { transform: scale(1); opacity: 0.10; } 100% { transform: scale(1.15); opacity: 0.18; } }
 
         .glass { background: var(--bg-card); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--glass-border); border-radius: 18px; }
@@ -205,13 +218,52 @@
         <button class="nav-item" id="navLogout"><i class="fas fa-sign-out-alt"></i>Quitter</button>
     </nav>
 
+    <script src="js/premium-notifications.js"></script>
+    <script src="js/api-client.js"></script>
     <script>
-    const API_HOST = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' ? 'http://localhost:8081' : 'https://api.transen.org';
+    const { escapeHtml, fetchWithSafety } = window.TransenInvestApi;
+
+    async function refreshPortfolio(silent = false) {
+        const email = localStorage.getItem('transenInvestorEmail');
+        const phone = localStorage.getItem('transenInvestorPhone');
+        if (!email && !phone) return;
+        const navBtn = document.getElementById('navRefresh');
+        if (navBtn && navBtn.disabled) return;
+        const origHtml = navBtn ? navBtn.innerHTML : '';
+        if (navBtn && !silent) {
+            navBtn.disabled = true;
+            navBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Sync...';
+        }
+        try {
+            const r = await fetchWithSafety('/api/investments/login', {
+                method: 'POST',
+                skipIdempotency: true,
+                body: JSON.stringify({ email: email || null, phone: phone || null })
+            });
+            if (!r.ok) throw new Error('Impossible de rafraîchir le portefeuille.');
+            const data = await r.json();
+            if (Array.isArray(data) && data.length > 0) {
+                localStorage.setItem('transenInvestor', JSON.stringify(data));
+                renderDashboard(data);
+                if (!silent && window.showToast) window.showToast('Portefeuille actualisé !');
+            }
+        } catch (e) {
+            console.error(e);
+            if (!silent && window.showToast) window.showToast(e.message || 'Erreur réseau', 'error');
+        } finally {
+            if (navBtn && !silent) {
+                navBtn.disabled = false;
+                navBtn.innerHTML = origHtml;
+            }
+        }
+    }
 
     document.addEventListener('DOMContentLoaded', () => {
         const investorData = localStorage.getItem('transenInvestor');
         if (!investorData) { window.location.href = 'index.html'; return; }
         renderDashboard(JSON.parse(investorData));
+        // Background sync for instant paint + fresh status
+        refreshPortfolio(true);
     });
 
     // Logout
@@ -225,22 +277,7 @@
     document.getElementById('navLogout').addEventListener('click', doLogout);
 
     // Refresh data from API
-    document.getElementById('navRefresh').addEventListener('click', async () => {
-        const email = localStorage.getItem('transenInvestorEmail');
-        const phone = localStorage.getItem('transenInvestorPhone');
-        if (!email && !phone) return;
-        try {
-            const r = await fetch(`${API_HOST}/api/investments/login`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email: email || null, phone: phone || null })
-            });
-            const data = await r.json();
-            if (Array.isArray(data) && data.length > 0) {
-                localStorage.setItem('transenInvestor', JSON.stringify(data));
-                renderDashboard(data);
-            }
-        } catch(e) { console.error(e); }
-    });
+    document.getElementById('navRefresh').addEventListener('click', () => refreshPortfolio(false));
 
     function renderDashboard(investments) {
         if (!investments || !investments.length) {
@@ -268,19 +305,20 @@
         else gs.innerHTML = '<span style="color:var(--primary-gold);">🟡 En attente</span>';
 
         const listEl = document.getElementById('investmentsList');
-        listEl.innerHTML = '';
-        investments.forEach(inv => {
+        listEl.innerHTML = investments.map(inv => {
             const bc = inv.status === 'PAID' ? 'badge-paid' : inv.status === 'APPROVED' ? 'badge-approved' : inv.status === 'CANCELLED' ? 'badge-cancelled' : 'badge-pending';
             const sl = inv.status === 'PAID' ? 'Payé' : inv.status === 'APPROVED' ? 'Approuvé' : inv.status === 'CANCELLED' ? 'Annulé' : 'En attente';
             const ds = inv.createdAt ? new Date(inv.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-            const el = document.createElement('div'); el.className = 'investment-item';
-            el.innerHTML = `<div class="inv-header"><span class="inv-id">#${(inv.id||'').substring(0,8).toUpperCase()}</span><span class="badge ${bc}">${sl}</span></div>
-                <div class="inv-detail"><span>Actions</span><strong>${inv.sharesCount}</strong></div>
-                <div class="inv-detail"><span>Montant</span><strong>${(inv.amount||0).toLocaleString('fr-FR')} FCFA</strong></div>
-                <div class="inv-detail"><span>Date</span><strong>${ds}</strong></div>
-                ${inv.status === 'APPROVED' ? '<a href="payment.html?id='+inv.id+'" class="btn-pay-link"><i class="fas fa-credit-card"></i> Procéder au paiement</a>' : ''}`;
-            listEl.appendChild(el);
-        });
+            const safeId = escapeHtml(inv.id || '');
+            const shortId = escapeHtml((inv.id || '').substring(0, 8).toUpperCase());
+            return `<div class="investment-item">
+                <div class="inv-header"><span class="inv-id">#${shortId}</span><span class="badge ${bc}">${sl}</span></div>
+                <div class="inv-detail"><span>Actions</span><strong>${Number(inv.sharesCount || 0).toLocaleString('fr-FR')}</strong></div>
+                <div class="inv-detail"><span>Montant</span><strong>${Number(inv.amount || 0).toLocaleString('fr-FR')} FCFA</strong></div>
+                <div class="inv-detail"><span>Date</span><strong>${escapeHtml(ds)}</strong></div>
+                ${inv.status === 'APPROVED' ? `<a href="payment.html?id=${encodeURIComponent(inv.id)}" class="btn-pay-link"><i class="fas fa-credit-card"></i> Procéder au paiement</a>` : ''}
+            </div>`;
+        }).join('');
 
         const best = paidCount > 0 ? 'PAID' : investments.some(i => i.status === 'APPROVED') ? 'APPROVED' : 'PENDING';
         updateTimeline(best);
@@ -304,8 +342,12 @@
         const ta = data.reduce((s, i) => s + (i.amount || 0), 0);
         const c = `\n═══════════════════════════════════════\n       CERTIFICAT D'ACTIONNAIRE\n           TranSen S.A.S.\n═══════════════════════════════════════\n\n  Nom : ${inv.fullName}\n  Email : ${inv.email || '—'}\n  Tél : +221 ${inv.phone}\n\n  ${ts} action(s) - ${ta.toLocaleString('fr-FR')} FCFA\n  Date : ${new Date(inv.createdAt).toLocaleDateString('fr-FR')}\n  Réf : ${(inv.id||'').toUpperCase()}\n\n═══════════════════════════════════════\n  https://investir.transen.org\n═══════════════════════════════════════\n`;
         const b = new Blob([c], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(b);
-        a.download = `Certificat_TranSen_${inv.fullName.replace(/\s/g,'_')}.txt`; a.click();
+        const objectUrl = URL.createObjectURL(b);
+        const a = document.createElement('a');
+        a.href = objectUrl;
+        a.download = `Certificat_TranSen_${(inv.fullName || 'Investisseur').replace(/\s+/g, '_')}.txt`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     });
     </script>
 </body>

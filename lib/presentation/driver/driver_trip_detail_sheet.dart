@@ -67,6 +67,7 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
       await ref
           .read(tripRepositoryProvider)
           .acceptTrip(widget.trip.id, auth.userId);
+      ref.read(walletProvider.notifier).refresh();
       if (mounted) {
         Navigator.of(context).pop(true);
         Navigator.push(
@@ -111,9 +112,9 @@ class _DriverTripDetailSheetState extends ConsumerState<DriverTripDetailSheet> {
     final subInfo = await SubscriptionService().checkSubscription(auth.userId);
     if (subInfo.isActive) return true;
     
-    // 2. Vérifier le solde (doit être >= 1% du prix)
+    // 2. Vérifier le solde (doit être >= 2% du prix)
     final wallet = ref.read(walletProvider).value;
-    final commission = widget.trip.price * 0.01;
+    final commission = widget.trip.price * 0.02;
     
     if ((wallet?.balance ?? 0.0) < commission) {
       if (mounted) {

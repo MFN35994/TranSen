@@ -1,7 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:transen_core/transen_core.dart';
 
 /// Plans d'abonnement disponibles
 enum SubscriptionPlan { trial, weekly, monthly }
@@ -235,6 +237,13 @@ class SubscriptionService {
     });
 
     await batch.commit();
+
+    // Synchroniser également côté Spring Boot PostgreSQL
+    try {
+      await ApiClient().dio.post('/api/payments/activate-trial');
+    } catch (e) {
+      debugPrint('[SubscriptionService] Warning sync essai gratuit backend: $e');
+    }
     debugPrint('[SubscriptionService] ✅ Essai gratuit activé jusqu\'au ${expiresAt.toIso8601String()}');
   }
 
@@ -242,10 +251,11 @@ class SubscriptionService {
   // SOUSCRIPTION À UN PLAN PAYANT
   // ─────────────────────────────────────────────────────────────────────────
 
-  /// Souscrit à un plan payant (weekly ou monthly).
+  /// Souscrit à un plan payant (weekly ou monthly) de manière atomique via Spring Boot.
   ///
-  /// Déduit le montant de manière atomique depuis le walletBalance.
-  /// Si un abonnement est encore actif, repart de la date d'expiration actuelle.
+  /// Vérifie et déduit le solde dans PostgreSQL (puis synchronise Firestore),
+  /// évitant tout blocage par les règles Firestore sur `walletBalance` et garantissant
+  /// l'exemption immédiate de commission (2%) sur le dispatch backend.
   Future<void> subscribe({
     required String userId,
     required SubscriptionPlan plan,
@@ -254,63 +264,37 @@ class SubscriptionService {
       throw Exception('Utilisez activateTrial() pour le plan essai.');
     }
 
-    final price = plan.price;
-    final days = plan.durationDays;
-    final userRef = _db.collection('users').doc(userId);
+    final planKey = plan == SubscriptionPlan.weekly ? 'WEEKLY' : 'MONTHLY';
 
-    await _db.runTransaction((transaction) async {
-      final userDoc = await transaction.get(userRef);
-      if (!userDoc.exists) throw Exception('Utilisateur introuvable.');
+    try {
+      final response = await ApiClient().dio.post(
+        '/api/payments/subscribe',
+        data: {'plan': planKey},
+      );
 
-      final data = userDoc.data()!;
-      final balance = (data['walletBalance'] ?? 0).toDouble();
-
-      if (balance < price) {
-        throw Exception(
-          'Solde TransPay insuffisant (${balance.toInt()} FCFA).\n'
-          'Recharge nécessaire : ${(price - balance).toInt()} FCFA de plus.',
-        );
+      if (response.statusCode != 200 || response.data?['success'] != true) {
+        final msg = response.data?['error']?.toString() ?? 'Erreur lors de la souscription.';
+        throw Exception(msg);
       }
 
-      // Si un abonnement est encore actif, on part de la date d'expiration
-      final now = DateTime.now();
-      DateTime baseDate = now;
-      final expiresRaw = data['subscriptionExpires'];
-      if (expiresRaw != null) {
-        final currentExpiry = (expiresRaw as Timestamp).toDate();
-        if (currentExpiry.isAfter(now)) {
-          baseDate = currentExpiry; // Renouvellement anticipé
-        }
-      }
+      // Mise à jour optimiste immédiate du statut sur Firestore (sans toucher walletBalance)
+      final expiryStr = response.data?['subscriptionExpires'] as String?;
+      final parsedExpiry = expiryStr != null
+          ? DateTime.tryParse(expiryStr) ?? DateTime.now().add(Duration(days: plan.durationDays))
+          : DateTime.now().add(Duration(days: plan.durationDays));
 
-      final newExpiry = baseDate.add(Duration(days: days));
-
-      transaction.update(userRef, {
-        'walletBalance': FieldValue.increment(-price),
+      await _db.collection('users').doc(userId).set({
         'subscriptionPlan': plan == SubscriptionPlan.weekly ? 'weekly' : 'monthly',
-        'subscriptionStart': Timestamp.fromDate(now),
-        'subscriptionExpires': Timestamp.fromDate(newExpiry),
-      });
-
-      // Enregistrer dans l'historique des transactions
-      final txRef = userRef.collection('transactions').doc();
-      transaction.set(txRef, {
-        'amount': -price,
-        'description': 'Abonnement TranSen ${plan.label} (${days}j)',
-        'date': FieldValue.serverTimestamp(),
-        'type': 'subscription',
-        'status': 'completed',
-      });
-
-      // Stats plateforme
-      final statsRef = _db.collection('system_stats').doc('subscriptions');
-      transaction.set(statsRef, {
-        'totalRevenue': FieldValue.increment(price),
-        'lastUpdate': FieldValue.serverTimestamp(),
-        plan == SubscriptionPlan.weekly ? 'weeklyCount' : 'monthlyCount':
-            FieldValue.increment(1),
+        'subscriptionStart': Timestamp.fromDate(DateTime.now()),
+        'subscriptionExpires': Timestamp.fromDate(parsedExpiry),
       }, SetOptions(merge: true));
-    });
+    } on DioException catch (e) {
+      final errData = e.response?.data;
+      if (errData is Map && errData['error'] != null) {
+        throw Exception(errData['error'].toString());
+      }
+      throw Exception(e.message ?? 'Impossible de finaliser l\'abonnement.');
+    }
 
     debugPrint('[SubscriptionService] ✅ Abonnement ${plan.label} souscrit pour $userId');
   }

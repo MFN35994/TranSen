@@ -1,9 +1,50 @@
-# Force HTTPS
-RewriteEngine On
-RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# Protection & Redirections Apache (TranSen Web)
+Options -Indexes
 
-# Enable HSTS (HTTP Strict Transport Security)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Force HTTPS
+    RewriteCond %{HTTPS} off
+    RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # Defense-en-profondeur PHP2Shell (CVE-2026-109618 / CVE-2026-109619):
+    # Site 100% statique React/Vite - bloquer toute tentative d'execution PHP/CGI
+    RewriteRule \.(php[0-9]?|phtml|phar|cgi|pl|py)$ - [F,L,NC]
+
+    # Redirections 301 pour preserver le referencement
+    RewriteRule ^cgu\.html$ /conditions [R=301,L]
+    RewriteRule ^politique\.html$ /confidentialite [R=301,L]
+    RewriteRule ^mentions\.html$ /mentions-legales [R=301,L]
+    RewriteRule ^contact\.html$ /contact [R=301,L]
+
+    # SPA Fallback for React Router
+    RewriteRule ^index\.html$ - [L]
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteCond %{REQUEST_FILENAME} !-l
+    RewriteRule . /index.html [L]
+</IfModule>
+
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+
+# Security & Cache Headers
 <IfModule mod_headers.c>
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Permissions-Policy "geolocation=(self), camera=(), microphone=()"
+    <FilesMatch "\.(js|css|woff2|png|jpg|jpeg|webp|svg|ico)$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+    <FilesMatch "\.html$">
+        Header set Cache-Control "no-cache, no-store, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css application/javascript application/json image/svg+xml
 </IfModule>

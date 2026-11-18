@@ -12,7 +12,7 @@ export function IntroCarLoader({ onComplete }: IntroCarLoaderProps) {
   const loadingStatuses = [
     "Démarrage de l'expérience TranSen...",
     "Initialisation des trajets Urbains & Interurbains...",
-    "Application du taux unique de commission de 1%...",
+    "Application du taux unique de commission de 2%...",
     "Configuration des sièges interactifs (60 places max)...",
     "Prêt pour le départ !",
   ];
@@ -22,10 +22,10 @@ export function IntroCarLoader({ onComplete }: IntroCarLoaderProps) {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Progress bar simulation over exactly 5000ms
+  // Progress bar simulation over 1200ms (fast first-paint, zero UX penalty)
   useEffect(() => {
-    const duration = 5000; // Exact duration requested: 5 seconds
-    const intervalTime = 30; // Smooth tick
+    const duration = 1200;
+    const intervalTime = 24;
     const startTime = Date.now();
 
     const interval = setInterval(() => {
@@ -35,10 +35,9 @@ export function IntroCarLoader({ onComplete }: IntroCarLoaderProps) {
 
       if (elapsed >= duration) {
         clearInterval(interval);
-        // Clean handoff to onComplete
         setTimeout(() => {
           onCompleteRef.current();
-        }, 450);
+        }, 200);
       }
     }, intervalTime);
 
@@ -264,7 +263,7 @@ export function IntroCarLoader({ onComplete }: IntroCarLoaderProps) {
           <div className="flex gap-4 text-[11px] font-mono text-zinc-500 bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-xl">
             <span className="flex items-center gap-1 text-emerald-400">
               <CreditCard className="w-3.5 h-3.5" />
-              Commission 1%
+              Commission 2%
             </span>
             <span className="text-zinc-600">|</span>
             <span className="flex items-center gap-1 text-amber-400">

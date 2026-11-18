@@ -627,12 +627,25 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
 
   String _getTypeLabel(String type) {
     switch (type.toLowerCase()) {
-      case 'deposit': return "Dépôt SenePay";
-      case 'withdrawal': return "Retrait Mobile Money";
-      case 'commission': return "Commission Plateforme";
-      case 'subscription': return "Abonnement Premium";
-      case 'points': return "Bonus Fidélité";
-      default: return "Transaction";
+      case 'deposit':
+      case 'top_up':
+        return "Dépôt SenePay";
+      case 'withdrawal':
+      case 'payout':
+        return "Retrait Mobile Money";
+      case 'commission':
+      case 'commission_fee':
+        return "Commission Plateforme (2%)";
+      case 'subscription':
+        return "Abonnement Premium";
+      case 'ticket_revenue':
+        return "Billet / Livraison";
+      case 'expense_reimbursement':
+        return "Remboursement Frais";
+      case 'points':
+        return "Bonus Fidélité";
+      default:
+        return "Transaction";
     }
   }
 }

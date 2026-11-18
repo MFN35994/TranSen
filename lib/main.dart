@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -71,12 +72,16 @@ class MyApp extends ConsumerWidget {
       locale: locale,
       localizationsDelegates: const [
         AppLocalizations.delegate,
+        _FallbackMaterialLocalizationsDelegate(),
+        _FallbackCupertinoLocalizationsDelegate(),
         GlobalMaterialLocalizations.delegate,
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
       supportedLocales: const [
         Locale('fr'),
+        Locale('en'),
+        Locale('wo'),
       ],
       themeMode: themeMode,
       theme: ThemeData(
@@ -205,4 +210,32 @@ class AuthGate extends ConsumerWidget {
       ),
     );
   }
+}
+
+class _FallbackMaterialLocalizationsDelegate extends LocalizationsDelegate<MaterialLocalizations> {
+  const _FallbackMaterialLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => locale.languageCode == 'wo';
+
+  @override
+  Future<MaterialLocalizations> load(Locale locale) =>
+      GlobalMaterialLocalizations.delegate.load(const Locale('fr'));
+
+  @override
+  bool shouldReload(_FallbackMaterialLocalizationsDelegate old) => false;
+}
+
+class _FallbackCupertinoLocalizationsDelegate extends LocalizationsDelegate<CupertinoLocalizations> {
+  const _FallbackCupertinoLocalizationsDelegate();
+
+  @override
+  bool isSupported(Locale locale) => locale.languageCode == 'wo';
+
+  @override
+  Future<CupertinoLocalizations> load(Locale locale) =>
+      GlobalCupertinoLocalizations.delegate.load(const Locale('fr'));
+
+  @override
+  bool shouldReload(_FallbackCupertinoLocalizationsDelegate old) => false;
 }

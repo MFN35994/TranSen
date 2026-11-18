@@ -14,13 +14,21 @@
     --red: #EF4444; /* Rose/Red */
     --red-glow: rgba(239, 68, 68, 0.15);
     
-    --dark-bg: #0B0F19;
-    --dark-card: rgba(17, 24, 39, 0.75);
-    --glass: rgba(255, 255, 255, 0.03);
-    --glass-border: rgba(255, 255, 255, 0.08);
+    --dark-bg: #060A13;
+    --dark-card: rgba(13, 19, 34, 0.78);
+    --glass: rgba(255, 255, 255, 0.035);
+    --glass-border: rgba(52, 211, 153, 0.14);
     --text-main: #F3F4F6;
     --text-dim: #9CA3AF;
-    --transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    --transition: all 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
 }
 
 * {
@@ -31,11 +39,24 @@
 
 body {
     font-family: 'Outfit', sans-serif;
-    background: var(--dark-bg);
+    background: radial-gradient(circle at 20% 0%, #091d1c 0%, var(--dark-bg) 55%, #03060c 100%);
     color: var(--text-main);
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
+}
+
+/* Subtle futuristic telemetry grid */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+        linear-gradient(to right, rgba(16, 185, 129, 0.045) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(6, 182, 212, 0.035) 1px, transparent 1px);
+    background-size: 56px 56px;
+    pointer-events: none;
+    z-index: -1;
 }
 
 /* Premium Custom Scrollbars */
@@ -55,7 +76,7 @@ body {
     background: var(--primary);
 }
 
-/* Background Orbs */
+/* Background Orbs (GPU-optimized blur) */
 .bg-orbs-container {
     position: fixed;
     inset: 0;
@@ -67,36 +88,36 @@ body {
 .bg-orb {
     position: absolute;
     border-radius: 50%;
-    filter: blur(140px);
-    opacity: 0.12;
-    mix-blend-mode: screen;
+    filter: blur(90px);
+    opacity: 0.14;
+    will-change: transform;
 }
 
 .orb-1 {
     top: -10%;
     left: -10%;
-    width: 600px;
-    height: 600px;
+    width: 520px;
+    height: 520px;
     background: radial-gradient(circle, var(--secondary), transparent 70%);
-    animation: floatOrb1 25s infinite alternate ease-in-out;
+    animation: floatOrb1 24s infinite alternate ease-in-out;
 }
 
 .orb-2 {
     bottom: -15%;
     right: -10%;
-    width: 700px;
-    height: 700px;
+    width: 560px;
+    height: 560px;
     background: radial-gradient(circle, #8B5CF6, transparent 70%);
-    animation: floatOrb2 30s infinite alternate ease-in-out;
+    animation: floatOrb2 28s infinite alternate ease-in-out;
 }
 
 .orb-3 {
     top: 35%;
     left: 25%;
-    width: 500px;
-    height: 500px;
+    width: 440px;
+    height: 440px;
     background: radial-gradient(circle, var(--primary), transparent 70%);
-    animation: floatOrb3 28s infinite alternate ease-in-out;
+    animation: floatOrb3 26s infinite alternate ease-in-out;
 }
 
 @keyframes floatOrb1 {
@@ -115,26 +136,39 @@ body {
 /* Glassmorphism Utility */
 .glass {
     background: var(--glass);
-    backdrop-filter: blur(25px);
-    -webkit-backdrop-filter: blur(25px);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
     border: 1px solid var(--glass-border);
 }
 
 .glass-card {
     background: var(--dark-card);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
     border: 1px solid var(--glass-border);
-    border-radius: 28px;
-    padding: 30px;
+    border-radius: 24px;
+    padding: 28px;
     transition: var(--transition);
-    box-shadow: 0 10px 30px -15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 12px 36px -14px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.55), rgba(6, 182, 212, 0.55), transparent);
+    opacity: 0.65;
 }
 
 .glass-card:hover {
-    border-color: rgba(16, 185, 129, 0.25);
-    box-shadow: 0 20px 40px -20px var(--primary-glow);
-    transform: translateY(-4px);
+    border-color: rgba(6, 182, 212, 0.35);
+    box-shadow: 0 22px 45px -18px rgba(16, 185, 129, 0.25);
+    transform: translateY(-3px);
 }
 
 /* Login Screen */

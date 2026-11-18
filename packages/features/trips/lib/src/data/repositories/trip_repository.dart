@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:dio/dio.dart';
 import "package:flutter/foundation.dart";
 import "package:firebase_core/firebase_core.dart";
 import "package:cloud_firestore/cloud_firestore.dart";
@@ -15,27 +16,67 @@ class TripRepository {
   TripRepository(this._paymentRepo);
 
   // 1. ACTIONS COVOITURAGE (POOL)
-  Future<void> acceptPool(String poolId, String driverId, [double commission = 0]) async {
+  Future<void> acceptPool(String poolId, String driverId, [double commission = 200.0]) async {
+    final poolRef = _firestore.collection('pools').doc(poolId);
+    String previousStatus = 'open';
+
     try {
-      // 1. Mettre à jour le statut du pool dans Firestore
-      await _firestore.collection('pools').doc(poolId).update({
-        'driverId': driverId,
-        'status': 'accepted',
-        'acceptedAt': FieldValue.serverTimestamp(),
+      // 1. Verrouiller et réserver le pool de manière atomique dans Firestore (anti double-acceptation)
+      await _firestore.runTransaction((transaction) async {
+        final snapshot = await transaction.get(poolRef);
+        if (!snapshot.exists) {
+          throw Exception("Trajet covoiturage introuvable.");
+        }
+        final data = snapshot.data() as Map<String, dynamic>;
+        final currentStatus = data['status']?.toString() ?? 'open';
+        if (currentStatus != 'open' && currentStatus != 'full') {
+          throw Exception("Ce trajet a déjà été accepté par un autre chauffeur.");
+        }
+        previousStatus = currentStatus;
+
+        transaction.update(poolRef, {
+          'driverId': driverId,
+          'status': 'accepted',
+          'acceptedAt': FieldValue.serverTimestamp(),
+        });
       });
 
-      // 2. Débiter la commission du portefeuille si applicable
+      // 2. Facturer atomiquement la commission (2% = 200F) côté Spring Boot si le chauffeur n'est pas abonné
       if (commission > 0) {
-        await _paymentRepo.updateWalletBalance(
-          driverId,
-          -commission,
-          "Commission Covoiturage (Pool : $poolId)",
-          type: 'commission_fee',
-        );
+        try {
+          await ApiClient().dio.post(
+            '/api/payments/charge-commission',
+            data: {
+              'referenceId': 'POOL-$poolId',
+              'amount': commission,
+              'description': 'Commission Covoiturage 2% (Pool : $poolId)',
+            },
+          );
+        } on DioException catch (dioErr) {
+          // Compenser immédiatement le verrouillage Firestore si la facturation échoue
+          await poolRef.update({
+            'driverId': FieldValue.delete(),
+            'status': previousStatus,
+            'acceptedAt': FieldValue.delete(),
+          }).catchError((_) {});
+
+          final errData = dioErr.response?.data;
+          if (errData is Map && errData['error'] != null) {
+            throw Exception(errData['error'].toString());
+          }
+          throw Exception("Impossible de valider la commission (2%). Vérifiez votre solde TransPay.");
+        } catch (e) {
+          await poolRef.update({
+            'driverId': FieldValue.delete(),
+            'status': previousStatus,
+            'acceptedAt': FieldValue.delete(),
+          }).catchError((_) {});
+          rethrow;
+        }
       }
     } catch (e) {
-      debugPrint("Erreur lors de l'acceptation du pool dans Firestore: $e");
-      throw Exception("Erreur lors de l'acceptation");
+      debugPrint("Erreur lors de l'acceptation du pool: $e");
+      rethrow;
     }
   }
 
