@@ -295,6 +295,8 @@ function initDashboard() {
     syncRecentActivity();
     syncCompanies();
     syncDocumentsSection();
+    if (window.syncEcosystemHealth) window.syncEcosystemHealth();
+    if (window.syncSupportBadgesQuiet) window.syncSupportBadgesQuiet();
 }
 
 function setupNavigation() {
@@ -323,12 +325,13 @@ function setupNavigation() {
 
             const section = link.getAttribute('data-section');
             document.querySelectorAll('.admin-section').forEach(s => s.style.display = 'none');
-            document.getElementById(`section-${section}`).style.display = 'block';
+            const targetEl = document.getElementById(`section-${section}`);
+            if (targetEl) targetEl.style.display = 'block';
             document.querySelectorAll('#mainNav a').forEach(l => l.classList.remove('active'));
             link.classList.add('active');
-            document.getElementById('sectionTitle').innerText = link.innerText;
+            document.getElementById('sectionTitle').innerText = link.innerText.trim();
 
-            if (section !== 'live' && _unsubLiveFeed) {
+            if (section !== 'trips' && section !== 'live' && _unsubLiveFeed) {
                 _unsubLiveFeed();
                 _unsubLiveFeed = null;
             }
@@ -336,7 +339,7 @@ function setupNavigation() {
             // Lazy-load & refresh active section
             if (section === 'companies') syncCompanies();
             else if (section === 'admins') syncAdmins();
-            else if (section === 'live') syncLiveFeed();
+            else if (section === 'trips' || section === 'live') syncLiveFeed();
             else if (section === 'dashboard') {
                 syncGlobalStats();
                 syncRecentActivity();
@@ -349,6 +352,11 @@ function setupNavigation() {
             else if (section === 'markets') syncMarketsSection();
             else if (section === 'channels') syncChannelsSection();
             else if (section === 'media-hub') syncMediaHubSection();
+            else if (section === 'radar' && window.syncRadarSection) window.syncRadarSection();
+            else if (section === 'bookings' && window.syncScheduledTripsAdmin) window.syncScheduledTripsAdmin();
+            else if (section === 'support' && window.syncSupportAndReviewsSection) window.syncSupportAndReviewsSection();
+            else if (section === 'security' && window.syncSecuritySection) window.syncSecuritySection();
+            else if (section === 'ecosystem' && window.syncEcosystemHealth) window.syncEcosystemHealth();
         };
     });
 }
@@ -1395,6 +1403,8 @@ window.syncFinanceSection = async function() {
         document.getElementById('freeNetworkProgress').style.width = `${freePct}%`;
 
         // 4. Render Table (capped & batch rendered with XSS protection)
+        window.allFinanceTransactions = data.transactions || [];
+        if (window.syncAdminPayouts) window.syncAdminPayouts();
         const tbody = document.getElementById('financeTransactionsTableBody');
         if (!tbody) return;
 
@@ -3105,3 +3115,930 @@ document.getElementById('btnSaveMedia').onclick = async () => {
 };
 
 
+
+/* ============================================================================
+   TRANSEN AURORA — SUPER-ADMIN OMNISCIENT COMMAND CENTER CONTROLLERS
+   ============================================================================ */
+
+window.allFinanceTransactions = window.allFinanceTransactions || [];
+window.allAdminPayouts = [];
+window.allRadarActiveDrivers = [];
+window.allRadarPools = [];
+window.allSupportTickets = [];
+window.allReviewsList = [];
+
+window.navigateToAdminSection = function(sectionName) {
+    const link = document.querySelector(`#mainNav a[data-section="${sectionName}"]`);
+    if (link) link.click();
+};
+
+window.refreshAllEcosystem = async function() {
+    clearAdminCache();
+    window.showNotificationDrawer('Synchronisation Globale', "Actualisation complète de l'écosystème TranSen lancée...", false);
+    const activeLink = document.querySelector('#mainNav a.active');
+    const currentSection = activeLink ? activeLink.getAttribute('data-section') : 'dashboard';
+    await Promise.allSettled([
+        syncGlobalStats(),
+        syncCompanies(),
+        syncDocumentsSection(),
+        window.syncEcosystemHealth(),
+        window.syncSupportBadgesQuiet()
+    ]);
+    if (currentSection && currentSection !== 'dashboard') {
+        window.navigateToAdminSection(currentSection);
+    }
+};
+
+/* ── 1. Supervision des Retraits (/api/admin/payouts) ────────────────────── */
+window.syncAdminPayouts = async function() {
+    const tbody = document.getElementById('financePayoutsTableBody');
+    const countBadge = document.getElementById('payoutsTotalCountBadge');
+    if (!tbody) return;
+    try {
+        const res = await adminFetch('/api/admin/payouts');
+        if (!res.ok) throw new Error("Impossible de charger /api/admin/payouts");
+        const payouts = await res.json();
+        window.allAdminPayouts = Array.isArray(payouts) ? payouts : [];
+        if (countBadge) countBadge.innerText = `${window.allAdminPayouts.length} retrait(s)`;
+
+        if (window.allAdminPayouts.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun retrait enregistré.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = window.allAdminPayouts.slice(0, 80).map(p => {
+            const dt = p.createdAt ? new Date(p.createdAt).toLocaleString('fr-FR') : '--';
+            const owner = escapeHtml(p.ownerName || p.recipientPhone || p.walletOwnerType || 'Partenaire TranSen');
+            const method = escapeHtml(p.paymentMethod || p.operator || 'MOBILE_MONEY');
+            const ref = escapeHtml(p.reference || p.id || '--');
+            const amt = Number(p.amount) || 0;
+            const st = escapeHtml(p.status || 'COMPLETED');
+            const stClass = st === 'COMPLETED' ? 'completed' : st === 'FAILED' ? 'failed' : 'pending';
+            return `
+                <tr>
+                    <td>${escapeHtml(dt)}</td>
+                    <td><b>${owner}</b></td>
+                    <td><span class="badge gold">${method}</span></td>
+                    <td><code style="font-size:0.78rem;">${ref}</code></td>
+                    <td style="color:#f5b83d; font-weight:800; font-family:'JetBrains Mono',monospace;">-${formatCurrency(Math.abs(amt))}</td>
+                    <td><span class="status-tag ${stClass}">${st}</span></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        console.warn("Payouts sync warning:", e);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun retrait disponible.</td></tr>`;
+    }
+};
+
+/* ── 2. Radar Flotte GPS & Covoiturage (active_drivers, driver_routes, pools) */
+window.syncRadarSection = async function() {
+    const drvTbody = document.getElementById('radarActiveDriversTableBody');
+    const poolsTbody = document.getElementById('radarPoolsTableBody');
+    const routesTbody = document.getElementById('radarDriverRoutesTableBody');
+
+    try {
+        const [activeSnap, poolsSnap, routesSnap] = await Promise.all([
+            getDocs(query(collection(db, "active_drivers"), limit(60))),
+            getDocs(query(collection(db, "pools"), limit(60))),
+            getDocs(query(collection(db, "driver_routes"), limit(60)))
+        ]);
+
+        // Active Drivers
+        const activeList = [];
+        activeSnap.forEach(d => activeList.push({ id: d.id, ...d.data() }));
+        window.allRadarActiveDrivers = activeList;
+
+        const countEl = document.getElementById('radarActiveDriversCount');
+        const badgeEl = document.getElementById('onlineDriversBadge');
+        if (countEl) countEl.innerText = activeList.length;
+        if (badgeEl) badgeEl.innerText = activeList.length;
+
+        if (drvTbody) {
+            if (activeList.length === 0) {
+                drvTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun chauffeur connecté au radar GPS en ce moment.</td></tr>`;
+            } else {
+                drvTbody.innerHTML = activeList.map(d => {
+                    const name = escapeHtml(d.driverName || d.name || d.phone || d.id.substring(0, 8));
+                    const veh = escapeHtml(d.vehicleType || d.serviceType || 'Allô Dakar / Bus');
+                    const lat = d.latitude ?? d.lat;
+                    const lng = d.longitude ?? d.lng;
+                    const pos = (lat !== undefined && lng !== undefined)
+                        ? `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`
+                        : escapeHtml(d.city || d.zone || 'Dakar');
+                    const upd = d.updatedAt?.toDate ? d.updatedAt.toDate().toLocaleTimeString('fr-FR') : 'En direct';
+                    return `
+                        <tr>
+                            <td><b>${name}</b><br><small style="color:var(--text-dim)">#${escapeHtml(d.id.substring(0, 8))}</small></td>
+                            <td><span class="badge blue">${veh}</span></td>
+                            <td><code style="font-size:0.78rem; color:#22d3ee;">${pos}</code></td>
+                            <td>${escapeHtml(upd)}</td>
+                            <td><span class="status-tag completed">EN LIGNE</span></td>
+                            <td>
+                                <button onclick="window.removeActiveDriverFromRadar('${escapeHtml(d.id)}')" class="icon-btn glass" title="Déconnecter du radar" style="color:var(--red);">
+                                    <i class="fas fa-power-off"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Pools (Covoiturage)
+        const poolsList = [];
+        let openSeats = 0;
+        poolsSnap.forEach(p => {
+            const pData = p.data();
+            const avail = Number(pData.availableSeats ?? pData.seats ?? 0);
+            openSeats += avail;
+            poolsList.push({ id: p.id, ...pData });
+        });
+        window.allRadarPools = poolsList;
+
+        const poolsCountEl = document.getElementById('radarPoolsCount');
+        const seatsCountEl = document.getElementById('radarPoolsSeatsCount');
+        if (poolsCountEl) poolsCountEl.innerText = poolsList.length;
+        if (seatsCountEl) seatsCountEl.innerText = openSeats;
+
+        if (poolsTbody) {
+            if (poolsList.length === 0) {
+                poolsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun groupe de covoiturage actif.</td></tr>`;
+            } else {
+                poolsTbody.innerHTML = poolsList.map(p => {
+                    const dep = escapeHtml(p.departure || p.from || p.origin || 'Dakar');
+                    const dest = escapeHtml(p.destination || p.to || 'Région');
+                    const host = escapeHtml(p.driverName || p.creatorName || p.hostName || 'Conducteur');
+                    const seats = escapeHtml(String(p.availableSeats ?? p.seats ?? '--'));
+                    const price = Number(p.pricePerSeat ?? p.price ?? 0);
+                    const st = escapeHtml(p.status || 'active');
+                    return `
+                        <tr>
+                            <td><b>${dep}</b> <i class="fas fa-arrow-right" style="color:var(--secondary); font-size:0.75rem;"></i> <b>${dest}</b></td>
+                            <td>${host}</td>
+                            <td><span class="badge green">${seats} pl.</span></td>
+                            <td style="font-family:'JetBrains Mono',monospace; color:var(--gold); font-weight:700;">${price.toLocaleString('fr-FR')} F</td>
+                            <td><span class="status-tag completed">${st.toUpperCase()}</span></td>
+                            <td>
+                                <button onclick="window.deletePoolFromAdmin('${escapeHtml(p.id)}')" class="icon-btn glass" title="Clôturer / Supprimer ce pool" style="color:var(--red);">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Driver Routes
+        const routesList = [];
+        routesSnap.forEach(r => routesList.push({ id: r.id, ...r.data() }));
+        const routesCountEl = document.getElementById('radarDriverRoutesCount');
+        if (routesCountEl) routesCountEl.innerText = routesList.length;
+
+        if (routesTbody) {
+            if (routesList.length === 0) {
+                routesTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun itinéraire chauffeur publié dans driver_routes.</td></tr>`;
+            } else {
+                routesTbody.innerHTML = routesList.map(r => `
+                    <tr>
+                        <td><code>#${escapeHtml(r.id.substring(0, 10))}</code></td>
+                        <td><b>${escapeHtml(r.departure || r.origin || r.from || 'Dakar')}</b></td>
+                        <td><b>${escapeHtml(r.destination || r.to || '--')}</b></td>
+                        <td>${escapeHtml(r.schedule || r.departureTime || 'Quotidien')}</td>
+                        <td style="color:var(--gold); font-weight:700;">${Number(r.price || 0).toLocaleString('fr-FR')} F</td>
+                        <td>
+                            <button onclick="window.deleteDriverRouteFromAdmin('${escapeHtml(r.id)}')" class="icon-btn glass" style="color:var(--red);" title="Supprimer l'itinéraire">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+    } catch (e) {
+        console.error("Radar sync error:", e);
+    }
+};
+
+window.removeActiveDriverFromRadar = async function(driverId) {
+    if (!confirm("Déconnecter ce chauffeur du radar GPS temps réel (active_drivers) ?")) return;
+    try {
+        await deleteDoc(doc(db, "active_drivers", driverId));
+        window.showNotificationDrawer('Radar GPS', 'Chauffeur retiré du radar actif.', false);
+        window.syncRadarSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || "Impossible de modifier active_drivers.", true);
+    }
+};
+
+window.deletePoolFromAdmin = async function(poolId) {
+    if (!confirm("Supprimer ce groupe de covoiturage (pool) ?")) return;
+    try {
+        await deleteDoc(doc(db, "pools", poolId));
+        window.showNotificationDrawer('Covoiturage', 'Pool supprimé avec succès.', false);
+        window.syncRadarSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || "Impossible de supprimer le pool.", true);
+    }
+};
+
+window.deleteDriverRouteFromAdmin = async function(routeId) {
+    if (!confirm("Supprimer cet itinéraire chauffeur ?")) return;
+    try {
+        await deleteDoc(doc(db, "driver_routes", routeId));
+        window.showNotificationDrawer('Itinéraires', 'Itinéraire supprimé.', false);
+        window.syncRadarSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || "Suppression impossible.", true);
+    }
+};
+
+/* ── 3. Billetterie QR, Réservations & Manifestes Passagers ─────────────── */
+window.inspectBookingByIdOrRef = async function(mode) {
+    const input = document.getElementById('bookingLookupInput');
+    const box = document.getElementById('bookingInspectorResult');
+    if (!input || !box) return;
+    const val = input.value.trim();
+    if (!val) {
+        window.showNotificationDrawer('Billetterie QR', 'Veuillez saisir un code QR, une référence SenePay ou un ID réservation.', true);
+        return;
+    }
+
+    box.style.display = 'block';
+    box.innerHTML = `<div style="color: var(--secondary); font-family:'JetBrains Mono',monospace;"><i class="fas fa-spinner fa-spin"></i> Interrogation du serveur Spring Boot...</div>`;
+
+    try {
+        const endpoint = mode === 'ref'
+            ? `/api/bookings/by-reference/${encodeURIComponent(val)}`
+            : `/api/bookings/${encodeURIComponent(val)}`;
+        const res = await adminFetch(endpoint, { bypassCache: true });
+        if (!res.ok) throw new Error(`Aucun billet trouvé (${res.status})`);
+        const b = await res.json();
+        renderBookingInspectorCard(b);
+    } catch (e) {
+        box.innerHTML = `<div style="color: var(--red); font-weight:700;"><i class="fas fa-triangle-exclamation"></i> ${escapeHtml(e.message || 'Billet introuvable.')}</div>`;
+    }
+};
+
+function renderBookingInspectorCard(b) {
+    const box = document.getElementById('bookingInspectorResult');
+    if (!box) return;
+    const id = escapeHtml(b.id || b.bookingId || '--');
+    const code = escapeHtml(b.boardingCode || b.qrCode || '--');
+    const passenger = escapeHtml(b.passengerName || b.clientName || 'Passager');
+    const phone = escapeHtml(b.passengerPhone || b.clientPhone || '--');
+    const seats = Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : escapeHtml(String(b.seatsBooked || 1));
+    const amount = Number(b.totalPrice || b.amount || 0).toLocaleString('fr-FR');
+    const status = escapeHtml(b.status || 'CONFIRMED');
+    const ref = escapeHtml(b.paymentReference || '--');
+
+    box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
+            <div>
+                <span class="aurora-eyebrow">BILLET CERTIFIÉ #${id}</span>
+                <h4 style="margin:8px 0 4px 0; font-size:1.25rem; color:white;">${passenger} · <span style="color:var(--gold);">${phone}</span></h4>
+                <div style="font-family:'JetBrains Mono',monospace; font-size:0.82rem; color:var(--text-dim);">
+                    Code QR: <strong style="color:#6ee7b7;">${code}</strong> · Réf SenePay: <strong style="color:#22d3ee;">${ref}</strong> · Siège(s): <strong>${seats}</strong> · Montant: <strong style="color:var(--gold);">${amount} FCFA</strong>
+                </div>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <span class="status-tag completed">${status}</span>
+                ${code !== '--' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" style="padding:10px 16px; border-radius:10px; background:var(--primary); color:#03100b; font-weight:800; border:none; cursor:pointer;"><i class="fas fa-check-circle"></i> Valider Embarquement</button>` : ''}
+                ${id !== '--' ? `<button onclick="window.cancelBookingFromAdmin('${id}')" style="padding:10px 16px; border-radius:10px; background:var(--red); color:white; font-weight:700; border:none; cursor:pointer;"><i class="fas fa-ban"></i> Annuler Réservation</button>` : ''}
+            </div>
+        </div>
+    `;
+}
+
+window.scanBoardingQrFromAdmin = async function(codeOpt) {
+    const input = document.getElementById('bookingLookupInput');
+    const code = (codeOpt || (input ? input.value.trim() : '')).trim();
+    if (!code) {
+        window.showNotificationDrawer('Scanner QR', "Entrez le code d'embarquement QR à valider.", true);
+        return;
+    }
+    try {
+        const res = await adminFetch(`/api/bookings/${encodeURIComponent(code)}/scan`, { method: 'POST' });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || data.error || `Échec validation QR (${res.status})`);
+        window.showNotificationDrawer('Embarquement Validé', `Le passager avec le code QR ${code} est marqué comme EMBARQUÉ.`, false);
+        if (data && (data.id || data.boardingCode)) renderBookingInspectorCard(data);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur Scanner QR', e.message || 'Code QR invalide.', true);
+    }
+};
+
+window.cancelBookingFromAdmin = async function(bookingId) {
+    if (!confirm(`Confirmer l'annulation administrative de la réservation #${bookingId} ?`)) return;
+    try {
+        const res = await adminFetch(`/api/bookings/${encodeURIComponent(bookingId)}/cancel`, { method: 'POST' });
+        if (!res.ok) throw new Error(`Échec de l'annulation (${res.status})`);
+        window.showNotificationDrawer('Réservation Annulée', `La réservation #${bookingId} a été annulée et les sièges libérés.`, false);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || "Impossible d'annuler la réservation.", true);
+    }
+};
+
+window.syncScheduledTripsAdmin = async function() {
+    const tbody = document.getElementById('scheduledTripsAdminTableBody');
+    if (!tbody) return;
+    const from = (document.getElementById('adminTripFilterFrom')?.value || '').trim();
+    const to = (document.getElementById('adminTripFilterTo')?.value || '').trim();
+    const dateInput = document.getElementById('adminTripFilterDate');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+    const date = dateInput?.value || new Date().toISOString().split('T')[0];
+
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Recherche des départs programmés...</td></tr>`;
+
+    try {
+        const qs = new URLSearchParams({ from, to, date }).toString();
+        const res = await adminFetch(`/api/trips/search?${qs}`, { bypassCache: true });
+        if (!res.ok) throw new Error(`Erreur /api/trips/search (${res.status})`);
+        const trips = await res.json();
+        const list = Array.isArray(trips) ? trips : [];
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucun départ programmé trouvé pour ces critères.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.map(t => {
+            const id = escapeHtml(t.id || '');
+            const comp = escapeHtml(t.companyName || 'Compagnie Partenaire');
+            const dep = escapeHtml(t.pickupLocation || t.departure || 'Dakar');
+            const arr = escapeHtml(t.dropoffLocation || t.destination || 'Région');
+            const time = escapeHtml(t.scheduledTime ? t.scheduledTime.replace('T', ' ').slice(0, 16) : '--');
+            const veh = escapeHtml(t.vehicleModel || t.vehicleType || 'Autocar');
+            const seats = `${escapeHtml(String(t.availableSeats ?? '--'))} / ${escapeHtml(String(t.totalSeats ?? '--'))}`;
+            const price = Number(t.price || 0).toLocaleString('fr-FR');
+            return `
+                <tr>
+                    <td><b>${comp}</b></td>
+                    <td><b>${dep}</b> <i class="fas fa-arrow-right" style="color:var(--secondary); font-size:0.75rem;"></i> <b>${arr}</b></td>
+                    <td><code style="font-size:0.8rem;">${time}</code></td>
+                    <td>${veh}</td>
+                    <td><span class="badge green">${seats}</span></td>
+                    <td style="color:var(--gold); font-weight:800; font-family:'JetBrains Mono',monospace;">${price} F</td>
+                    <td>
+                        <button onclick="window.openTripPassengersModal('${id}', '${comp} (${dep} → ${arr})')" style="padding:8px 14px; border-radius:10px; background:rgba(34,211,238,0.14); border:1px solid rgba(34,211,238,0.4); color:#22d3ee; font-weight:700; cursor:pointer; font-size:0.78rem;">
+                            <i class="fas fa-users-viewfinder"></i> Manifeste Passagers
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucun départ programmé retourné (${escapeHtml(e.message)}).</td></tr>`;
+    }
+};
+
+window.openTripPassengersModal = async function(tripId, label) {
+    const modal = document.getElementById('tripPassengersModal');
+    const title = document.getElementById('tripPassengersModalTitle');
+    const tbody = document.getElementById('tripPassengersTableBody');
+    if (!modal || !tbody) return;
+    if (title) title.innerText = `Manifeste : ${label}`;
+    modal.style.display = 'flex';
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Chargement des réservations du bus...</td></tr>`;
+
+    try {
+        const res = await adminFetch(`/api/bookings/trip/${encodeURIComponent(tripId)}`, { bypassCache: true });
+        if (!res.ok) throw new Error(`Statut ${res.status}`);
+        const bookings = await res.json();
+        const list = Array.isArray(bookings) ? bookings : [];
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucune réservation enregistrée sur ce départ.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = list.map(b => {
+            const id = escapeHtml(b.id || '');
+            const code = escapeHtml(b.boardingCode || '--');
+            const name = escapeHtml(b.passengerName || 'Passager');
+            const phone = escapeHtml(b.passengerPhone || '--');
+            const seats = Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : escapeHtml(String(b.seatsBooked || 1));
+            const price = Number(b.totalPrice || 0).toLocaleString('fr-FR');
+            const st = escapeHtml(b.status || 'CONFIRMED');
+            return `
+                <tr>
+                    <td><code style="color:#6ee7b7; font-weight:700;">${code}</code></td>
+                    <td><b>${name}</b></td>
+                    <td>${phone}</td>
+                    <td><span class="badge blue">${seats}</span></td>
+                    <td style="color:var(--gold); font-weight:700;">${price} F</td>
+                    <td><span class="status-tag completed">${st}</span></td>
+                    <td style="display:flex; gap:6px;">
+                        ${code !== '--' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" class="icon-btn glass" title="Embarquer QR" style="color:var(--primary);"><i class="fas fa-qrcode"></i></button>` : ''}
+                        <button onclick="window.cancelBookingFromAdmin('${id}')" class="icon-btn glass" title="Annuler" style="color:var(--red);"><i class="fas fa-ban"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--red);">Erreur lors du chargement du manifeste (${escapeHtml(e.message)}).</td></tr>`;
+    }
+};
+
+/* ── 4. Support Client, Litiges & Avis Qualité (support_tickets & reviews) */
+window.syncSupportBadgesQuiet = async function() {
+    try {
+        const [ticketsSnap, activeDrvSnap] = await Promise.all([
+            getDocs(query(collection(db, "support_tickets"), limit(50))),
+            getDocs(query(collection(db, "active_drivers"), limit(50)))
+        ]);
+        let openTickets = 0;
+        ticketsSnap.forEach(t => {
+            const st = (t.data().status || 'open').toLowerCase();
+            if (st !== 'resolved' && st !== 'closed') openTickets++;
+        });
+        const supBadge = document.getElementById('pendingSupportBadge');
+        if (supBadge) supBadge.innerText = openTickets;
+        const drvBadge = document.getElementById('onlineDriversBadge');
+        if (drvBadge) drvBadge.innerText = activeDrvSnap.size;
+    } catch {
+        // Silent on background badge sync
+    }
+};
+
+window.syncSupportAndReviewsSection = async function() {
+    const ticketsTbody = document.getElementById('supportTicketsTableBody');
+    const reviewsTbody = document.getElementById('reviewsModerationTableBody');
+
+    try {
+        const [ticketsSnap, reviewsSnap] = await Promise.all([
+            getDocs(query(collection(db, "support_tickets"), limit(80))),
+            getDocs(query(collection(db, "reviews"), limit(80)))
+        ]);
+
+        const tickets = [];
+        let openCnt = 0;
+        let resolvedCnt = 0;
+        ticketsSnap.forEach(d => {
+            const data = d.data();
+            const st = (data.status || 'open').toLowerCase();
+            if (st === 'resolved' || st === 'closed') resolvedCnt++;
+            else openCnt++;
+            tickets.push({ id: d.id, ...data });
+        });
+        window.allSupportTickets = tickets;
+
+        const openEl = document.getElementById('supportOpenCount');
+        const resEl = document.getElementById('supportResolvedCount');
+        const badgeEl = document.getElementById('pendingSupportBadge');
+        if (openEl) openEl.innerText = openCnt;
+        if (resEl) resEl.innerText = resolvedCnt;
+        if (badgeEl) badgeEl.innerText = openCnt;
+
+        if (ticketsTbody) {
+            if (tickets.length === 0) {
+                ticketsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun ticket de support ou litige en attente.</td></tr>`;
+            } else {
+                ticketsTbody.innerHTML = tickets.map(t => {
+                    const dt = t.createdAt?.toDate ? t.createdAt.toDate().toLocaleString('fr-FR') : escapeHtml(t.createdAt || 'Récent');
+                    const usr = escapeHtml(t.userName || t.email || t.phone || t.userId || 'Utilisateur');
+                    const subj = escapeHtml(t.subject || t.category || 'Assistance');
+                    const msg = escapeHtml(t.message || t.description || '--');
+                    const st = (t.status || 'open').toLowerCase();
+                    const isResolved = st === 'resolved' || st === 'closed';
+                    return `
+                        <tr>
+                            <td>${dt}</td>
+                            <td><b>${usr}</b></td>
+                            <td><span class="badge blue">${subj}</span></td>
+                            <td style="max-width:320px;">${msg}</td>
+                            <td><span class="status-tag ${isResolved ? 'completed' : 'pending'}">${st.toUpperCase()}</span></td>
+                            <td style="display:flex; gap:8px;">
+                                ${!isResolved ? `<button onclick="window.resolveSupportTicket('${escapeHtml(t.id)}')" class="icon-btn glass" title="Marquer comme Résolu" style="color:var(--primary);"><i class="fas fa-check"></i></button>` : ''}
+                                <button onclick="window.deleteSupportTicket('${escapeHtml(t.id)}')" class="icon-btn glass" title="Supprimer le ticket" style="color:var(--red);"><i class="fas fa-trash"></i></button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Reviews
+        const reviews = [];
+        let ratingSum = 0;
+        reviewsSnap.forEach(r => {
+            const d = r.data();
+            const rate = Number(d.rating ?? d.stars ?? 5);
+            ratingSum += rate;
+            reviews.push({ id: r.id, ...d, _rating: rate });
+        });
+        window.allReviewsList = reviews;
+
+        const avg = reviews.length > 0 ? (ratingSum / reviews.length).toFixed(1) : '5.0';
+        const avgEl = document.getElementById('reviewsAverageRating');
+        const totEl = document.getElementById('reviewsTotalCount');
+        if (avgEl) avgEl.innerText = `${avg} ★`;
+        if (totEl) totEl.innerText = reviews.length;
+
+        if (reviewsTbody) {
+            if (reviews.length === 0) {
+                reviewsTbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun avis enregistré dans la collection reviews.</td></tr>`;
+            } else {
+                reviewsTbody.innerHTML = reviews.map(r => {
+                    const dt = r.createdAt?.toDate ? r.createdAt.toDate().toLocaleDateString('fr-FR') : 'Récent';
+                    const author = escapeHtml(r.reviewerName || r.clientName || r.userId || 'Passager');
+                    const target = escapeHtml(r.driverName || r.companyName || r.targetId || 'Partenaire');
+                    const comment = escapeHtml(r.comment || r.text || 'Sans commentaire');
+                    const starsColor = r._rating <= 2 ? 'var(--red)' : 'var(--gold)';
+                    return `
+                        <tr>
+                            <td>${escapeHtml(dt)}</td>
+                            <td><b>${author}</b></td>
+                            <td>${target}</td>
+                            <td style="color:${starsColor}; font-weight:800;">${r._rating} ★</td>
+                            <td style="max-width:320px;">${comment}</td>
+                            <td>
+                                <button onclick="window.deleteReviewFromAdmin('${escapeHtml(r.id)}')" class="icon-btn glass" title="Supprimer cet avis" style="color:var(--red);">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+    } catch (e) {
+        console.error("Support & Reviews sync error:", e);
+    }
+};
+
+window.resolveSupportTicket = async function(ticketId) {
+    try {
+        await updateDoc(doc(db, "support_tickets", ticketId), {
+            status: 'resolved',
+            resolvedAt: new Date().toISOString()
+        });
+        window.showNotificationDrawer('Support Client', 'Ticket marqué comme résolu.', false);
+        window.syncSupportAndReviewsSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de mettre à jour le ticket.', true);
+    }
+};
+
+window.deleteSupportTicket = async function(ticketId) {
+    if (!confirm("Supprimer définitivement ce ticket support ?")) return;
+    try {
+        await deleteDoc(doc(db, "support_tickets", ticketId));
+        window.showNotificationDrawer('Support Client', 'Ticket supprimé.', false);
+        window.syncSupportAndReviewsSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Suppression impossible.', true);
+    }
+};
+
+window.openCreateSupportTicketModal = async function() {
+    const subject = prompt("Sujet du ticket / incident (ex: Litige Bagage, Remboursement SenePay) :");
+    if (!subject) return;
+    const message = prompt("Description détaillée de l'incident :");
+    if (!message) return;
+    try {
+        await addDoc(collection(db, "support_tickets"), {
+            userName: "Super Admin TranSen",
+            subject: subject.trim(),
+            message: message.trim(),
+            status: "open",
+            createdAt: new Date().toISOString()
+        });
+        window.showNotificationDrawer('Ticket Créé', 'Nouvel incident enregistré dans support_tickets.', false);
+        window.syncSupportAndReviewsSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de créer le ticket.', true);
+    }
+};
+
+window.deleteReviewFromAdmin = async function(reviewId) {
+    if (!confirm("Supprimer cet avis de la plateforme ?")) return;
+    try {
+        await deleteDoc(doc(db, "reviews", reviewId));
+        window.showNotificationDrawer('Modération Avis', 'Avis supprimé.', false);
+        window.syncSupportAndReviewsSection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de supprimer cet avis.', true);
+    }
+};
+
+/* ── 5. Bouclier Anti-Fraude, Terminaux & Certification KYC Chauffeurs ──── */
+window.syncSecuritySection = async function() {
+    const kycTbody = document.getElementById('securityDriversKycTableBody');
+    const trialsTbody = document.getElementById('securityPhoneTrialsTableBody');
+    const devicesTbody = document.getElementById('securityDevicesTableBody');
+
+    try {
+        const [usersSnap, trialsSnap, devicesSnap] = await Promise.all([
+            getDocs(query(collection(db, "users"), limit(100))),
+            getDocs(query(collection(db, "phone_trials"), limit(60))),
+            getDocs(query(collection(db, "devices"), limit(60)))
+        ]);
+
+        // Unverified / Verified Drivers in Firestore
+        const driverDocs = [];
+        let unverifiedCount = 0;
+        usersSnap.forEach(u => {
+            const d = u.data();
+            const role = (d.role || '').toLowerCase();
+            if (role === 'driver' || d.vehicleType || d.licenseNumber) {
+                if (!d.isVerified) unverifiedCount++;
+                driverDocs.push({ id: u.id, ...d });
+            }
+        });
+
+        const unvEl = document.getElementById('securityUnverifiedDriversCount');
+        const trEl = document.getElementById('securityTrialsCount');
+        const devEl = document.getElementById('securityDevicesCount');
+        if (unvEl) unvEl.innerText = unverifiedCount;
+        if (trEl) trEl.innerText = trialsSnap.size;
+        if (devEl) devEl.innerText = devicesSnap.size;
+
+        if (kycTbody) {
+            if (driverDocs.length === 0) {
+                kycTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">Aucun profil chauffeur trouvé dans Firestore (users).</td></tr>`;
+            } else {
+                kycTbody.innerHTML = driverDocs.slice(0, 50).map(d => {
+                    const name = escapeHtml(d.fullName || d.name || `${d.firstName || ''} ${d.lastName || ''}`.trim() || 'Chauffeur');
+                    const contact = escapeHtml(d.phone || d.phoneNumber || d.email || d.id.substring(0, 10));
+                    const veh = escapeHtml(d.vehicleType || d.vehicleModel || 'VTC / Bus');
+                    const verified = Boolean(d.isVerified);
+                    return `
+                        <tr>
+                            <td><b>${name}</b></td>
+                            <td>${contact}</td>
+                            <td><span class="badge blue">${veh}</span></td>
+                            <td><span class="status-tag ${verified ? 'completed' : 'pending'}">${verified ? 'CERTIFIÉ KYC' : 'EN ATTENTE'}</span></td>
+                            <td>
+                                <button onclick="window.toggleFirestoreDriverVerify('${escapeHtml(d.id)}', ${!verified})" style="padding:7px 14px; border-radius:9px; background:${verified ? 'rgba(244,63,94,0.15)' : 'var(--primary)'}; color:${verified ? '#f43f5e' : '#03100b'}; border:1px solid ${verified ? 'rgba(244,63,94,0.4)' : 'transparent'}; font-weight:800; cursor:pointer; font-size:0.76rem;">
+                                    ${verified ? 'Révoquer KYC' : 'Certifier KYC'}
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Phone Trials
+        if (trialsTbody) {
+            if (trialsSnap.empty) {
+                trialsTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Aucun essai téléphonique enregistré.</td></tr>`;
+            } else {
+                const rows = [];
+                trialsSnap.forEach(docSnap => {
+                    const t = docSnap.data();
+                    const dt = t.createdAt?.toDate ? t.createdAt.toDate().toLocaleDateString('fr-FR') : escapeHtml(t.expiresAt || 'Actif');
+                    rows.push(`
+                        <tr>
+                            <td><code>${escapeHtml(docSnap.id)}</code></td>
+                            <td><span class="badge gold">${escapeHtml(t.status || 'TRIAL')}</span></td>
+                            <td>${dt}</td>
+                            <td>
+                                <button onclick="window.deletePhoneTrial('${escapeHtml(docSnap.id)}')" class="icon-btn glass" style="color:var(--red);" title="Réinitialiser / Purger cet essai">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                });
+                trialsTbody.innerHTML = rows.join('');
+            }
+        }
+
+        // Devices
+        if (devicesTbody) {
+            if (devicesSnap.empty) {
+                devicesTbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Aucune empreinte d'appareil enregistrée.</td></tr>`;
+            } else {
+                const rows = [];
+                devicesSnap.forEach(docSnap => {
+                    const d = docSnap.data();
+                    const info = escapeHtml(d.platform || d.model || d.userId || 'Mobile Android/iOS');
+                    const dt = d.lastSeen?.toDate ? d.lastSeen.toDate().toLocaleDateString('fr-FR') : 'Récent';
+                    rows.push(`
+                        <tr>
+                            <td><code>${escapeHtml(docSnap.id.substring(0, 14))}</code></td>
+                            <td>${info}</td>
+                            <td>${escapeHtml(dt)}</td>
+                            <td>
+                                <button onclick="window.deleteDeviceRecord('${escapeHtml(docSnap.id)}')" class="icon-btn glass" style="color:var(--red);" title="Purger l'empreinte appareil">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                });
+                devicesTbody.innerHTML = rows.join('');
+            }
+        }
+    } catch (e) {
+        console.error("Security section sync error:", e);
+    }
+};
+
+window.toggleFirestoreDriverVerify = async function(userId, nextState) {
+    try {
+        await updateDoc(doc(db, "users", userId), { isVerified: Boolean(nextState) });
+        window.showNotificationDrawer('Certification KYC', nextState ? 'Chauffeur certifié KYC avec succès.' : 'Certification KYC révoquée.', false);
+        window.syncSecuritySection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Mise à jour impossible.', true);
+    }
+};
+
+window.deletePhoneTrial = async function(trialId) {
+    if (!confirm(`Purger l'enregistrement d'essai ${trialId} ?`)) return;
+    try {
+        await deleteDoc(doc(db, "phone_trials", trialId));
+        window.showNotificationDrawer('Anti-Fraude', 'Essai téléphonique réinitialisé.', false);
+        window.syncSecuritySection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Action impossible.', true);
+    }
+};
+
+window.deleteDeviceRecord = async function(deviceId) {
+    if (!confirm("Purger cette empreinte d'appareil ?")) return;
+    try {
+        await deleteDoc(doc(db, "devices", deviceId));
+        window.showNotificationDrawer('Terminaux', 'Appareil retiré du registre.', false);
+        window.syncSecuritySection();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Action impossible.', true);
+    }
+};
+
+/* ── 6. Santé de l'Écosystème & Télémétrie (/api/auth/health) ───────────── */
+window.syncEcosystemHealth = async function() {
+    const pillText = document.getElementById('apiHealthText');
+    const pillDot = document.getElementById('apiHealthDot');
+    const statusEl = document.getElementById('ecoBackendStatus');
+    const latEl = document.getElementById('ecoBackendLatency');
+
+    const t0 = performance.now();
+    try {
+        const res = await fetch(`${API_HOST}/api/auth/health`, { method: 'GET' });
+        const ms = Math.round(performance.now() - t0);
+        if (res.ok) {
+            if (pillText) pillText.innerText = `SYSTÈME OPÉRATIONNEL · ${ms} ms`;
+            if (pillDot) pillDot.style.background = '#10b981';
+            if (statusEl) statusEl.innerText = 'EN LIGNE (200 OK)';
+            if (latEl) latEl.innerText = `${ms} ms`;
+        } else {
+            throw new Error(`HTTP ${res.status}`);
+        }
+    } catch (e) {
+        if (pillText) pillText.innerText = 'API EN VEILLE / RECONNEXION';
+        if (pillDot) pillDot.style.background = '#f5b83d';
+        if (statusEl) statusEl.innerText = 'Veille / Cold Start';
+        if (latEl) latEl.innerText = '-- ms';
+    }
+};
+
+/* ── 7. Centre d'Exportation Global CSV (UTF-8 BOM Excel) ───────────────── */
+window.exportAdminDataCsv = function(dataset) {
+    let rows = [];
+    let filename = `transen-${dataset}-${new Date().toISOString().slice(0, 10)}.csv`;
+
+    if (dataset === 'companies') {
+        const list = window.allCompaniesMetrics || [];
+        rows.push(['ID', 'Nom', 'Email', 'Telephone', 'Statut KYC', 'Chauffeurs', 'Volume FCFA', 'Wallet FCFA']);
+        list.forEach(c => rows.push([c.id, c.name, c.email, c.phone, c.kycStatus, c.driversCount, c.totalVolume, c.walletBalance]));
+    } else if (dataset === 'drivers') {
+        const list = window.allDriversMetrics || [];
+        rows.push(['ID', 'Nom', 'Telephone', 'Email', 'Compagnie', 'Courses', 'Volume FCFA', 'Wallet FCFA']);
+        list.forEach(d => rows.push([d.id, d.fullName || d.name, d.phone, d.email, d.companyName || 'Independant', d.totalTrips, d.totalVolume, d.walletBalance]));
+    } else if (dataset === 'clients') {
+        const list = window.allClientsMetrics || [];
+        rows.push(['ID', 'Nom', 'Telephone', 'Email', 'Courses', 'Volume FCFA']);
+        list.forEach(u => rows.push([u.id, u.fullName || u.name, u.phone, u.email, u.totalTrips, u.totalVolume]));
+    } else if (dataset === 'transactions') {
+        const list = window.allFinanceTransactions || [];
+        rows.push(['Date', 'Detenteur', 'Type Portefeuille', 'Type Operation', 'Reference', 'Montant FCFA', 'Statut']);
+        list.forEach(t => rows.push([t.createdAt, t.ownerName, t.walletOwnerType, t.type, t.reference, t.amount, t.status]));
+    } else if (dataset === 'payouts') {
+        const list = window.allAdminPayouts || [];
+        rows.push(['Date', 'Beneficiaire', 'Methode', 'Reference', 'Montant FCFA', 'Statut']);
+        list.forEach(p => rows.push([p.createdAt, p.ownerName || p.recipientPhone, p.paymentMethod, p.reference, p.amount, p.status]));
+    } else if (dataset === 'investments') {
+        const list = window.allInvestments || [];
+        rows.push(['ID', 'Nom Complet', 'Email', 'Telephone', 'Actions', 'Montant FCFA', 'Statut', 'Date']);
+        list.forEach(i => rows.push([i.id, i.fullName, i.email, i.phone, i.sharesCount, i.amount, i.status, i.createdAt]));
+    }
+
+    if (rows.length <= 1) {
+        window.showNotificationDrawer('Export CSV', 'Ouvrez d’abord la section correspondante ou attendez le chargement des données.', true);
+        return;
+    }
+
+    const csvContent = '\uFEFF' + rows.map(r => r.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    window.showNotificationDrawer('Export Réussi', `Fichier ${filename} généré avec succès.`, false);
+};
+
+/* ── 8. Command Palette Omnisciente (Ctrl+K) ────────────────────────────── */
+const AURORA_SECTIONS_INDEX = [
+    { section: 'dashboard', icon: 'fa-th-large', title: 'Aperçu Global & Télémétrie' },
+    { section: 'trips', icon: 'fa-tower-broadcast', title: 'Flux Live des Trajets (Firestore)' },
+    { section: 'radar', icon: 'fa-satellite-dish', title: 'Radar GPS Chauffeurs & Covoiturage (Pools)' },
+    { section: 'bookings', icon: 'fa-qrcode', title: 'Billetterie QR, Réservations & Manifestes Bus' },
+    { section: 'companies', icon: 'fa-building', title: 'Compagnies B2B & Flottes' },
+    { section: 'drivers', icon: 'fa-id-card', title: 'Chauffeurs Partenaires' },
+    { section: 'users', icon: 'fa-user-group', title: 'Clients & Passagers' },
+    { section: 'markets', icon: 'fa-network-wired', title: 'Marchés Public vs Indépendant' },
+    { section: 'channels', icon: 'fa-chart-pie', title: 'Canaux Allô Dakar, Bus & Yobanté' },
+    { section: 'finance', icon: 'fa-wallet', title: 'Finances, Trésorerie & Supervision des Retraits' },
+    { section: 'investments', icon: 'fa-hand-holding-dollar', title: 'Levée de Fonds & Actionnariat (500 FCFA)' },
+    { section: 'documents', icon: 'fa-file-shield', title: 'Vérifications & Dossiers KYC Compagnies' },
+    { section: 'support', icon: 'fa-headset', title: 'Support Client, Litiges & Modération des Avis' },
+    { section: 'security', icon: 'fa-shield-halved', title: 'Bouclier Anti-Fraude, Terminaux & Essais' },
+    { section: 'media-hub', icon: 'fa-bullhorn', title: 'Hub Média, Audio MP3 & Annonces TTS' },
+    { section: 'ecosystem', icon: 'fa-server', title: 'Santé Écosystème, 5 Domaines & Export CSV' },
+    { section: 'admins', icon: 'fa-user-shield', title: 'Gestion des Super-Administrateurs' }
+];
+
+window.openAuroraCommandPalette = function() {
+    const modal = document.getElementById('auroraCmdModal');
+    const input = document.getElementById('auroraCmdInput');
+    if (!modal || !input) return;
+    modal.style.display = 'flex';
+    input.value = '';
+    renderAuroraCommandResults('');
+    setTimeout(() => input.focus(), 40);
+};
+
+window.closeAuroraCommandPalette = function() {
+    const modal = document.getElementById('auroraCmdModal');
+    if (modal) modal.style.display = 'none';
+};
+
+function renderAuroraCommandResults(q) {
+    const container = document.getElementById('auroraCmdResults');
+    if (!container) return;
+    const queryStr = (q || '').toLowerCase().trim();
+
+    const matchedSections = AURORA_SECTIONS_INDEX.filter(s =>
+        !queryStr || s.title.toLowerCase().includes(queryStr) || s.section.includes(queryStr)
+    );
+
+    const itemsHtml = matchedSections.map(s => `
+        <div class="aurora-cmd-item" onclick="window.closeAuroraCommandPalette(); window.navigateToAdminSection('${s.section}')">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <i class="fas ${s.icon}" style="color:var(--primary); width:20px; text-align:center;"></i>
+                <span><b>${escapeHtml(s.title)}</b></span>
+            </div>
+            <span class="badge blue" style="font-family:'JetBrains Mono',monospace;">OUVRIR →</span>
+        </div>
+    `);
+
+    if (queryStr.length >= 2) {
+        (window.allCompaniesMetrics || []).filter(c => (c.name || '').toLowerCase().includes(queryStr)).slice(0, 4).forEach(c => {
+            itemsHtml.push(`
+                <div class="aurora-cmd-item" onclick="window.closeAuroraCommandPalette(); window.navigateToAdminSection('companies'); window.openCompanyDetails('${escapeHtml(c.id)}')">
+                    <div><i class="fas fa-building" style="color:var(--gold); margin-right:10px;"></i> Compagnie : <b>${escapeHtml(c.name)}</b></div>
+                    <span class="badge gold">FICHE B2B</span>
+                </div>
+            `);
+        });
+        (window.allDriversMetrics || []).filter(d => (d.fullName || d.name || d.phone || '').toLowerCase().includes(queryStr)).slice(0, 4).forEach(d => {
+            itemsHtml.push(`
+                <div class="aurora-cmd-item" onclick="window.closeAuroraCommandPalette(); window.navigateToAdminSection('drivers'); window.openDriverDetails('${escapeHtml(d.id)}')">
+                    <div><i class="fas fa-id-card" style="color:var(--secondary); margin-right:10px;"></i> Chauffeur : <b>${escapeHtml(d.fullName || d.name)}</b> (${escapeHtml(d.phone || '')})</div>
+                    <span class="badge blue">DOSSIER</span>
+                </div>
+            `);
+        });
+        itemsHtml.push(`
+            <div class="aurora-cmd-item" onclick="window.closeAuroraCommandPalette(); window.navigateToAdminSection('bookings'); document.getElementById('bookingLookupInput').value='${escapeHtml(queryStr)}'; window.inspectBookingByIdOrRef('ref');">
+                <div><i class="fas fa-qrcode" style="color:var(--primary); margin-right:10px;"></i> Inspecter Billet QR / Réf SenePay : <b>${escapeHtml(queryStr)}</b></div>
+                <span class="badge green">INSPECTER</span>
+            </div>
+        `);
+    }
+
+    container.innerHTML = itemsHtml.join('') || `<div style="text-align:center; color:var(--text-dim); padding:20px;">Aucun résultat trouvé.</div>`;
+}
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        window.openAuroraCommandPalette();
+    } else if (e.key === 'Escape') {
+        window.closeAuroraCommandPalette();
+    }
+});
+
+const cmdInputEl = document.getElementById('auroraCmdInput');
+if (cmdInputEl) {
+    cmdInputEl.addEventListener('input', (e) => renderAuroraCommandResults(e.target.value));
+}

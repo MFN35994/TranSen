@@ -16,8 +16,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
 <body>
@@ -62,17 +62,29 @@
                 <span>TranSen Admin</span>
             </div>
             <nav id="mainNav">
-                <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu</a>
+                <div class="nav-group-label">PILOTAGE TEMPS RÉEL</div>
+                <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu Global</a>
                 <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
-                <a href="#" data-section="markets"><i class="fas fa-network-wired"></i> Marchés</a>
+                <a href="#" data-section="radar"><i class="fas fa-satellite-dish"></i> Radar &amp; Covoiturage <span class="badge green" id="onlineDriversBadge">0</span></a>
+                <a href="#" data-section="bookings"><i class="fas fa-qrcode"></i> Billetterie QR &amp; Bus</a>
+
+                <div class="nav-group-label">ACTEURS &amp; MARCHÉS</div>
                 <a href="#" data-section="companies"><i class="fas fa-building"></i> Compagnies <span class="badge red" id="pendingCompBadge">0</span></a>
                 <a href="#" data-section="drivers"><i class="fas fa-id-card"></i> Chauffeurs</a>
                 <a href="#" data-section="users"><i class="fas fa-user-group"></i> Clients</a>
-                <a href="#" data-section="channels"><i class="fas fa-chart-pie"></i> Canaux & Services</a>
-                <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications <span class="badge red" id="pendingDocBadge">0</span></a>
-                <a href="#" data-section="finance"><i class="fas fa-wallet"></i> Finances</a>
+                <a href="#" data-section="markets"><i class="fas fa-network-wired"></i> Marchés</a>
+                <a href="#" data-section="channels"><i class="fas fa-chart-pie"></i> Canaux &amp; Services</a>
+
+                <div class="nav-group-label">FINANCES &amp; CAPITAL</div>
+                <a href="#" data-section="finance"><i class="fas fa-wallet"></i> Finances &amp; Retraits</a>
                 <a href="#" data-section="investments"><i class="fas fa-hand-holding-dollar"></i> Levée de fonds</a>
+
+                <div class="nav-group-label">SÛRETÉ, SUPPORT &amp; SYSTÈME</div>
+                <a href="#" data-section="documents"><i class="fas fa-file-shield"></i> Vérifications KYC <span class="badge red" id="pendingDocBadge">0</span></a>
+                <a href="#" data-section="support"><i class="fas fa-headset"></i> Support &amp; Avis <span class="badge gold" id="pendingSupportBadge">0</span></a>
+                <a href="#" data-section="security"><i class="fas fa-shield-halved"></i> Anti-Fraude &amp; Terminaux</a>
                 <a href="#" data-section="media-hub"><i class="fas fa-bullhorn"></i> Hub Média</a>
+                <a href="#" data-section="ecosystem"><i class="fas fa-server"></i> Écosystème &amp; Santé</a>
                 <a href="#" data-section="admins"><i class="fas fa-user-shield"></i> Admins</a>
             </nav>
             <div class="sidebar-footer">
@@ -99,11 +111,23 @@
                     <h1 id="sectionTitle">Tableau de Bord</h1>
                     <p id="currentDate">--</p>
                 </div>
-                <div class="header-actions">
+                <div class="header-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+                    <div id="apiHealthPill" class="aurora-telemetry-pill" onclick="window.navigateToAdminSection('ecosystem')" title="État temps réel de l'API Spring Boot &amp; Firestore">
+                        <span class="pulse-dot" id="apiHealthDot"></span>
+                        <span id="apiHealthText">API &amp; FIRESTORE : SYNCHRONISATION...</span>
+                    </div>
+                    <button type="button" id="openCmdPaletteBtn" class="aurora-cmd-trigger glass" onclick="window.openAuroraCommandPalette()" title="Recherche &amp; Navigation Omnisciente (Ctrl+K)">
+                        <i class="fas fa-terminal" style="color: var(--secondary);"></i>
+                        <span>Commande</span>
+                        <kbd>Ctrl+K</kbd>
+                    </button>
                     <div class="search-bar glass">
                         <i class="fas fa-search"></i>
-                        <input type="text" id="globalSearch" placeholder="Rechercher une course, un client...">
+                        <input type="text" id="globalSearch" placeholder="Filtrer la vue ou Ctrl+K...">
                     </div>
+                    <button type="button" id="globalRefreshBtn" class="icon-btn glass" onclick="window.refreshAllEcosystem()" title="Rafraîchir tout l'écosystème">
+                        <i class="fas fa-rotate" style="color: var(--primary);"></i>
+                    </button>
                 </div>
             </header>
 
@@ -773,7 +797,8 @@
                 <section class="table-container glass-card">
                     <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
                         <h4 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;"><i class="fas fa-list-ul" style="color: var(--primary);"></i> Historique des Transactions Financières</h4>
-                        <div style="display: flex; gap: 10px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <button onclick="window.exportAdminDataCsv('transactions')" class="icon-btn glass" title="Exporter CSV Comptable" style="color: var(--gold); padding: 10px 14px; width: auto; gap: 6px; display: inline-flex; align-items: center; font-size: 0.8rem; font-weight: 700;"><i class="fas fa-file-csv"></i> CSV</button>
                             <button id="btn-internal-op" onclick="window.openInternalOpModal()" class="btn-primary" style="padding: 10px 20px; background: var(--primary); border: none; border-radius: 10px; color: white; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 0.9rem;"><i class="fas fa-plus"></i> Opération Interne</button>
                             <button onclick="window.syncFinanceSection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
                         </div>
@@ -791,6 +816,37 @@
                                 </tr>
                             </thead>
                             <tbody id="financeTransactionsTableBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Supervision des Retraits / Payouts (/api/admin/payouts) -->
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h4 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-money-bill-transfer" style="color: var(--gold);"></i>
+                            Supervision des Retraits &amp; Payouts (Chauffeurs &amp; Compagnies)
+                        </h4>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <span class="badge gold" id="payoutsTotalCountBadge">0 retrait(s)</span>
+                            <button onclick="window.exportAdminDataCsv('payouts')" class="icon-btn glass" title="Exporter les retraits en CSV" style="color: var(--gold); padding: 8px 12px; width: auto; font-size: 0.78rem; font-weight: 700;"><i class="fas fa-download"></i> Export</button>
+                        </div>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Bénéficiaire</th>
+                                    <th>Réseau / Canal</th>
+                                    <th>Référence</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="financePayoutsTableBody">
+                                <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des retraits...</td></tr>
+                            </tbody>
                         </table>
                     </div>
                 </section>
@@ -1200,6 +1256,510 @@
                 <!-- Announcement Grid -->
                 <div class="media-grid" id="announcementsGrid">
                     <!-- Dynamic cards inserted here -->
+                </div>
+            </div>
+
+            <!-- =========================================================================
+                 13. RADAR FLOTTE GPS & COVOITURAGE (active_drivers, driver_routes, pools)
+                 ========================================================================= -->
+            <div id="section-radar" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-satellite-dish"></i></div>
+                        <div class="stat-info">
+                            <p>Chauffeurs GPS En Ligne</p>
+                            <h3 id="radarActiveDriversCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-route"></i></div>
+                        <div class="stat-info">
+                            <p>Itinéraires Publiés</p>
+                            <h3 id="radarDriverRoutesCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-users-rays"></i></div>
+                        <div class="stat-info">
+                            <p>Groupes Covoiturage (Pools)</p>
+                            <h3 id="radarPoolsCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-chair"></i></div>
+                        <div class="stat-info">
+                            <p>Sièges Covoiturage Ouverts</p>
+                            <h3 id="radarPoolsSeatsCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(460px, 1fr)); gap: 24px; margin-top: 24px;">
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-location-crosshairs" style="color: var(--primary);"></i>
+                                Radar Chauffeurs Connectés (active_drivers)
+                            </h3>
+                            <button onclick="window.syncRadarSection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Chauffeur</th>
+                                        <th>Véhicule / Service</th>
+                                        <th>Position / Zone</th>
+                                        <th>Mise à jour</th>
+                                        <th>Statut</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="radarActiveDriversTableBody">
+                                    <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Synchronisation radar GPS...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-car-Rear" style="color: var(--gold);"></i>
+                                Pools Covoiturage &amp; Trajets Partagés (pools)
+                            </h3>
+                            <span class="badge gold" id="radarPoolsLiveTag">TEMPS RÉEL</span>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Axe (Départ → Destination)</th>
+                                        <th>Créateur / Chauffeur</th>
+                                        <th>Places</th>
+                                        <th>Prix</th>
+                                        <th>Statut</th>
+                                        <th>Contrôle</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="radarPoolsTableBody">
+                                    <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Synchronisation pools covoiturage...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-road" style="color: var(--secondary);"></i>
+                            Axes &amp; Itinéraires Chauffeurs Enregistrés (driver_routes)
+                        </h3>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID Chauffeur</th>
+                                    <th>Origine</th>
+                                    <th>Destination</th>
+                                    <th>Horaire / Fréquence</th>
+                                    <th>Tarif</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="radarDriverRoutesTableBody">
+                                <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Synchronisation itinéraires...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- =========================================================================
+                 14. BILLETTERIE QR, RÉSERVATIONS & BUS INTERURBAINS (/api/bookings & /api/trips)
+                 ========================================================================= -->
+            <div id="section-bookings" class="admin-section" style="display: none;">
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; margin-bottom: 18px;">
+                        <div>
+                            <span class="aurora-eyebrow"><i class="fas fa-qrcode"></i> TERMINAL DE CONTRÔLE BILLETTERIE &amp; SENEPAY</span>
+                            <h3 style="margin: 8px 0 4px 0; font-size: 1.35rem;">Inspecteur Universel de Billet QR &amp; Réservation</h3>
+                            <p style="margin: 0; color: var(--text-dim); font-size: 0.88rem;">Vérifiez un code d'embarquement QR, une référence SenePay ou un ID de réservation, validez l'embarquement ou annulez un siège en cas de litige.</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr auto auto auto; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="bookingLookupInput" placeholder="Entrez un Code QR d'embarquement, une Référence SenePay (ex: TS-...) ou un ID réservation..." style="width: 100%; padding: 14px 18px; border-radius: 14px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: white; font-family: 'JetBrains Mono', monospace; font-size: 0.9rem;">
+                        <button type="button" onclick="window.inspectBookingByIdOrRef('ref')" class="btn-primary" style="padding: 14px 20px; border-radius: 14px; background: var(--secondary); color: #03100b; font-weight: 800; border: none; cursor: pointer; white-space: nowrap;">
+                            <i class="fas fa-receipt"></i> Par Réf. SenePay
+                        </button>
+                        <button type="button" onclick="window.inspectBookingByIdOrRef('id')" class="btn-primary" style="padding: 14px 20px; border-radius: 14px; background: rgba(255,255,255,0.08); color: white; font-weight: 700; border: 1px solid var(--glass-border); cursor: pointer; white-space: nowrap;">
+                            <i class="fas fa-hashtag"></i> Par ID Billet
+                        </button>
+                        <button type="button" onclick="window.scanBoardingQrFromAdmin()" class="btn-primary" style="padding: 14px 22px; border-radius: 14px; background: linear-gradient(135deg, #fde68a, #f5b83d); color: #161002; font-weight: 800; border: none; cursor: pointer; white-space: nowrap;">
+                            <i class="fas fa-qrcode"></i> Scanner / Embarquer QR
+                        </button>
+                    </div>
+
+                    <div id="bookingInspectorResult" style="display: none; margin-top: 20px; padding: 20px; border-radius: 18px; background: rgba(3, 16, 11, 0.78); border: 1px solid rgba(52, 211, 153, 0.35);"></div>
+                </div>
+
+                <!-- Explorateur des Bus Programmés (/api/trips/search) -->
+                <section class="table-container glass-card">
+                    <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                        <div>
+                            <h3 style="margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-bus" style="color: var(--primary);"></i>
+                                Départs Interurbains Programmés &amp; Manifestes Passagers
+                            </h3>
+                            <small style="color: var(--text-dim);">Interroge en direct le moteur Spring Boot (/api/trips/search) et inspecte la liste des sièges réservés (/api/bookings/trip/{id}).</small>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                            <input type="text" id="adminTripFilterFrom" placeholder="Départ (ex: Dakar)" style="padding: 10px 14px; border-radius: 10px; width: 150px;">
+                            <input type="text" id="adminTripFilterTo" placeholder="Arrivée (ex: Touba)" style="padding: 10px 14px; border-radius: 10px; width: 150px;">
+                            <input type="date" id="adminTripFilterDate" style="padding: 10px 14px; border-radius: 10px;">
+                            <button type="button" onclick="window.syncScheduledTripsAdmin()" style="padding: 10px 18px; border-radius: 10px; background: var(--primary); color: #03100b; font-weight: 800; border: none; cursor: pointer;">
+                                <i class="fas fa-search"></i> Sonder les Bus
+                            </button>
+                        </div>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Compagnie</th>
+                                    <th>Corridor (Départ → Arrivée)</th>
+                                    <th>Horaire</th>
+                                    <th>Véhicule</th>
+                                    <th>Places Dispo</th>
+                                    <th>Tarif</th>
+                                    <th>Manifeste &amp; Sièges</th>
+                                </tr>
+                            </thead>
+                            <tbody id="scheduledTripsAdminTableBody">
+                                <tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Cliquez sur « Sonder les Bus » pour charger les départs programmés.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+
+            <!-- =========================================================================
+                 15. CENTRE DE SUPPORT CLIENT, LITIGES & AVIS QUALITÉ (support_tickets & reviews)
+                 ========================================================================= -->
+            <div id="section-support" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-life-ring"></i></div>
+                        <div class="stat-info">
+                            <p>Tickets Support Ouverts</p>
+                            <h3 id="supportOpenCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-check-double"></i></div>
+                        <div class="stat-info">
+                            <p>Tickets Résolus</p>
+                            <h3 id="supportResolvedCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-star"></i></div>
+                        <div class="stat-info">
+                            <p>Note Qualité Moyenne</p>
+                            <h3 id="reviewsAverageRating">5.0 ★</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-comments"></i></div>
+                        <div class="stat-info">
+                            <p>Total Avis &amp; Évaluations</p>
+                            <h3 id="reviewsTotalCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr; gap: 24px; margin-top: 24px;">
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                            <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-headset" style="color: var(--gold);"></i>
+                                Tickets Support &amp; Réclamations (support_tickets)
+                            </h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button type="button" onclick="window.openCreateSupportTicketModal()" style="padding: 9px 16px; border-radius: 10px; background: var(--primary); color: #03100b; font-weight: 800; border: none; cursor: pointer; font-size: 0.82rem;">
+                                    <i class="fas fa-plus"></i> Créer un Ticket / Incident
+                                </button>
+                                <button type="button" onclick="window.syncSupportAndReviewsSection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                            </div>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Utilisateur / Contact</th>
+                                        <th>Sujet / Catégorie</th>
+                                        <th>Message</th>
+                                        <th>Statut</th>
+                                        <th>Actions Admin</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="supportTicketsTableBody">
+                                    <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des tickets support...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-star-half-stroke" style="color: var(--primary);"></i>
+                                Modération des Avis Passagers &amp; Chauffeurs (reviews)
+                            </h3>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Auteur</th>
+                                        <th>Cible (Chauffeur / Compagnie)</th>
+                                        <th>Note</th>
+                                        <th>Commentaire</th>
+                                        <th>Modération</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reviewsModerationTableBody">
+                                    <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des avis qualité...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- =========================================================================
+                 16. BOUCLIER ANTI-FRAUDE, TERMINAUX & ESSAIS (phone_trials, devices, KYC chauffeurs)
+                 ========================================================================= -->
+            <div id="section-security" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-mobile-screen-button"></i></div>
+                        <div class="stat-info">
+                            <p>Essais Téléphoniques (phone_trials)</p>
+                            <h3 id="securityTrialsCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-microchip"></i></div>
+                        <div class="stat-info">
+                            <p>Terminaux Enregistrés (devices)</p>
+                            <h3 id="securityDevicesCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-user-clock"></i></div>
+                        <div class="stat-info">
+                            <p>Chauffeurs Non Vérifiés KYC</p>
+                            <h3 id="securityUnverifiedDriversCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0; font-size: 1.08rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-user-check" style="color: var(--primary);"></i>
+                            Certification Rapide KYC des Chauffeurs Indépendants (Firestore users)
+                        </h3>
+                        <button onclick="window.syncSecuritySection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Chauffeur</th>
+                                    <th>Téléphone / Email</th>
+                                    <th>Véhicule</th>
+                                    <th>Statut KYC</th>
+                                    <th>Action Directe</th>
+                                </tr>
+                            </thead>
+                            <tbody id="securityDriversKycTableBody">
+                                <tr><td colspan="5" style="text-align:center; color: var(--text-dim);">Chargement des profils chauffeurs...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 24px; margin-top: 24px;">
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border);">
+                            <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-phone-volume" style="color: var(--gold);"></i>
+                                Registre des Essais Gratuits (phone_trials)
+                            </h3>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Identifiant / Téléphone</th>
+                                        <th>Statut / Détails</th>
+                                        <th>Date</th>
+                                        <th>Contrôle</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="securityPhoneTrialsTableBody">
+                                    <tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Chargement phone_trials...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border);">
+                            <h3 style="margin: 0; font-size: 1.05rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-fingerprint" style="color: var(--secondary);"></i>
+                                Empreintes d'Appareils Mobiles (devices)
+                            </h3>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Device ID</th>
+                                        <th>Plateforme / Utilisateur</th>
+                                        <th>Dernière Activité</th>
+                                        <th>Contrôle</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="securityDevicesTableBody">
+                                    <tr><td colspan="4" style="text-align:center; color: var(--text-dim);">Chargement devices...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <!-- =========================================================================
+                 17. SANTÉ DE L'ÉCOSYSTÈME, TÉLÉMÉTRIE 5 DOMAINES & CENTRE D'EXPORT
+                 ========================================================================= -->
+            <div id="section-ecosystem" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-heart-pulse"></i></div>
+                        <div class="stat-info">
+                            <p>Backend Spring Boot (/api/auth/health)</p>
+                            <h3 id="ecoBackendStatus">Vérification...</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-gauge-high"></i></div>
+                        <div class="stat-info">
+                            <p>Latence API Production</p>
+                            <h3 id="ecoBackendLatency">-- ms</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-fire"></i></div>
+                        <div class="stat-info">
+                            <p>Base Temps Réel Firestore (transen)</p>
+                            <h3 id="ecoFirestoreStatus">Connectée</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-percent"></i></div>
+                        <div class="stat-info">
+                            <p>Règle Monétaire Globale</p>
+                            <h3>2% / 98%</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5 Production Portals Cockpit -->
+                <div class="glass-card" style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
+                        <div>
+                            <span class="aurora-eyebrow"><i class="fas fa-globe-africa"></i> INFRASTRUCTURE MULTI-PORTAILS TRANSEN</span>
+                            <h3 style="margin: 6px 0 0 0; font-size: 1.25rem;">Cockpit des 5 Domaines &amp; Passerelles</h3>
+                        </div>
+                        <button type="button" onclick="window.syncEcosystemHealth()" style="padding: 10px 18px; border-radius: 12px; background: var(--primary); color: #03100b; font-weight: 800; border: none; cursor: pointer;">
+                            <i class="fas fa-rotate"></i> Relancer le Diagnostic Complet
+                        </button>
+                    </div>
+
+                    <div class="aurora-portals-grid">
+                        <a href="https://transen.org" target="_blank" rel="noopener noreferrer" class="aurora-portal-card">
+                            <div class="portal-top">
+                                <span class="portal-tag">SITE PRINCIPAL &amp; BILLETTERIE</span>
+                                <span class="portal-status online">ONLINE</span>
+                            </div>
+                            <h4>transen.org</h4>
+                            <p>Portail public React 19, réservation bus interurbains, VTC Allô Dakar, colis Yobanté et simulateur 2%.</p>
+                        </a>
+                        <a href="https://compagnie.transen.org" target="_blank" rel="noopener noreferrer" class="aurora-portal-card">
+                            <div class="portal-top">
+                                <span class="portal-tag">CONSOLE B2B TRANSPORTEURS</span>
+                                <span class="portal-status online">ONLINE</span>
+                            </div>
+                            <h4>compagnie.transen.org</h4>
+                            <p>Gestion de flotte autocars/minibus, chauffeurs affiliés, plannings de départs, dépenses et portefeuille 98%.</p>
+                        </a>
+                        <a href="https://investir.transen.org" target="_blank" rel="noopener noreferrer" class="aurora-portal-card">
+                            <div class="portal-top">
+                                <span class="portal-tag">PORTAIL ACTIONNARIAT</span>
+                                <span class="portal-status online">ONLINE</span>
+                            </div>
+                            <h4>investir.transen.org</h4>
+                            <p>Souscription d'actions dès 500 FCFA, téléversement KYC, paiement SenePay et tableau de bord actionnaire.</p>
+                        </a>
+                        <a href="https://app.transen.org" target="_blank" rel="noopener noreferrer" class="aurora-portal-card">
+                            <div class="portal-top">
+                                <span class="portal-tag">APPLICATION WEB FLUTTER</span>
+                                <span class="portal-status online">ONLINE</span>
+                            </div>
+                            <h4>app.transen.org</h4>
+                            <p>Application passagers &amp; chauffeurs (courses temps réel, scanner QR d'embarquement, covoiturage).</p>
+                        </a>
+                        <div class="aurora-portal-card active-portal">
+                            <div class="portal-top">
+                                <span class="portal-tag">SUPER-ADMIN GOD-MODE</span>
+                                <span class="portal-status online">ACTIF</span>
+                            </div>
+                            <h4>admin.transen.org</h4>
+                            <p>Centre de commandement unifié : 17 modules reliés à Spring Boot PostgreSQL et Firestore (transen).</p>
+                        </div>
+                        <div class="aurora-portal-card">
+                            <div class="portal-top">
+                                <span class="portal-tag">PASSERELLES &amp; IA</span>
+                                <span class="portal-status online" id="ecoGatewaysBadge">OPÉRATIONNEL</span>
+                            </div>
+                            <h4>SenePay · SMS · Gemini AI</h4>
+                            <p>Webhooks SenePay (Wave/OM/Free), passerelles OTP (Ikoddi, Orange, Infobip) et contrôleur IA (/api/ai).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Unified Data Export Center -->
+                <div class="glass-card" style="margin-top: 24px;">
+                    <span class="aurora-eyebrow"><i class="fas fa-database"></i> SOUVERAINETÉ DES DONNÉES &amp; AUDIT COMPTABLE</span>
+                    <h3 style="margin: 6px 0 8px 0; font-size: 1.25rem;">Centre d'Exportation Global (CSV / Excel)</h3>
+                    <p style="margin: 0 0 18px 0; color: var(--text-dim); font-size: 0.9rem;">Téléchargez instantanément les registres consolidés de l'écosystème TranSen pour votre comptabilité ou vos audits réglementaires.</p>
+
+                    <div style="display: flex; flex-wrap: wrap; gap: 12px;">
+                        <button type="button" onclick="window.exportAdminDataCsv('companies')" class="aurora-export-btn"><i class="fas fa-building"></i> Exporter Compagnies B2B (CSV)</button>
+                        <button type="button" onclick="window.exportAdminDataCsv('drivers')" class="aurora-export-btn"><i class="fas fa-id-card"></i> Exporter Chauffeurs (CSV)</button>
+                        <button type="button" onclick="window.exportAdminDataCsv('clients')" class="aurora-export-btn"><i class="fas fa-users"></i> Exporter Clients (CSV)</button>
+                        <button type="button" onclick="window.exportAdminDataCsv('transactions')" class="aurora-export-btn"><i class="fas fa-wallet"></i> Exporter Transactions (CSV)</button>
+                        <button type="button" onclick="window.exportAdminDataCsv('payouts')" class="aurora-export-btn"><i class="fas fa-money-bill-transfer"></i> Exporter Retraits / Payouts (CSV)</button>
+                        <button type="button" onclick="window.exportAdminDataCsv('investments')" class="aurora-export-btn"><i class="fas fa-hand-holding-dollar"></i> Exporter Actionnaires (CSV)</button>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1927,6 +2487,44 @@
             <div class="modal-footer" style="display: flex; gap: 15px; justify-content: flex-end; padding-top: 15px; border-top: 1px solid var(--glass-border);">
                 <button type="button" class="btn-reject" id="btnCancelMedia" style="padding: 12px 24px; background: var(--red); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer;">Annuler</button>
                 <button type="button" class="btn-approve" id="btnSaveMedia" style="padding: 12px 24px; background: var(--primary); border: none; border-radius: 12px; color: white; font-weight: bold; cursor: pointer;">Enregistrer l'Annonce</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aurora Omniscient Command Palette Modal (Ctrl+K) -->
+    <div id="auroraCmdModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 680px; padding: 24px;">
+            <div style="display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--glass-border);">
+                <i class="fas fa-terminal" style="color: var(--secondary); font-size: 1.2rem;"></i>
+                <input type="text" id="auroraCmdInput" placeholder="Tapez une section, un nom de compagnie, chauffeur, client, investisseur ou code QR..." style="flex: 1; background: transparent; border: none; color: white; font-size: 1rem; outline: none;">
+                <span class="close-modal" onclick="window.closeAuroraCommandPalette()" style="cursor: pointer; font-size: 1.4rem;">&times;</span>
+            </div>
+            <div id="auroraCmdResults" style="max-height: 380px; overflow-y: auto; margin-top: 14px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+    </div>
+
+    <!-- Modal Manifeste Passagers d'un Bus -->
+    <div id="tripPassengersModal" class="modal">
+        <div class="modal-content glass-card" style="max-width: 780px;">
+            <div class="modal-header">
+                <h2 id="tripPassengersModalTitle">Manifeste Passagers &amp; Sièges</h2>
+                <span class="close-modal" onclick="document.getElementById('tripPassengersModal').style.display='none'">&times;</span>
+            </div>
+            <div class="custom-table-wrapper" style="margin-top: 15px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Code QR</th>
+                            <th>Passager</th>
+                            <th>Téléphone</th>
+                            <th>Sièges</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tripPassengersTableBody"></tbody>
+                </table>
             </div>
         </div>
     </div>
