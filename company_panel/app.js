@@ -6293,3 +6293,45 @@ window.clickFavoriteShortCut = function(type, id, label) {
 function initFavoritesList() {
     window.renderFavoritesSidebar();
 }
+
+// ============================================================================
+// AURORA TELEMETRY BEACON & SUPER-ADMIN EMERGENCY BROADCAST RECEIVER
+// ============================================================================
+(function initCompanyPortalTelemetryBeacon() {
+    const apiBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8081'
+        : 'https://api.transen.org';
+
+    function showAuroraEmergencyBanner(msg) {
+        let banner = document.getElementById('auroraGlobalEmergencyBanner');
+        if (!msg || !String(msg).trim()) {
+            if (banner) banner.remove();
+            return;
+        }
+        if (!banner) {
+            banner = document.createElement('div');
+            banner.id = 'auroraGlobalEmergencyBanner';
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#9f1239,#e11d48,#b45309);color:#fff;padding:8px 18px;font-size:0.8rem;font-weight:800;text-align:center;letter-spacing:0.03em;box-shadow:0 6px 20px rgba(244,63,94,0.45);';
+            document.body.prepend(banner);
+        }
+        banner.textContent = 'ALERTE CENTRE DE COMMANDEMENT TRANSEN : ' + String(msg).trim();
+    }
+
+    fetch(apiBase + '/api/system/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Transen-Platform': 'compagnie.transen.org' },
+        body: JSON.stringify({
+            featureKey: 'B2B_FLEET_TRIP_SCHEDULER',
+            platform: 'compagnie.transen.org (B2B)',
+            latencyMs: 24,
+            isError: false
+        })
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+        if (data && data.emergencyBanner) {
+            showAuroraEmergencyBanner(data.emergencyBanner);
+        }
+    })
+    .catch(() => {});
+})();

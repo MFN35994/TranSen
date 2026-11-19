@@ -4489,17 +4489,46 @@ function renderSentinelCircuitBreakers() {
     }).join('');
 }
 
+const SENTINEL_TO_FEATURE_KEY_MAP = {
+    wafStrictMode: 'OTP_SMS_AUTHENTICATION',
+    busBookingEnabled: 'BUS_SEAT_BOOKING',
+    alloDakarEnabled: 'ALLO_DAKAR_VTC_DISPATCH',
+    yobanteEnabled: 'YOBANTE_PARCEL_LOGISTICS',
+    payoutsEnabled: 'SENEPAY_WALLET_PAYOUT',
+    investmentsEnabled: 'INVESTOR_PORTAL_SUBSCRIPTION'
+};
+
 window.toggleSentinelCircuitBreaker = async function(serviceKey) {
     const current = window.sentinelCircuitState[serviceKey] !== false;
     const nextState = !current;
     window.sentinelCircuitState[serviceKey] = nextState;
     renderSentinelCircuitBreakers();
 
+    const mappedFeatureKey = SENTINEL_TO_FEATURE_KEY_MAP[serviceKey];
+
     try {
         await setDoc(doc(db, "system_config", "global_controls"), {
             ...window.sentinelCircuitState,
             updatedAt: new Date().toISOString()
         }, { merge: true });
+
+        if (mappedFeatureKey) {
+            try {
+                await setDoc(doc(db, "feature_telemetry", mappedFeatureKey), {
+                    enabled: nextState,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: typeof getCurrentAdminIdentity === 'function' ? getCurrentAdminIdentity() : 'SuperAdmin'
+                }, { merge: true });
+            } catch {
+                // Non-blocking
+            }
+            try {
+                await adminFetch(`/api/admin/features/${encodeURIComponent(mappedFeatureKey)}/toggle?enabled=${nextState}`, { method: 'POST' });
+            } catch {
+                // Non-blocking if backend is offline
+            }
+        }
+
         window.showNotificationDrawer(
             'Décision Enregistrée',
             nextState ? `Le service [${serviceKey}] a été réactivé dans tout l'écosystème.` : `Le service [${serviceKey}] est maintenant ISOLÉ / VERROUILLÉ.`,
@@ -4520,6 +4549,14 @@ window.saveSentinelBroadcastMessage = async function() {
             emergencyBroadcastMessage: msg,
             updatedAt: new Date().toISOString()
         }, { merge: true });
+        try {
+            await adminFetch('/api/admin/emergency-banner', {
+                method: 'POST',
+                body: JSON.stringify({ message: msg })
+            });
+        } catch {
+            // Non-blocking
+        }
         window.showNotificationDrawer(
             'Diffusion Globale',
             msg ? `Bannière d'urgence diffusée : "${msg}"` : "Bannière d'urgence désactivée.",
@@ -5355,13 +5392,24 @@ window.toggleEcosystemFeature = async function(featureKey, currentEnabled) {
     );
     window.renderFeaturesTelemetryTable();
 
-    // 1. Persist in Firestore feature_telemetry/{featureKey}
+    // 1. Persist in Firestore feature_telemetry/{featureKey} & sync Sentinel if mapped
     try {
         await setDoc(doc(db, "feature_telemetry", featureKey), {
             enabled: nextState,
             updatedAt: new Date().toISOString(),
             updatedBy: getCurrentAdminIdentity()
         }, { merge: true });
+
+        const sentinelKey = Object.keys(SENTINEL_TO_FEATURE_KEY_MAP || {}).find(
+            k => SENTINEL_TO_FEATURE_KEY_MAP[k] === featureKey
+        );
+        if (sentinelKey && window.sentinelCircuitState) {
+            window.sentinelCircuitState[sentinelKey] = nextState;
+            await setDoc(doc(db, "system_config", "global_controls"), {
+                [sentinelKey]: nextState,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+        }
     } catch {
         // Non-blocking
     }

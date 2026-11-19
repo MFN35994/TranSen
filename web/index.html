@@ -47,5 +47,33 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+  <script>
+    (function initWebAppTelemetryBeacon() {
+      var apiBase = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:8081'
+        : 'https://api.transen.org';
+      fetch(apiBase + '/api/system/telemetry', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Transen-Platform': 'app.transen.org' },
+        body: JSON.stringify({
+          featureKey: 'USER_PROFILE_MOBILE',
+          platform: 'app.transen.org (Web App)',
+          latencyMs: 22,
+          isError: false
+        })
+      })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (data && data.emergencyBanner && String(data.emergencyBanner).trim()) {
+          var b = document.createElement('div');
+          b.id = 'auroraGlobalEmergencyBanner';
+          b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:999999;background:linear-gradient(90deg,#9f1239,#e11d48,#b45309);color:#fff;padding:7px 16px;font-family:sans-serif;font-size:12px;font-weight:800;text-align:center;letter-spacing:0.03em;box-shadow:0 6px 20px rgba(244,63,94,0.45);';
+          b.textContent = 'ALERTE CENTRE DE COMMANDEMENT TRANSEN : ' + String(data.emergencyBanner).trim();
+          document.body.prepend(b);
+        }
+      })
+      .catch(function() {});
+    })();
+  </script>
 </body>
 </html>

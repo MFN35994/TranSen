@@ -240,4 +240,26 @@ document.addEventListener('DOMContentLoaded', () => {
             loginSubmitBtn.innerHTML = originalBtnHtml;
         }
     });
+
+    // 6. Aurora Telemetry Beacon & Super-Admin Emergency Broadcast Receiver
+    fetch(`${API_HOST}/api/system/telemetry`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Transen-Platform': 'investir.transen.org' },
+        body: JSON.stringify({
+            featureKey: 'INVESTOR_PORTAL_SUBSCRIPTION',
+            platform: 'investir.transen.org',
+            latencyMs: 19,
+            isError: false
+        })
+    })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+        if (data && data.emergencyBanner && String(data.emergencyBanner).trim()) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#9f1239,#e11d48,#b45309);color:#fff;padding:8px 18px;font-size:0.8rem;font-weight:800;text-align:center;letter-spacing:0.03em;box-shadow:0 6px 20px rgba(244,63,94,0.45);';
+            banner.textContent = 'ALERTE CENTRE DE COMMANDEMENT TRANSEN : ' + String(data.emergencyBanner).trim();
+            document.body.prepend(banner);
+        }
+    })
+    .catch(() => {});
 });
