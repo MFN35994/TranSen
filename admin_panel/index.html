@@ -64,6 +64,7 @@
             <nav id="mainNav">
                 <div class="nav-group-label">PILOTAGE TEMPS RÉEL</div>
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu Global</a>
+                <a href="#" data-section="sentinel"><i class="fas fa-bell-exclamation"></i> Sentinelle &amp; Alertes <span class="badge red" id="sentinelAlertBadge">0</span></a>
                 <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
                 <a href="#" data-section="radar"><i class="fas fa-satellite-dish"></i> Radar &amp; Covoiturage <span class="badge green" id="onlineDriversBadge">0</span></a>
                 <a href="#" data-section="bookings"><i class="fas fa-qrcode"></i> Billetterie QR &amp; Bus</a>
@@ -125,11 +126,35 @@
                         <i class="fas fa-search"></i>
                         <input type="text" id="globalSearch" placeholder="Filtrer la vue ou Ctrl+K...">
                     </div>
+                    <button type="button" id="auroraAlertBellBtn" class="aurora-cmd-trigger glass" onclick="window.navigateToAdminSection('sentinel')" title="Centre d'Alertes Cyber, Bugs &amp; Performance">
+                        <i class="fas fa-shield-virus" style="color: var(--red);"></i>
+                        <span>Alertes SOC</span>
+                        <span class="badge red" id="topAlertCountBadge" style="margin-left: 2px;">0</span>
+                    </button>
+                    <button type="button" id="sentinelSoundToggleBtn" class="icon-btn glass" onclick="window.toggleSentinelSound()" title="Alarme Sonore Sentinelle (Activée)">
+                        <i class="fas fa-volume-high" id="sentinelSoundIcon" style="color: var(--gold);"></i>
+                    </button>
                     <button type="button" id="globalRefreshBtn" class="icon-btn glass" onclick="window.refreshAllEcosystem()" title="Rafraîchir tout l'écosystème">
                         <i class="fas fa-rotate" style="color: var(--primary);"></i>
                     </button>
                 </div>
             </header>
+
+            <!-- Bannière d'Urgence DEFCON (Affichée automatiquement si alerte critique active) -->
+            <div id="defconAlertBanner" style="display: none; margin-bottom: 22px; padding: 14px 20px; border-radius: 16px; background: linear-gradient(135deg, rgba(244, 63, 94, 0.22), rgba(245, 184, 61, 0.14)); border: 1.5px solid rgba(244, 63, 94, 0.55); box-shadow: 0 0 32px rgba(244, 63, 94, 0.25); align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span class="pulse-dot" style="background: #f43f5e; box-shadow: 0 0 12px #f43f5e;"></span>
+                    <div>
+                        <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #fda4af; font-weight: 800; letter-spacing: 0.12em;">ALERTE SENTINELLE ACTIVE · ACTION REQUISE</div>
+                        <div id="defconAlertText" style="color: white; font-weight: 700; font-size: 0.92rem;">Anomalie ou attaque détectée sur l'écosystème.</div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    <button type="button" onclick="window.navigateToAdminSection('sentinel')" style="padding: 9px 16px; border-radius: 10px; background: #f43f5e; color: white; font-weight: 800; border: none; cursor: pointer; font-size: 0.8rem;">
+                        <i class="fas fa-gavel"></i> Ouvrir Sentinelle &amp; Décider
+                    </button>
+                </div>
+            </div>
 
             <!-- Dashboard -->
             <div id="section-dashboard" class="admin-section">
@@ -637,6 +662,35 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Gouvernance Tarifaire VTC Allô Dakar (/api/admin/vtc-pricing & /api/vtc/calculate-price) -->
+                <div class="glass-card" style="margin-top: 24px; padding: 25px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
+                        <div>
+                            <span class="aurora-eyebrow"><i class="fas fa-sliders"></i> MOTEUR TARIFAIRE VTC ALLÔ DAKAR</span>
+                            <h3 style="margin: 6px 0 0 0; font-size: 1.2rem;">Grilles de Prix &amp; Simulateur Officiel (/api/vtc/calculate-price)</h3>
+                        </div>
+                        <button type="button" onclick="window.syncVtcPricingAdmin()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Gamme VTC</th>
+                                    <th>Prise en charge (Base)</th>
+                                    <th>Prix / Km</th>
+                                    <th>Prix / Minute</th>
+                                    <th>Tarif Minimum</th>
+                                    <th>Simulation (10 km · 20 min)</th>
+                                    <th>Contrôle</th>
+                                </tr>
+                            </thead>
+                            <tbody id="vtcPricingAdminTableBody">
+                                <tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Chargement des grilles tarifaires VTC...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
             <!-- Documents -->
@@ -846,6 +900,35 @@
                             </thead>
                             <tbody id="financePayoutsTableBody">
                                 <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des retraits...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Supervision des Notes de Frais Chauffeurs & Compagnies (/api/admin/expenses) -->
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h4 style="margin: 0; color: white; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-file-invoice-dollar" style="color: var(--secondary);"></i>
+                            Notes de Frais Chauffeurs &amp; Flottes B2B (Carburant, Péage, Maintenance)
+                        </h4>
+                        <span class="badge blue" id="expensesTotalCountBadge">0 note(s)</span>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Compagnie</th>
+                                    <th>Chauffeur</th>
+                                    <th>Catégorie &amp; Motif</th>
+                                    <th>Montant</th>
+                                    <th>Statut</th>
+                                    <th>Décision Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="adminExpensesTableBody">
+                                <tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Chargement des notes de frais...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -1444,6 +1527,36 @@
                         </table>
                     </div>
                 </section>
+
+                <!-- Registre Global des Réservations Bus (/api/admin/bookings) -->
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-ticket" style="color: var(--gold);"></i>
+                            Registre Global des Dernières Réservations &amp; Billets QR (/api/admin/bookings)
+                        </h3>
+                        <button type="button" onclick="window.syncAllBookingsAdmin()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Code QR</th>
+                                    <th>Réf. SenePay</th>
+                                    <th>Passager</th>
+                                    <th>Axe &amp; Compagnie</th>
+                                    <th>Sièges &amp; Montant</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="allBookingsAdminTableBody">
+                                <tr><td colspan="8" style="text-align:center; color: var(--text-dim);">Chargement du registre global des réservations...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
 
             <!-- =========================================================================
@@ -1535,6 +1648,34 @@
                                 </thead>
                                 <tbody id="reviewsModerationTableBody">
                                     <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des avis qualité...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <!-- Demandes de Contact & Prospects de transen.org/contact (/api/admin/contacts) -->
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-envelope-open-text" style="color: var(--secondary);"></i>
+                                Messages &amp; Prospects reçus depuis transen.org/contact (/api/admin/contacts)
+                            </h3>
+                            <span class="badge blue" id="contactLeadsCountBadge">0 message(s)</span>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Profil</th>
+                                        <th>Nom</th>
+                                        <th>Téléphone / Email</th>
+                                        <th>Message</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="contactLeadsTableBody">
+                                    <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Chargement des messages de contact...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -1761,6 +1902,103 @@
                         <button type="button" onclick="window.exportAdminDataCsv('investments')" class="aurora-export-btn"><i class="fas fa-hand-holding-dollar"></i> Exporter Actionnaires (CSV)</button>
                     </div>
                 </div>
+            </div>
+
+            <!-- =========================================================================
+                 18. SENTINELLE SOC, ALERTES CYBER, PERFORMANCE & DISJONCTEURS PAR SERVICE
+                 ========================================================================= -->
+            <div id="section-sentinel" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-shield-virus"></i></div>
+                        <div class="stat-info">
+                            <p>Alertes Actives (SOC / SIEM)</p>
+                            <h3 id="sentinelActiveAlertsCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-user-secret"></i></div>
+                        <div class="stat-info">
+                            <p>Menaces &amp; Intrusions Bloquées</p>
+                            <h3 id="sentinelAttacksCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-bug-slash"></i></div>
+                        <div class="stat-info">
+                            <p>Anomalies Perf / Bugs Détectés</p>
+                            <h3 id="sentinelBugsPerfCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-toggle-on"></i></div>
+                        <div class="stat-info">
+                            <p>Disjoncteurs Services Actifs</p>
+                            <h3 id="sentinelCircuitBreakersSummary">6 / 6 OK</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MATRICE DE DÉCISION : DISJONCTEURS PAR SERVICE (KILL-SWITCHES TEMPS RÉEL) -->
+                <div class="glass-card" style="margin-top: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 15px; margin-bottom: 18px;">
+                        <div>
+                            <span class="aurora-eyebrow"><i class="fas fa-sliders"></i> POUVOIR DE DÉCISION PAR SERVICE · DISJONCTEURS TEMPS RÉEL (system_config/global_controls)</span>
+                            <h3 style="margin: 8px 0 4px 0; font-size: 1.25rem;">Contrôle d'Isolement, Bouclier Anti-Piratage &amp; Maintenance par Service</h3>
+                            <p style="margin: 0; color: var(--text-dim); font-size: 0.86rem;">En cas d'attaque pirate, de bug critique ou de surcharge sur un service spécifique, isolez ou verrouillez ce service en 1 clic sans couper le reste de l'écosystème.</p>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" onclick="window.runSentinelFullScan()" style="padding: 10px 16px; border-radius: 11px; background: var(--primary); color: #03100b; font-weight: 800; border: none; cursor: pointer; font-size: 0.82rem;">
+                                <i class="fas fa-radar"></i> Lancer Scan SIEM Complet
+                            </button>
+                            <button type="button" onclick="window.triggerSentinelTestAlert()" style="padding: 10px 16px; border-radius: 11px; background: rgba(245, 184, 61, 0.16); color: #fde68a; font-weight: 700; border: 1px solid rgba(245, 184, 61, 0.45); cursor: pointer; font-size: 0.82rem;">
+                                <i class="fas fa-bolt"></i> Simuler Alerte (Test Sirène &amp; Flux)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="sentinelCircuitBreakersGrid" class="aurora-portals-grid"></div>
+
+                    <!-- Diffusion de Bannière d'Urgence Globale -->
+                    <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--glass-border); display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="sentinelBroadcastInput" placeholder="Message d'alerte ou de maintenance globale à diffuser sur les applications (laisser vide pour désactiver)..." style="flex: 1; min-width: 260px; padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.04); border: 1px solid var(--glass-border); color: white;">
+                        <button type="button" onclick="window.saveSentinelBroadcastMessage()" style="padding: 12px 20px; border-radius: 12px; background: linear-gradient(135deg, #fde68a, #f5b83d); color: #161002; font-weight: 800; border: none; cursor: pointer;">
+                            <i class="fas fa-tower-cell"></i> Diffuser / Mettre à jour
+                        </button>
+                    </div>
+                </div>
+
+                <!-- JOURNAL TEMPS RÉEL DES ALERTES (ATTAQUES PIRATES, BUGS, MAL-PERFORMANCE, FRAUDE) -->
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                        <h3 style="margin: 0; font-size: 1.12rem; display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-triangle-exclamation" style="color: var(--red);"></i>
+                            Flux Temps Réel des Alertes Écosystème &amp; Console de Riposte (system_alerts + Heuristique SIEM)
+                        </h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" onclick="window.acknowledgeAllSentinelAlerts()" style="padding: 8px 14px; border-radius: 10px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(52, 211, 153, 0.4); color: #6ee7b7; font-weight: 700; cursor: pointer; font-size: 0.78rem;">
+                                <i class="fas fa-check-double"></i> Tout Acquitter
+                            </button>
+                        </div>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horodatage</th>
+                                    <th>Sévérité &amp; Type</th>
+                                    <th>Service Ciblé</th>
+                                    <th>Diagnostic &amp; Source</th>
+                                    <th>Statut</th>
+                                    <th>Décision &amp; Riposte Admin</th>
+                                </tr>
+                            </thead>
+                            <tbody id="sentinelAlertsTableBody">
+                                <tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Initialisation de la Sentinelle SOC...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
             </div>
         </main>
     </div>

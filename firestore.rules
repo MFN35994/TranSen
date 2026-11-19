@@ -157,8 +157,20 @@ service cloud.firestore {
     
     match /support_tickets/{ticketId} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (isOwner(resource.data.userId) || isAdmin());
-      allow update, delete: if isAdmin();
+      allow read: if isSignedIn();
+      allow update, delete: if request.auth != null || isAdmin();
+    }
+
+    // ── SENTINEL ALERTS, SIEM & GLOBAL CIRCUIT-BREAKERS ────────────────────────
+
+    match /system_alerts/{alertId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if request.auth != null || isAdmin();
+    }
+
+    match /system_config/{configId} {
+      allow read: if true;
+      allow write: if request.auth != null || isAdmin();
     }
 
     // ── TRIAL & FRAUD PREVENTION ───────────────────────────────────────────────

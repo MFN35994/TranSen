@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
 import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app-check.js";
-import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, getDocs, updateDoc, where, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, getDoc, getDocs, setDoc, updateDoc, where, addDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import { getAuth, signInAnonymously, signOut } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-auth.js";
 
 const firebaseConfig = {
@@ -297,6 +297,7 @@ function initDashboard() {
     syncDocumentsSection();
     if (window.syncEcosystemHealth) window.syncEcosystemHealth();
     if (window.syncSupportBadgesQuiet) window.syncSupportBadgesQuiet();
+    if (window.initSentinelWatchdog) window.initSentinelWatchdog();
 }
 
 function setupNavigation() {
@@ -350,11 +351,21 @@ function setupNavigation() {
             else if (section === 'finance') syncFinanceSection();
             else if (section === 'investments') syncInvestments();
             else if (section === 'markets') syncMarketsSection();
-            else if (section === 'channels') syncChannelsSection();
+            else if (section === 'channels') {
+                syncChannelsSection();
+                if (window.syncVtcPricingAdmin) window.syncVtcPricingAdmin();
+            }
             else if (section === 'media-hub') syncMediaHubSection();
+            else if (section === 'sentinel' && window.syncSentinelSection) window.syncSentinelSection();
             else if (section === 'radar' && window.syncRadarSection) window.syncRadarSection();
-            else if (section === 'bookings' && window.syncScheduledTripsAdmin) window.syncScheduledTripsAdmin();
-            else if (section === 'support' && window.syncSupportAndReviewsSection) window.syncSupportAndReviewsSection();
+            else if (section === 'bookings') {
+                if (window.syncScheduledTripsAdmin) window.syncScheduledTripsAdmin();
+                if (window.syncAllBookingsAdmin) window.syncAllBookingsAdmin();
+            }
+            else if (section === 'support') {
+                if (window.syncSupportAndReviewsSection) window.syncSupportAndReviewsSection();
+                if (window.syncContactLeadsAdmin) window.syncContactLeadsAdmin();
+            }
             else if (section === 'security' && window.syncSecuritySection) window.syncSecuritySection();
             else if (section === 'ecosystem' && window.syncEcosystemHealth) window.syncEcosystemHealth();
         };
@@ -1405,6 +1416,7 @@ window.syncFinanceSection = async function() {
         // 4. Render Table (capped & batch rendered with XSS protection)
         window.allFinanceTransactions = data.transactions || [];
         if (window.syncAdminPayouts) window.syncAdminPayouts();
+        if (window.syncAdminExpenses) window.syncAdminExpenses();
         const tbody = document.getElementById('financeTransactionsTableBody');
         if (!tbody) return;
 
@@ -3168,8 +3180,9 @@ window.syncAdminPayouts = async function() {
 
         tbody.innerHTML = window.allAdminPayouts.slice(0, 80).map(p => {
             const dt = p.createdAt ? new Date(p.createdAt).toLocaleString('fr-FR') : '--';
-            const owner = escapeHtml(p.ownerName || p.recipientPhone || p.walletOwnerType || 'Partenaire TranSen');
-            const method = escapeHtml(p.paymentMethod || p.operator || 'MOBILE_MONEY');
+            const owner = escapeHtml(p.ownerName || p.recipientPhone || p.ownerType || 'Partenaire TranSen');
+            const ownerTypeBadge = p.ownerType ? `<span class="badge ${p.ownerType === 'COMPANY' ? 'blue' : 'gold'}" style="margin-left:6px; font-size:0.65rem;">${escapeHtml(p.ownerType)}</span>` : '';
+            const method = escapeHtml(p.paymentMethod || p.operator || 'SENEPAY / MOBILE MONEY');
             const ref = escapeHtml(p.reference || p.id || '--');
             const amt = Number(p.amount) || 0;
             const st = escapeHtml(p.status || 'COMPLETED');
@@ -3177,7 +3190,7 @@ window.syncAdminPayouts = async function() {
             return `
                 <tr>
                     <td>${escapeHtml(dt)}</td>
-                    <td><b>${owner}</b></td>
+                    <td><b>${owner}</b>${ownerTypeBadge}</td>
                     <td><span class="badge gold">${method}</span></td>
                     <td><code style="font-size:0.78rem;">${ref}</code></td>
                     <td style="color:#f5b83d; font-weight:800; font-family:'JetBrains Mono',monospace;">-${formatCurrency(Math.abs(amt))}</td>
@@ -3388,23 +3401,32 @@ function renderBookingInspectorCard(b) {
     const code = escapeHtml(b.boardingCode || b.qrCode || '--');
     const passenger = escapeHtml(b.passengerName || b.clientName || 'Passager');
     const phone = escapeHtml(b.passengerPhone || b.clientPhone || '--');
-    const seats = Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : escapeHtml(String(b.seatsBooked || 1));
-    const amount = Number(b.totalPrice || b.amount || 0).toLocaleString('fr-FR');
+    const seatCount = Number(b.numberOfSeatsBooked || b.seatsBooked || 1);
+    const seats = Array.isArray(b.seatNumbers)
+        ? escapeHtml(b.seatNumbers.join(', '))
+        : escapeHtml(String(b.seatNumbers && b.seatNumbers !== 'N/A' ? b.seatNumbers : seatCount));
+    const unitPrice = Number(b.price || b.unitPrice || 0);
+    const computedTotal = Number(b.totalPrice || b.amount || (unitPrice * seatCount));
+    const amount = computedTotal.toLocaleString('fr-FR');
     const status = escapeHtml(b.status || 'CONFIRMED');
+    const payStatus = escapeHtml(b.paymentStatus || '--');
     const ref = escapeHtml(b.paymentReference || '--');
+    const routeInfo = (b.pickupLocation || b.departure)
+        ? ` · Axe: <strong style="color:white;">${escapeHtml(b.pickupLocation || b.departure)} → ${escapeHtml(b.dropoffLocation || b.destination || '')}</strong>`
+        : '';
 
     box.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px;">
             <div>
-                <span class="aurora-eyebrow">BILLET CERTIFIÉ #${id}</span>
+                <span class="aurora-eyebrow">BILLET CERTIFIÉ #${id} · PAIEMENT: ${payStatus}</span>
                 <h4 style="margin:8px 0 4px 0; font-size:1.25rem; color:white;">${passenger} · <span style="color:var(--gold);">${phone}</span></h4>
                 <div style="font-family:'JetBrains Mono',monospace; font-size:0.82rem; color:var(--text-dim);">
-                    Code QR: <strong style="color:#6ee7b7;">${code}</strong> · Réf SenePay: <strong style="color:#22d3ee;">${ref}</strong> · Siège(s): <strong>${seats}</strong> · Montant: <strong style="color:var(--gold);">${amount} FCFA</strong>
+                    Code QR: <strong style="color:#6ee7b7;">${code}</strong> · Réf SenePay: <strong style="color:#22d3ee;">${ref}</strong> · Siège(s): <strong>${seats}</strong> · Montant: <strong style="color:var(--gold);">${amount} FCFA</strong>${routeInfo}
                 </div>
             </div>
             <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                 <span class="status-tag completed">${status}</span>
-                ${code !== '--' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" style="padding:10px 16px; border-radius:10px; background:var(--primary); color:#03100b; font-weight:800; border:none; cursor:pointer;"><i class="fas fa-check-circle"></i> Valider Embarquement</button>` : ''}
+                ${code !== '--' && code !== 'N/A' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" style="padding:10px 16px; border-radius:10px; background:var(--primary); color:#03100b; font-weight:800; border:none; cursor:pointer;"><i class="fas fa-check-circle"></i> Valider Embarquement</button>` : ''}
                 ${id !== '--' ? `<button onclick="window.cancelBookingFromAdmin('${id}')" style="padding:10px 16px; border-radius:10px; background:var(--red); color:white; font-weight:700; border:none; cursor:pointer;"><i class="fas fa-ban"></i> Annuler Réservation</button>` : ''}
             </div>
         </div>
@@ -3454,7 +3476,7 @@ window.syncScheduledTripsAdmin = async function() {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Recherche des départs programmés...</td></tr>`;
 
     try {
-        const qs = new URLSearchParams({ from, to, date }).toString();
+        const qs = new URLSearchParams({ departure: from, destination: to, date }).toString();
         const res = await adminFetch(`/api/trips/search?${qs}`, { bypassCache: true });
         if (!res.ok) throw new Error(`Erreur /api/trips/search (${res.status})`);
         const trips = await res.json();
@@ -3518,16 +3540,18 @@ window.openTripPassengersModal = async function(tripId, label) {
             const code = escapeHtml(b.boardingCode || '--');
             const name = escapeHtml(b.passengerName || 'Passager');
             const phone = escapeHtml(b.passengerPhone || '--');
-            const seats = Array.isArray(b.seatNumbers) ? b.seatNumbers.join(', ') : escapeHtml(String(b.seatsBooked || 1));
-            const price = Number(b.totalPrice || 0).toLocaleString('fr-FR');
+            const seats = Array.isArray(b.seatNumbers)
+                ? escapeHtml(b.seatNumbers.join(', '))
+                : escapeHtml(String(b.seatNumbers || b.seatsBooked || 1));
+            const paySt = escapeHtml(b.paymentStatus || '--');
             const st = escapeHtml(b.status || 'CONFIRMED');
             return `
                 <tr>
                     <td><code style="color:#6ee7b7; font-weight:700;">${code}</code></td>
                     <td><b>${name}</b></td>
                     <td>${phone}</td>
-                    <td><span class="badge blue">${seats}</span></td>
-                    <td style="color:var(--gold); font-weight:700;">${price} F</td>
+                    <td><span class="badge blue">${seats} (${b.seatsBooked || 1} pl.)</span></td>
+                    <td style="color:var(--gold); font-weight:700;">${paySt}</td>
                     <td><span class="status-tag completed">${st}</span></td>
                     <td style="display:flex; gap:6px;">
                         ${code !== '--' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" class="icon-btn glass" title="Embarquer QR" style="color:var(--primary);"><i class="fas fa-qrcode"></i></button>` : ''}
@@ -4041,4 +4065,703 @@ document.addEventListener('keydown', (e) => {
 const cmdInputEl = document.getElementById('auroraCmdInput');
 if (cmdInputEl) {
     cmdInputEl.addEventListener('input', (e) => renderAuroraCommandResults(e.target.value));
+}
+
+
+/* ============================================================================
+   9. REGISTRE GLOBAL RÉSERVATIONS, TARIFS VTC, NOTES DE FRAIS & CONTACTS
+   ============================================================================ */
+
+window.syncAllBookingsAdmin = async function() {
+    const tbody = document.getElementById('allBookingsAdminTableBody');
+    if (!tbody) return;
+    try {
+        const res = await adminFetch('/api/admin/bookings');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        const bookings = Array.isArray(list) ? list : [];
+        if (bookings.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-dim);">Aucune réservation interurbaine enregistrée.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = bookings.slice(0, 80).map(b => {
+            const dt = b.createdAt ? new Date(b.createdAt).toLocaleString('fr-FR') : '--';
+            const code = escapeHtml(b.boardingCode || 'N/A');
+            const ref = escapeHtml(b.paymentReference || 'N/A');
+            const pass = `${escapeHtml(b.passengerName || 'Passager')}<br><small style="color:var(--text-dim)">${escapeHtml(b.passengerPhone || '')}</small>`;
+            const route = `${escapeHtml(b.departure || 'Dakar')} → ${escapeHtml(b.destination || 'Région')}<br><small style="color:var(--secondary)">${escapeHtml(b.companyName || '')}</small>`;
+            const seats = `${escapeHtml(String(b.seatNumbers || b.seatsBooked || 1))} · <b style="color:var(--gold);">${Number(b.totalPrice || 0).toLocaleString('fr-FR')} F</b>`;
+            const st = escapeHtml(b.status || 'RESERVED');
+            return `
+                <tr>
+                    <td>${escapeHtml(dt)}</td>
+                    <td><code style="color:#6ee7b7; font-weight:700;">${code}</code></td>
+                    <td><code style="color:#22d3ee; font-size:0.78rem;">${ref}</code></td>
+                    <td>${pass}</td>
+                    <td>${route}</td>
+                    <td>${seats}</td>
+                    <td><span class="status-tag completed">${st}</span></td>
+                    <td style="display:flex; gap:6px;">
+                        ${code !== 'N/A' ? `<button onclick="window.scanBoardingQrFromAdmin('${code}')" class="icon-btn glass" title="Valider Embarquement QR" style="color:var(--primary);"><i class="fas fa-qrcode"></i></button>` : ''}
+                        <button onclick="window.cancelBookingFromAdmin('${escapeHtml(b.id)}')" class="icon-btn glass" title="Annuler Réservation" style="color:var(--red);"><i class="fas fa-ban"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color: var(--text-dim);">Utilisez l'inspecteur QR ci-dessus ou sondeur de bus pour filtrer les billets.</td></tr>`;
+    }
+};
+
+window.syncVtcPricingAdmin = async function() {
+    const tbody = document.getElementById('vtcPricingAdminTableBody');
+    if (!tbody) return;
+    try {
+        const res = await fetch(`${API_HOST}/api/vtc/calculate-price?distanceKm=10.0&durationMinutes=20.0`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        const tiers = Array.isArray(list) ? list : [];
+        if (tiers.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucune grille tarifaire VTC retournée.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = tiers.map(t => {
+            const cls = escapeHtml(t.vehicleClass || 'CLASSIQUE');
+            const name = escapeHtml(t.displayName || cls);
+            const base = Number(t.baseFare || 0);
+            const km = Number(t.pricePerKm || 0);
+            const min = Number(t.pricePerMinute || 0);
+            const floor = Number(t.minimumFare || 0);
+            const sim = Number(t.price || 0);
+            return `
+                <tr>
+                    <td><b>${name}</b> <span class="badge blue" style="margin-left:6px;">${cls}</span></td>
+                    <td>${base.toLocaleString('fr-FR')} F</td>
+                    <td>${km.toLocaleString('fr-FR')} F / km</td>
+                    <td>${min.toLocaleString('fr-FR')} F / min</td>
+                    <td>${floor.toLocaleString('fr-FR')} F</td>
+                    <td style="color:var(--gold); font-weight:800; font-family:'JetBrains Mono',monospace;">${sim.toLocaleString('fr-FR')} FCFA</td>
+                    <td>
+                        <button onclick="window.editVtcPricingTier('${cls}', ${base}, ${km}, ${min}, ${floor})" style="padding:7px 14px; border-radius:9px; background:rgba(16,185,129,0.15); border:1px solid rgba(52,211,153,0.4); color:#6ee7b7; font-weight:700; cursor:pointer; font-size:0.76rem;">
+                            <i class="fas fa-pen"></i> Ajuster Tarifs
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Grille VTC non disponible (${escapeHtml(e.message)}).</td></tr>`;
+    }
+};
+
+window.editVtcPricingTier = async function(vehicleClass, curBase, curKm, curMin, curFloor) {
+    const baseStr = prompt(`[${vehicleClass}] Prise en charge de base (FCFA) :`, String(curBase));
+    if (baseStr === null) return;
+    const kmStr = prompt(`[${vehicleClass}] Prix par kilomètre (FCFA/km) :`, String(curKm));
+    if (kmStr === null) return;
+    const minStr = prompt(`[${vehicleClass}] Prix par minute (FCFA/min) :`, String(curMin));
+    if (minStr === null) return;
+    const floorStr = prompt(`[${vehicleClass}] Tarif minimum plancher (FCFA) :`, String(curFloor));
+    if (floorStr === null) return;
+
+    try {
+        const res = await adminFetch(`/api/admin/vtc-pricing/${encodeURIComponent(vehicleClass)}`, {
+            method: 'PUT',
+            body: JSON.stringify({
+                baseFare: Number(baseStr),
+                pricePerKm: Number(kmStr),
+                pricePerMinute: Number(minStr),
+                minimumFare: Number(floorStr)
+            })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Tarification VTC', `Grille ${vehicleClass} mise à jour avec succès.`, false);
+        window.syncVtcPricingAdmin();
+    } catch (e) {
+        window.showNotificationDrawer('Info Backend', "Redéployez le backend Spring Boot pour activer la modification directe des tarifs VTC.", true);
+    }
+};
+
+window.syncAdminExpenses = async function() {
+    const tbody = document.getElementById('adminExpensesTableBody');
+    const badge = document.getElementById('expensesTotalCountBadge');
+    if (!tbody) return;
+    try {
+        const res = await adminFetch('/api/admin/expenses');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        const claims = Array.isArray(list) ? list : [];
+        if (badge) badge.innerText = `${claims.length} note(s)`;
+        if (claims.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucune note de frais soumise.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = claims.slice(0, 60).map(c => {
+            const dt = c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '--';
+            const comp = escapeHtml(c.companyName || 'Compagnie');
+            const drv = `${escapeHtml(c.driverName || 'Chauffeur')}<br><small style="color:var(--text-dim)">${escapeHtml(c.driverPhone || '')}</small>`;
+            const cat = `<span class="badge blue">${escapeHtml(c.category || 'FRAIS')}</span> ${escapeHtml(c.description || '')}`;
+            const amt = Number(c.amount || 0).toLocaleString('fr-FR');
+            const st = escapeHtml(c.status || 'ATTENTE');
+            const stClass = st.includes('VALID') ? 'completed' : st.includes('REJET') ? 'failed' : 'pending';
+            return `
+                <tr>
+                    <td>${escapeHtml(dt)}</td>
+                    <td><b>${comp}</b></td>
+                    <td>${drv}</td>
+                    <td>${cat}</td>
+                    <td style="color:var(--gold); font-weight:800; font-family:'JetBrains Mono',monospace;">${amt} F</td>
+                    <td><span class="status-tag ${stClass}">${st}</span></td>
+                    <td style="display:flex; gap:6px;">
+                        <button onclick="window.decideExpenseClaimAdmin('${escapeHtml(c.id)}', 'APPROVED')" class="icon-btn glass" title="Valider" style="color:var(--primary);"><i class="fas fa-check"></i></button>
+                        <button onclick="window.decideExpenseClaimAdmin('${escapeHtml(c.id)}', 'REJECTED')" class="icon-btn glass" title="Rejeter" style="color:var(--red);"><i class="fas fa-times"></i></button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucune note de frais en attente.</td></tr>`;
+    }
+};
+
+window.decideExpenseClaimAdmin = async function(id, status) {
+    try {
+        const res = await adminFetch(`/api/admin/expenses/${encodeURIComponent(id)}/decision?status=${encodeURIComponent(status)}`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Notes de Frais', 'Décision enregistrée.', false);
+        window.syncAdminExpenses();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de modifier cette note de frais.', true);
+    }
+};
+
+window.syncContactLeadsAdmin = async function() {
+    const tbody = document.getElementById('contactLeadsTableBody');
+    const badge = document.getElementById('contactLeadsCountBadge');
+    if (!tbody) return;
+    try {
+        const res = await adminFetch('/api/admin/contacts');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        const leads = Array.isArray(list) ? list : [];
+        if (badge) badge.innerText = `${leads.length} message(s)`;
+        if (leads.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun message reçu via transen.org/contact.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = leads.slice(0, 60).map(l => {
+            const dt = l.createdAt ? new Date(l.createdAt).toLocaleString('fr-FR') : '--';
+            const prof = escapeHtml((l.profile || 'CONTACT').toUpperCase());
+            const name = escapeHtml(l.name || '--');
+            const contact = `${escapeHtml(l.phone || '')}<br><small style="color:var(--secondary)">${escapeHtml(l.email || '')}</small>`;
+            const msg = escapeHtml(l.message || '--');
+            return `
+                <tr>
+                    <td>${escapeHtml(dt)}</td>
+                    <td><span class="badge gold">${prof}</span></td>
+                    <td><b>${name}</b></td>
+                    <td>${contact}</td>
+                    <td style="max-width:340px;">${msg}</td>
+                    <td>
+                        <button onclick="window.deleteContactLeadAdmin('${escapeHtml(l.id)}')" class="icon-btn glass" style="color:var(--red);" title="Supprimer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color: var(--text-dim);">Aucun message de contact en attente.</td></tr>`;
+    }
+};
+
+window.deleteContactLeadAdmin = async function(id) {
+    if (!confirm("Supprimer ce message de contact ?")) return;
+    try {
+        const res = await adminFetch(`/api/admin/contacts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Contact', 'Message supprimé.', false);
+        window.syncContactLeadsAdmin();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Suppression impossible.', true);
+    }
+};
+
+/* ============================================================================
+   10. SENTINELLE SOC, DÉTECTION D'ATTAQUES / BUGS / PERF & DISJONCTEURS SERVICES
+   ============================================================================ */
+
+const SENTINEL_SERVICES = [
+    {
+        key: 'wafStrictMode',
+        title: 'Bouclier Anti-Piratage & Anti-Brute-Force OTP',
+        tag: 'SÉCURITÉ & WAF',
+        desc: 'Protection active contre les injections SQL/XSS, scans .php/.env et attaques brute-force OTP/Login.',
+        invertVisual: false
+    },
+    {
+        key: 'busBookingEnabled',
+        title: 'Billetterie Bus Interurbains & Scanner QR',
+        tag: 'SERVICE BUS',
+        desc: 'Contrôle des réservations de sièges interurbains sur transen.org et app.transen.org.',
+        invertVisual: false
+    },
+    {
+        key: 'alloDakarEnabled',
+        title: 'Courses VTC Allô Dakar Temps Réel',
+        tag: 'SERVICE VTC',
+        desc: 'Dispatching GPS immédiat des chauffeurs indépendants Allô Dakar.',
+        invertVisual: false
+    },
+    {
+        key: 'yobanteEnabled',
+        title: 'Expédition & Fret Colis Yobanté',
+        tag: 'SERVICE LOGISTIQUE',
+        desc: 'Prise en charge et suivi interurbain des colis Yobanté.',
+        invertVisual: false
+    },
+    {
+        key: 'payoutsEnabled',
+        title: 'Retraits & Payouts SenePay (Wave / OM / Free)',
+        tag: 'FLUX FINANCIERS',
+        desc: 'Autorisation des décaissements sortants depuis les portefeuilles chauffeurs & compagnies.',
+        invertVisual: false
+    },
+    {
+        key: 'investmentsEnabled',
+        title: 'Souscriptions Actionnariat (investir.transen.org)',
+        tag: 'CAPITAL & FINTECH',
+        desc: 'Ouverture des réservations d’actions à 500 FCFA et paiements investisseurs.',
+        invertVisual: false
+    }
+];
+
+window.sentinelSoundEnabled = localStorage.getItem('sentinel-sound') !== 'off';
+window.sentinelCircuitState = {
+    wafStrictMode: true,
+    busBookingEnabled: true,
+    alloDakarEnabled: true,
+    yobanteEnabled: true,
+    payoutsEnabled: true,
+    investmentsEnabled: true,
+    emergencyBroadcastMessage: ''
+};
+window.sentinelFirestoreAlerts = [];
+window.sentinelHeuristicAlerts = [];
+let _unsubSentinelAlerts = null;
+let _unsubSentinelConfig = null;
+let _sentinelWatchdogTimer = null;
+let _lastAlertCountNotified = 0;
+
+function playSentinelCyberAlarm(severity = 'CRITICAL') {
+    if (!window.sentinelSoundEnabled) return;
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+        const freqs = severity === 'CRITICAL' ? [880, 1174, 880, 1396] : [587, 880];
+        freqs.forEach((f, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(f, now + idx * 0.11);
+            gain.gain.setValueAtTime(0.06, now + idx * 0.11);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.11 + 0.09);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now + idx * 0.11);
+            osc.stop(now + idx * 0.11 + 0.1);
+        });
+    } catch {
+        // Ignore audio autoplay restrictions
+    }
+}
+
+window.toggleSentinelSound = function() {
+    window.sentinelSoundEnabled = !window.sentinelSoundEnabled;
+    localStorage.setItem('sentinel-sound', window.sentinelSoundEnabled ? 'on' : 'off');
+    const icon = document.getElementById('sentinelSoundIcon');
+    const btn = document.getElementById('sentinelSoundToggleBtn');
+    if (icon) {
+        icon.className = window.sentinelSoundEnabled ? 'fas fa-volume-high' : 'fas fa-volume-xmark';
+        icon.style.color = window.sentinelSoundEnabled ? 'var(--gold)' : 'var(--text-dim)';
+    }
+    if (btn) {
+        btn.title = window.sentinelSoundEnabled ? 'Alarme Sonore Sentinelle (Activée)' : 'Alarme Sonore Sentinelle (Muette)';
+    }
+    if (window.sentinelSoundEnabled) playSentinelCyberAlarm('INFO');
+};
+
+window.initSentinelWatchdog = function() {
+    // 1. Real-time Firestore listener on system_config/global_controls
+    if (!_unsubSentinelConfig) {
+        _unsubSentinelConfig = onSnapshot(doc(db, "system_config", "global_controls"), (snap) => {
+            if (snap.exists()) {
+                window.sentinelCircuitState = { ...window.sentinelCircuitState, ...snap.data() };
+            }
+            renderSentinelCircuitBreakers();
+        }, () => {
+            renderSentinelCircuitBreakers();
+        });
+    }
+
+    // 2. Real-time Firestore listener on system_alerts
+    if (!_unsubSentinelAlerts) {
+        const q = query(collection(db, "system_alerts"), limit(60));
+        _unsubSentinelAlerts = onSnapshot(q, (snap) => {
+            const list = [];
+            snap.forEach(d => list.push({ id: d.id, _source: 'firestore', ...d.data() }));
+            list.sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+            window.sentinelFirestoreAlerts = list;
+            renderCombinedSentinelAlerts();
+        }, () => {
+            renderCombinedSentinelAlerts();
+        });
+    }
+
+    // 3. Initial & Periodic Heuristic SIEM Scan (every 35s)
+    window.runSentinelFullScan(true);
+    if (_sentinelWatchdogTimer) clearInterval(_sentinelWatchdogTimer);
+    _sentinelWatchdogTimer = setInterval(() => {
+        if (typeof document !== 'undefined' && document.hidden) return;
+        window.runSentinelFullScan(true);
+    }, 35000);
+};
+
+function renderSentinelCircuitBreakers() {
+    const grid = document.getElementById('sentinelCircuitBreakersGrid');
+    const summaryEl = document.getElementById('sentinelCircuitBreakersSummary');
+    const broadcastInput = document.getElementById('sentinelBroadcastInput');
+
+    let enabledCount = 0;
+    SENTINEL_SERVICES.forEach(s => {
+        if (window.sentinelCircuitState[s.key] !== false) enabledCount++;
+    });
+    if (summaryEl) summaryEl.innerText = `${enabledCount} / ${SENTINEL_SERVICES.length} ACTIFS`;
+    if (broadcastInput && document.activeElement !== broadcastInput) {
+        broadcastInput.value = window.sentinelCircuitState.emergencyBroadcastMessage || '';
+    }
+    if (!grid) return;
+
+    grid.innerHTML = SENTINEL_SERVICES.map(s => {
+        const isActive = window.sentinelCircuitState[s.key] !== false;
+        const badgeColor = isActive ? 'background:rgba(16,185,129,0.2); color:#6ee7b7; border-color:rgba(52,211,153,0.45);' : 'background:rgba(244,63,94,0.22); color:#fda4af; border-color:rgba(244,63,94,0.55);';
+        const btnBg = isActive ? 'rgba(244,63,94,0.16)' : 'var(--primary)';
+        const btnColor = isActive ? '#fda4af' : '#03100b';
+        const btnLabel = isActive ? '<i class="fas fa-power-off"></i> Isoler / Suspendre' : '<i class="fas fa-play"></i> Réactiver le Service';
+        return `
+            <div class="aurora-portal-card" style="border-color:${isActive ? 'rgba(52,211,153,0.25)' : 'rgba(244,63,94,0.55)'};">
+                <div class="portal-top">
+                    <span class="portal-tag">${escapeHtml(s.tag)}</span>
+                    <span class="portal-status" style="${badgeColor}">${isActive ? 'OPÉRATIONNEL' : 'ISOLÉ / VERROUILLÉ'}</span>
+                </div>
+                <h4>${escapeHtml(s.title)}</h4>
+                <p style="margin-bottom:14px;">${escapeHtml(s.desc)}</p>
+                <button type="button" onclick="window.toggleSentinelCircuitBreaker('${s.key}')" style="width:100%; padding:10px 14px; border-radius:11px; background:${btnBg}; color:${btnColor}; border:1px solid ${isActive ? 'rgba(244,63,94,0.45)' : 'transparent'}; font-weight:800; cursor:pointer; font-size:0.8rem;">
+                    ${btnLabel}
+                </button>
+            </div>
+        `;
+    }).join('');
+}
+
+window.toggleSentinelCircuitBreaker = async function(serviceKey) {
+    const current = window.sentinelCircuitState[serviceKey] !== false;
+    const nextState = !current;
+    window.sentinelCircuitState[serviceKey] = nextState;
+    renderSentinelCircuitBreakers();
+
+    try {
+        await setDoc(doc(db, "system_config", "global_controls"), {
+            ...window.sentinelCircuitState,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+        window.showNotificationDrawer(
+            'Décision Enregistrée',
+            nextState ? `Le service [${serviceKey}] a été réactivé dans tout l'écosystème.` : `Le service [${serviceKey}] est maintenant ISOLÉ / VERROUILLÉ.`,
+            !nextState
+        );
+    } catch (e) {
+        window.showNotificationDrawer('Erreur Firestore', e.message || "Impossible d'enregistrer l'état du disjoncteur.", true);
+    }
+};
+
+window.saveSentinelBroadcastMessage = async function() {
+    const input = document.getElementById('sentinelBroadcastInput');
+    if (!input) return;
+    const msg = input.value.trim();
+    window.sentinelCircuitState.emergencyBroadcastMessage = msg;
+    try {
+        await setDoc(doc(db, "system_config", "global_controls"), {
+            emergencyBroadcastMessage: msg,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+        window.showNotificationDrawer(
+            'Diffusion Globale',
+            msg ? `Bannière d'urgence diffusée : "${msg}"` : "Bannière d'urgence désactivée.",
+            false
+        );
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Diffusion impossible.', true);
+    }
+};
+
+window.runSentinelFullScan = async function(silent = false) {
+    const heuristics = [];
+    const nowIso = new Date().toISOString();
+
+    // 1. Probe API Latency & Health
+    const t0 = performance.now();
+    try {
+        const res = await fetch(`${API_HOST}/api/auth/health`);
+        const latencyMs = Math.round(performance.now() - t0);
+        if (!res.ok) {
+            heuristics.push({
+                id: 'heur-api-http',
+                createdAt: nowIso,
+                severity: 'CRITICAL',
+                category: 'MAL-PERFORMANCE / PANNE API',
+                targetService: 'busBookingEnabled',
+                serviceLabel: 'API Spring Boot (api.transen.org)',
+                message: `Le serveur backend a répondu avec le code HTTP ${res.status} (${latencyMs} ms).`,
+                status: 'OPEN',
+                _source: 'heuristic'
+            });
+        } else if (latencyMs > 1400) {
+            heuristics.push({
+                id: 'heur-api-latency',
+                createdAt: nowIso,
+                severity: 'WARNING',
+                category: 'LATENCE ÉLEVÉE / PERFORMANCE',
+                targetService: 'busBookingEnabled',
+                serviceLabel: 'API Spring Boot (Render)',
+                message: `Temps de réponse élevé détecté sur /api/auth/health : ${latencyMs} ms (seuil optimal < 1200 ms).`,
+                status: 'OPEN',
+                _source: 'heuristic'
+            });
+        }
+    } catch (err) {
+        heuristics.push({
+            id: 'heur-api-unreachable',
+            createdAt: nowIso,
+            severity: 'CRITICAL',
+            category: 'INDISPONIBILITÉ SERVEUR',
+            targetService: 'busBookingEnabled',
+            serviceLabel: 'API Spring Boot (api.transen.org)',
+            message: `Impossible de joindre /api/auth/health (${err.message || 'Timeout / Cold Start Render'}).`,
+            status: 'OPEN',
+            _source: 'heuristic'
+        });
+    }
+
+    // 2. Scan failed financial transactions
+    const failedTxs = (window.allFinanceTransactions || []).filter(t => t.status === 'FAILED');
+    if (failedTxs.length > 0) {
+        heuristics.push({
+            id: 'heur-failed-tx',
+            createdAt: nowIso,
+            severity: 'WARNING',
+            category: 'ANOMALIE PAIEMENT SENEPAY',
+            targetService: 'payoutsEnabled',
+            serviceLabel: 'Passerelle SenePay / Portefeuilles',
+            message: `${failedTxs.length} transaction(s) en statut FAILED détectée(s) dans le grand livre financier.`,
+            status: 'OPEN',
+            _source: 'heuristic'
+        });
+    }
+
+    // 3. Scan warned or blocked drivers/clients
+    const warnedActors = [
+        ...(window.allDriversMetrics || []),
+        ...(window.allClientsMetrics || [])
+    ].filter(u => Number(u.warningsCount || 0) > 0 || u.isActive === false);
+
+    if (warnedActors.length > 0) {
+        heuristics.push({
+            id: 'heur-warned-users',
+            createdAt: nowIso,
+            severity: 'WARNING',
+            category: 'SÛRETÉ & COMPTES SIGNALÉS',
+            targetService: 'wafStrictMode',
+            serviceLabel: 'Contrôle Utilisateurs & Chauffeurs',
+            message: `${warnedActors.length} compte(s) présentent des avertissements disciplinaires ou un blocage actif.`,
+            status: 'OPEN',
+            _source: 'heuristic'
+        });
+    }
+
+    window.sentinelHeuristicAlerts = heuristics;
+    renderCombinedSentinelAlerts();
+    if (!silent) {
+        window.showNotificationDrawer('Scan SIEM Terminé', `Diagnostic complet effectué : ${heuristics.length} anomalie(s) heuristique(s) relevée(s).`, false);
+    }
+};
+
+function renderCombinedSentinelAlerts() {
+    const tbody = document.getElementById('sentinelAlertsTableBody');
+    const activeCountEl = document.getElementById('sentinelActiveAlertsCount');
+    const attacksCountEl = document.getElementById('sentinelAttacksCount');
+    const bugsPerfCountEl = document.getElementById('sentinelBugsPerfCount');
+    const navBadge = document.getElementById('sentinelAlertBadge');
+    const topBadge = document.getElementById('topAlertCountBadge');
+    const defconBanner = document.getElementById('defconAlertBanner');
+    const defconText = document.getElementById('defconAlertText');
+
+    const allAlerts = [...window.sentinelFirestoreAlerts, ...window.sentinelHeuristicAlerts];
+    const openAlerts = allAlerts.filter(a => (a.status || 'OPEN').toUpperCase() !== 'RESOLVED');
+
+    let attacksCnt = 0;
+    let bugsPerfCnt = 0;
+    allAlerts.forEach(a => {
+        const cat = (a.category || a.type || '').toUpperCase();
+        if (cat.includes('ATTAQUE') || cat.includes('PIRATE') || cat.includes('INTRUSION') || cat.includes('BRUTE') || cat.includes('SÛRETÉ') || cat.includes('FRAUDE')) {
+            attacksCnt++;
+        } else {
+            bugsPerfCnt++;
+        }
+    });
+
+    if (activeCountEl) activeCountEl.innerText = openAlerts.length;
+    if (attacksCountEl) attacksCountEl.innerText = attacksCnt;
+    if (bugsPerfCountEl) bugsPerfCountEl.innerText = bugsPerfCnt;
+    if (navBadge) navBadge.innerText = openAlerts.length;
+    if (topBadge) topBadge.innerText = openAlerts.length;
+
+    if (defconBanner && defconText) {
+        if (openAlerts.length > 0) {
+            const topAlert = openAlerts[0];
+            defconBanner.style.display = 'flex';
+            defconText.innerText = `[${topAlert.category || 'ALERTE'}] ${topAlert.serviceLabel || topAlert.targetService || 'Écosystème'} — ${topAlert.message || ''}`;
+            if (openAlerts.length > _lastAlertCountNotified) {
+                playSentinelCyberAlarm(topAlert.severity || 'CRITICAL');
+            }
+        } else {
+            defconBanner.style.display = 'none';
+        }
+    }
+    _lastAlertCountNotified = openAlerts.length;
+
+    if (!tbody) return;
+    if (allAlerts.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#6ee7b7; padding:26px;"><i class="fas fa-shield-check"></i> Aucune attaque pirate, anomalie de performance ni bug critique détecté. Tous les systèmes sont nominaux.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = allAlerts.map(a => {
+        const dt = a.createdAt ? new Date(a.createdAt).toLocaleString('fr-FR') : 'En direct';
+        const sev = (a.severity || 'WARNING').toUpperCase();
+        const cat = escapeHtml(a.category || a.type || 'ALERTE SYSTÈME');
+        const srvKey = escapeHtml(a.targetService || 'wafStrictMode');
+        const srvLabel = escapeHtml(a.serviceLabel || srvKey);
+        const msg = escapeHtml(a.message || '--');
+        const st = (a.status || 'OPEN').toUpperCase();
+        const isResolved = st === 'RESOLVED';
+        const sevBadge = sev === 'CRITICAL' ? 'red' : 'gold';
+
+        return `
+            <tr>
+                <td><code style="font-size:0.76rem;">${escapeHtml(dt)}</code></td>
+                <td><span class="badge ${sevBadge}">${sev} · ${cat}</span></td>
+                <td><b>${srvLabel}</b></td>
+                <td style="max-width:360px;">${msg}</td>
+                <td><span class="status-tag ${isResolved ? 'completed' : 'failed'}">${isResolved ? 'RÉSOLU' : 'ACTIF'}</span></td>
+                <td style="display:flex; gap:8px; flex-wrap:wrap;">
+                    ${!isResolved ? `
+                        <button onclick="window.isolateServiceFromAlert('${srvKey}', '${escapeHtml(a.id)}', '${a._source}')" style="padding:7px 12px; border-radius:9px; background:rgba(244,63,94,0.18); border:1px solid rgba(244,63,94,0.5); color:#fda4af; font-weight:800; cursor:pointer; font-size:0.74rem;" title="Verrouiller / Isoler immédiatement ce service">
+                            <i class="fas fa-lock"></i> Isoler Service
+                        </button>
+                        <button onclick="window.resolveSentinelAlert('${escapeHtml(a.id)}', '${a._source}')" style="padding:7px 12px; border-radius:9px; background:rgba(16,185,129,0.18); border:1px solid rgba(52,211,153,0.45); color:#6ee7b7; font-weight:800; cursor:pointer; font-size:0.74rem;">
+                            <i class="fas fa-check"></i> Acquitter
+                        </button>
+                    ` : `<span style="color:var(--text-dim); font-size:0.78rem;">Traité</span>`}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+window.isolateServiceFromAlert = async function(serviceKey, alertId, source) {
+    window.sentinelCircuitState[serviceKey] = false;
+    renderSentinelCircuitBreakers();
+    try {
+        await setDoc(doc(db, "system_config", "global_controls"), {
+            ...window.sentinelCircuitState,
+            updatedAt: new Date().toISOString()
+        }, { merge: true });
+    } catch {
+        // Continue local mitigation
+    }
+    await window.resolveSentinelAlert(alertId, source);
+    window.showNotificationDrawer('Riposte Exécutée', `Le service [${serviceKey}] a été isolé et l'alerte marquée comme traitée.`, false);
+};
+
+window.resolveSentinelAlert = async function(alertId, source) {
+    if (source === 'heuristic') {
+        window.sentinelHeuristicAlerts = window.sentinelHeuristicAlerts.map(a =>
+            a.id === alertId ? { ...a, status: 'RESOLVED' } : a
+        );
+        renderCombinedSentinelAlerts();
+        return;
+    }
+    try {
+        await updateDoc(doc(db, "system_alerts", alertId), {
+            status: 'RESOLVED',
+            resolvedAt: new Date().toISOString()
+        });
+    } catch {
+        window.sentinelFirestoreAlerts = window.sentinelFirestoreAlerts.map(a =>
+            a.id === alertId ? { ...a, status: 'RESOLVED' } : a
+        );
+        renderCombinedSentinelAlerts();
+    }
+};
+
+window.acknowledgeAllSentinelAlerts = async function() {
+    window.sentinelHeuristicAlerts = window.sentinelHeuristicAlerts.map(a => ({ ...a, status: 'RESOLVED' }));
+    for (const a of window.sentinelFirestoreAlerts) {
+        if ((a.status || 'OPEN').toUpperCase() !== 'RESOLVED') {
+            try {
+                await updateDoc(doc(db, "system_alerts", a.id), { status: 'RESOLVED', resolvedAt: new Date().toISOString() });
+            } catch {
+                a.status = 'RESOLVED';
+            }
+        }
+    }
+    renderCombinedSentinelAlerts();
+    window.showNotificationDrawer('Sentinelle SOC', 'Toutes les alertes ont été acquittées.', false);
+};
+
+window.triggerSentinelTestAlert = async function() {
+    const sampleAlert = {
+        createdAt: new Date().toISOString(),
+        severity: 'CRITICAL',
+        category: 'ATTAQUE PIRATE / BRUTE-FORCE OTP',
+        targetService: 'wafStrictMode',
+        serviceLabel: 'Passerelle Auth & OTP (/api/auth/verify-otp)',
+        message: 'Simulation SIEM : rafale de tentatives OTP invalides et scan de vulnérabilité détectés. Décision requise.',
+        status: 'OPEN'
+    };
+    try {
+        await addDoc(collection(db, "system_alerts"), sampleAlert);
+        window.showNotificationDrawer('Simulation Sentinelle', 'Alerte pirate de test injectée en temps réel dans system_alerts.', false);
+    } catch {
+        window.sentinelHeuristicAlerts.unshift({ id: `sim-${Date.now()}`, _source: 'heuristic', ...sampleAlert });
+        renderCombinedSentinelAlerts();
+        playSentinelCyberAlarm('CRITICAL');
+    }
+};
+
+window.syncSentinelSection = function() {
+    renderSentinelCircuitBreakers();
+    window.runSentinelFullScan(true);
+};
+
+// Enrich Command Palette with Sentinelle SOC at #1 position
+if (typeof AURORA_SECTIONS_INDEX !== 'undefined') {
+    AURORA_SECTIONS_INDEX.unshift({
+        section: 'sentinel',
+        icon: 'fa-shield-virus',
+        title: 'Sentinelle SOC : Alertes Pirates, Bugs, Perf & Disjoncteurs Services'
+    });
 }
