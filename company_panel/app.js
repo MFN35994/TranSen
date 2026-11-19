@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteField } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteField, query, where, limit, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import axios from "https://cdn.jsdelivr.net/npm/axios@1.6.8/+esm";
 
 // ==========================================
@@ -151,7 +151,9 @@ const firebaseConfig = {
 const firebaseApp = initializeApp(firebaseConfig);
 const db = getFirestore(firebaseApp, "transen");
 
-const API_BASE_URL = 'https://api.transen.org'; // The Spring Boot backend
+const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:8081'
+    : 'https://api.transen.org'; // The Spring Boot backend
 
 // ==========================================
 // ANTI-DOUBLE-CLICK, IDEMPOTENCY & CACHE ENGINE
@@ -160,7 +162,7 @@ const _inFlightMutations = new Set();
 const _recentMutationTimestamps = new Map();
 const _MUTATION_COOLDOWN_MS = 1500;
 const _getCache = new Map();
-const _GET_CACHE_TTL_MS = 4000;
+const _GET_CACHE_TTL_MS = 8000;
 
 function _hashStr(s) {
     let h = 0;
@@ -634,10 +636,23 @@ function setupNavigation() {
                 loadProfileData();
             } else if (section === 'schedule') {
                 loadSchedulePageData();
+            } else if (section === 'fleet-sentinel') {
+                if (typeof window.syncFleetSentinelSection === 'function') window.syncFleetSentinelSection();
+            } else if (section === 'boarding') {
+                if (typeof window.syncCompanyBoardingSection === 'function') window.syncCompanyBoardingSection();
+            } else if (section === 'reviews-support') {
+                if (typeof window.syncCompanyReviewsAndSupport === 'function') window.syncCompanyReviewsAndSupport();
+            } else if (section === 'activity-logs') {
+                if (typeof window.syncCompanyActivityLogs === 'function') window.syncCompanyActivityLogs();
             }
         };
     });
 }
+
+window.navigateToCompanySection = function(section) {
+    const link = document.querySelector(`#mainNav a[data-section="${section}"]`);
+    if (link) link.click();
+};
 
 // ==========================================
 // SenePay Wallet Logic
@@ -912,6 +927,7 @@ async function loadDashboardData() {
         // 0. KYC Status
         if (kycRes.status === 'fulfilled') {
             const kycStatus = kycRes.value;
+            window.loadedKycStatus = kycStatus;
             const banner = document.getElementById('kycAlertBanner');
             if (banner) {
                 if (kycStatus.status !== 'APPROVED' && sessionStorage.getItem('dismissed_alert_kycAlertBanner') !== 'true') {
@@ -980,6 +996,7 @@ async function loadDashboardData() {
         // 1. Stats
         if (statsRes.status === 'fulfilled') {
             const stats = statsRes.value;
+            window.loadedStats = stats;
             document.getElementById('activeDriversCount').innerText = `${stats.activeDrivers} / ${stats.totalDrivers}`;
             document.getElementById('onlineDriversCount').innerText = stats.activeDrivers;
             document.getElementById('offlineDriversCount').innerText = stats.totalDrivers - stats.activeDrivers;
@@ -1032,8 +1049,26 @@ async function loadDashboardData() {
                         <td data-label="Véhicule"><b>${escapeHtml(vInfo.model)}</b> <span style="font-size: 0.7rem; color: var(--text-dim);">(${escapeHtml(vInfo.type)})</span> <br>${maintBadge ? maintBadge : '<span style="font-size: 0.72rem; color:var(--text-dim);"><i class="fas fa-shield-alt" style="color:var(--primary);"></i> OK</span>'}</td>
                         <td data-label="Courses (Total)">${d.totalTrips}</td>
                         <td data-label="Revenus Générés"><b>${d.totalRevenue.toLocaleString()} F</b></td>
-                        <td data-label="Statut"><span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${escapeHtml(d.status)}</span></td>
-                        <td data-label="Actions"><button class="icon-btn glass" style="color:var(--text-dim)"><i class="fas fa-ban"></i></button></td>
+                        <td data-label="Statut">
+                            <span class="status-tag ${d.status === 'ACTIVE' ? 'active' : 'inactive'}">${escapeHtml(d.status)}</span>
+                            ${d.warningsCount > 0 ? `<br><small style="color:var(--gold); font-weight:700;">⚠️ ${d.warningsCount} avert.</small>` : ''}
+                        </td>
+                        <td data-label="Actions">
+                            <div class="driver-action-group">
+                                <button type="button" class="driver-action-btn" onclick="window.toggleCompanyDriverStatus('${d.id}', '${(escapeHtml(d.name) || "").replace(/'/g, "\\'")}', ${d.status === 'ACTIVE'})" style="color:${d.status === 'ACTIVE' ? '#fda4af' : '#6ee7b7'};" title="${d.status === 'ACTIVE' ? 'Suspendre ce chauffeur' : 'Réactiver ce chauffeur'}">
+                                    <i class="fas ${d.status === 'ACTIVE' ? 'fa-ban' : 'fa-check'}"></i>
+                                </button>
+                                <button type="button" class="driver-action-btn" onclick="window.warnCompanyDriver('${d.id}', '${(escapeHtml(d.name) || "").replace(/'/g, "\\'")}')" style="color:var(--gold);" title="Envoyer un avertissement disciplinaire">
+                                    <i class="fas fa-triangle-exclamation"></i>
+                                </button>
+                                <button type="button" class="driver-action-btn" onclick="window.openEditDriverVehicleModal('${d.id}')" style="color:#22d3ee;" title="Modifier véhicule / kilométrage">
+                                    <i class="fas fa-bus"></i>
+                                </button>
+                                <button type="button" class="driver-action-btn" onclick="window.detachCompanyDriver('${d.id}', '${(escapeHtml(d.name) || "").replace(/'/g, "\\'")}')" style="color:var(--red);" title="Détacher de la flotte">
+                                    <i class="fas fa-user-minus"></i>
+                                </button>
+                            </div>
+                        </td>
                     </tr>`);
 
                 if (dashboardDriverList && index < 6) {
@@ -1122,11 +1157,16 @@ async function loadDashboardData() {
                             <button class="btn-primary" onclick="window.openPassengerManager('${t.id}', '${(escapeHtml(t.departure) || "Inconnu").replace(/'/g, "\\'")} ➔ ${(escapeHtml(t.destination) || "Inconnu").replace(/'/g, "\\'")}')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px;">
                                 <i class="fas fa-users"></i> Gérer
                             </button>
-                            ${t.status === 'PENDING' ? `
-                            <button class="btn-success" onclick="window.updateTripStatus('${t.id}', 'COMPLETED')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 5px; background-color: var(--green); border: none; color: white; cursor: pointer;" title="Terminer la course">
+                            ${(t.status === 'PENDING' || t.status === 'ACCEPTED') ? `
+                            <button class="btn-primary" onclick="window.updateTripStatus('${t.id}', 'IN_PROGRESS')" style="padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; margin-left: 4px; background: rgba(34,211,238,0.18); border: 1px solid rgba(34,211,238,0.45); color: #22d3ee; cursor: pointer;" title="Démarrer le départ (En cours)">
+                                <i class="fas fa-play"></i> Démarrer
+                            </button>
+                            ` : ''}
+                            ${(t.status === 'PENDING' || t.status === 'ACCEPTED' || t.status === 'IN_PROGRESS') ? `
+                            <button class="btn-success" onclick="window.updateTripStatus('${t.id}', 'COMPLETED')" style="padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; margin-left: 4px; background-color: var(--green); border: none; color: #03100b; font-weight: 800; cursor: pointer;" title="Terminer la course">
                                 <i class="fas fa-check"></i> Terminer
                             </button>
-                            <button class="btn-danger" onclick="window.updateTripStatus('${t.id}', 'CANCELLED')" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 8px; margin-left: 5px; background-color: var(--red); border: none; color: white; cursor: pointer;" title="Annuler la course">
+                            <button class="btn-danger" onclick="window.updateTripStatus('${t.id}', 'CANCELLED')" style="padding: 6px 10px; font-size: 0.78rem; border-radius: 8px; margin-left: 4px; background-color: var(--red); border: none; color: white; cursor: pointer;" title="Annuler la course">
                                 <i class="fas fa-times"></i> Annuler
                             </button>
                             ` : ''}
@@ -1197,6 +1237,8 @@ async function loadDashboardData() {
             renderVehicleDonutChart(drivers);
             if (typeof renderDriverStatusPieChart === 'function') renderDriverStatusPieChart(drivers);
             if (typeof renderTimelinePlanning === 'function') renderTimelinePlanning(drivers);
+            if (typeof window.syncFleetSentinelSection === 'function') window.syncFleetSentinelSection(true);
+            if (typeof window.renderCompanyYobanteTable === 'function') window.renderCompanyYobanteTable();
         }, 80);
 
     } catch (error) {
@@ -1211,7 +1253,8 @@ let markers = {}; // Store markers by driverId
 let activeDriversUnsubscribe = null;
 
 window.updateTripStatus = async function(tripId, status) {
-    const actionText = status === 'COMPLETED' ? "terminer" : "annuler";
+    const labelMap = { IN_PROGRESS: "démarrer (mettre en cours)", COMPLETED: "terminer", CANCELLED: "annuler" };
+    const actionText = labelMap[status] || status.toLowerCase();
     if (!confirm(`Voulez-vous vraiment ${actionText} ce trajet ?`)) {
         return;
     }
@@ -1230,17 +1273,17 @@ window.updateTripStatus = async function(tripId, status) {
 
         if (response.ok) {
             if (typeof window.addAuditLog === 'function') {
-                const prettyStatus = status === 'COMPLETED' ? "Terminée" : "Annulée";
+                const prettyStatus = status === 'IN_PROGRESS' ? "En cours" : (status === 'COMPLETED' ? "Terminée" : "Annulée");
                 window.addAuditLog(
-                    "Statut Course", 
-                    `Le trajet régulier #${tripId.substring(0, 6)} a été marqué comme ${prettyStatus}`, 
+                    "Statut Course",
+                    `Le trajet #${tripId.substring(0, 6)} a été marqué comme ${prettyStatus}`,
                     "COURSES"
                 );
             }
-            alert(result.message || "Statut du trajet mis à jour !");
+            window.showNotificationDrawer("Statut Mis à Jour", result.message || "Statut du trajet mis à jour !", false);
             loadDashboardData(); // Refresh the table
         } else {
-            alert("Erreur: " + (result.error || "Impossible de mettre à jour le statut"));
+            window.showNotificationDrawer("Erreur Statut", result.error || "Impossible de mettre à jour le statut", true);
         }
     } catch (error) {
         alert("Erreur de connexion au serveur.");
@@ -1278,23 +1321,25 @@ function setupMapbox(drivers) {
             });
         }
 
-        // Subscribe to Firestore for real-time driver locations
-        const activeDriversRef = collection(db, "active_drivers");
-        
+        // Subscribe to Firestore for real-time driver locations (bounded & scoped to company drivers)
+        const activeDriversRef = query(collection(db, "active_drivers"), limit(150));
+        const ourDriversMap = new Map((drivers || []).map(d => [d.id, d]));
+
         if (activeDriversUnsubscribe) {
             activeDriversUnsubscribe();
         }
 
         activeDriversUnsubscribe = onSnapshot(activeDriversRef, (snapshot) => {
+            if (typeof document !== 'undefined' && document.hidden) return;
             const onlineOurDrivers = new Set();
 
-            snapshot.docs.forEach(doc => {
-                const data = doc.data();
-                const driverId = doc.id;
-                
-                // Check if this driver belongs to our company (is in our drivers array)
-                const isOurDriver = drivers.find(d => d.id === driverId);
-                
+            snapshot.docs.forEach(docSnap => {
+                const data = docSnap.data();
+                const driverId = docSnap.id;
+
+                // Strictly filter to drivers belonging to THIS company
+                const isOurDriver = ourDriversMap.get(driverId);
+
                 if (isOurDriver && data.status === 'online') {
                     onlineOurDrivers.add(driverId);
                     const lng = data.lng;
@@ -1424,7 +1469,6 @@ window.openPassengerManager = async function(tripId, route) {
         document.getElementById('detTripIdDate').innerText = `Course ID: #${trip.id.substring(0,8).toUpperCase()} • Planifié le ${new Date(trip.createdAt).toLocaleString('fr-FR')}`;
         document.getElementById('detTripPrice').innerText = `${parseFloat(trip.price || 0).toLocaleString()} F`;
         document.getElementById('detDriverName').innerText = trip.driverName || "Chauffeur non-assigné";
-        document.getElementById('PMdriverPhoneSpan'); // dummy
         document.getElementById('detDriverPhone').innerText = trip.driverPhone || "N/A";
         
         // Find vehicle in drivers cache if available
@@ -1440,7 +1484,6 @@ window.openPassengerManager = async function(tripId, route) {
         document.getElementById('detTripDate').innerText = new Date(trip.createdAt).toLocaleString('fr-FR');
     } else {
         document.getElementById('detTripRoute').innerText = route;
-        document.getElementById('PMdriverPhoneSpan'); // dummy
         document.getElementById('detTripIdDate').innerText = `Course ID: #${tripId.substring(0,8).toUpperCase()}`;
     }
 
@@ -2715,7 +2758,7 @@ function startAutoRefresh() {
         return;
     }
     
-    const intervalMs = (parseInt(window.autoRefreshSeconds) || 10) * 1000;
+    const intervalMs = (parseInt(window.autoRefreshSeconds) || 25) * 1000;
     
     refreshInterval = setInterval(async () => {
         if ((typeof document !== 'undefined' && document.hidden) || isLoadingDashboard) {
@@ -6335,3 +6378,695 @@ function initFavoritesList() {
     })
     .catch(() => {});
 })();
+
+// ============================================================================
+// TRANSEN AURORA B2B MISSION CONTROL ENGINE (11 MODULES SCOPÉS COMPAGNIE)
+// ============================================================================
+
+window.loadedCompanyBookings = [];
+
+/* ── 1. Sonde Santé API Live (#companyApiHealthPill) ────────────────────── */
+window.probeCompanyApiHealth = async function() {
+    const dot = document.getElementById('companyApiHealthDot');
+    const txt = document.getElementById('companyApiHealthText');
+    if (!dot || !txt) return;
+    const t0 = performance.now();
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/auth/health`);
+        const ms = Math.round(performance.now() - t0);
+        if (res.ok) {
+            dot.style.backgroundColor = '#10b981';
+            dot.style.boxShadow = '0 0 8px #10b981';
+            txt.innerText = `API ${ms}ms`;
+            txt.style.color = '#6ee7b7';
+        } else {
+            dot.style.backgroundColor = '#f5b83d';
+            txt.innerText = `HTTP ${res.status}`;
+            txt.style.color = '#fde68a';
+        }
+    } catch {
+        dot.style.backgroundColor = '#f43f5e';
+        dot.style.boxShadow = '0 0 8px #f43f5e';
+        txt.innerText = 'API HORS LIGNE';
+        txt.style.color = '#fda4af';
+    }
+};
+setTimeout(() => window.probeCompanyApiHealth(), 800);
+setInterval(() => {
+    if (typeof document !== 'undefined' && document.hidden) return;
+    window.probeCompanyApiHealth();
+}, 45000);
+
+/* ── 2. Copie & Rotation Sécurisée du Code Recrutement ──────────────────── */
+window.copyCompanyAccessCode = function() {
+    const code = document.getElementById('companyCodeDisplay')?.innerText?.trim();
+    if (!code || code === '--') return;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(code).catch(() => {});
+    }
+    window.showNotificationDrawer('Code Copié', `Le code de recrutement "${code}" a été copié. Partagez-le à vos chauffeurs pour qu'ils rejoignent votre flotte.`, false);
+};
+
+window.regenerateCompanyAccessCode = async function() {
+    if (!currentCompanyId) return;
+    if (!confirm("Régénérer le code secret de recrutement ? L'ancien code ne pourra plus être utilisé par de nouveaux chauffeurs.")) return;
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/access-code/regenerate?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Régénération impossible');
+        const el = document.getElementById('companyCodeDisplay');
+        if (el && data.accessCode) el.innerText = data.accessCode;
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Sécurité Flotte', `Nouveau code recrutement généré : ${data.accessCode}`, 'SÉCURITÉ');
+        }
+        window.showNotificationDrawer('Code Régénéré', `Nouveau code d'accès chauffeurs : ${data.accessCode}`, false);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de régénérer le code.', true);
+    }
+};
+
+/* ── 3. Gouvernance Chauffeurs de la Flotte (Suspendre, Avertir, Véhicule, Détacher) */
+window.toggleCompanyDriverStatus = async function(driverId, driverName, currentlyActive) {
+    const verb = currentlyActive ? 'suspendre' : 'réactiver';
+    if (!confirm(`Voulez-vous vraiment ${verb} le chauffeur ${driverName} ?`)) return;
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/drivers/${driverId}/toggle-status?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Action refusée');
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Statut Chauffeur', `${driverName} : ${data.isActive ? 'Réactivé' : 'Suspendu'}`, 'CHAUFFEURS');
+        }
+        window.showNotificationDrawer('Gouvernance Flotte', data.message || 'Statut mis à jour.', false);
+        loadDashboardData();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Mise à jour impossible.', true);
+    }
+};
+
+window.warnCompanyDriver = async function(driverId, driverName) {
+    const reason = prompt(`Motif de l'avertissement disciplinaire pour ${driverName} :`, "Retard ou manquement aux consignes de service");
+    if (reason === null) return;
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/drivers/${driverId}/warn?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ reason: reason.trim() })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Envoi impossible');
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Avertissement Chauffeur', `Avertissement #${data.warningsCount} à ${driverName} : ${reason}`, 'DISCIPLINE');
+        }
+        window.showNotificationDrawer('Avertissement Envoyé', `Notification Push envoyée à ${driverName} (Total : ${data.warningsCount}).`, false);
+        loadDashboardData();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Envoi impossible.', true);
+    }
+};
+
+window.openEditDriverVehicleModal = function(driverId) {
+    const drv = (window.loadedDriversCache || []).find(d => d.id === driverId);
+    if (!drv) return;
+    const modal = document.getElementById('editVehicleModal');
+    if (!modal) return;
+    document.getElementById('editVehicleDriverId').value = drv.id;
+    document.getElementById('editVehicleDriverName').innerText = `${drv.name} (${drv.phone})`;
+    document.getElementById('editVehicleModelInput').value = drv.vehicleModel || '';
+    const typeSelect = document.getElementById('editVehicleTypeInput');
+    if (typeSelect && drv.vehicleType) typeSelect.value = drv.vehicleType;
+    document.getElementById('editVehicleMileageInput').value = drv.mileage || 0;
+    modal.style.display = 'flex';
+};
+
+window.saveDriverVehicleUpdate = async function() {
+    const driverId = document.getElementById('editVehicleDriverId')?.value;
+    if (!driverId || !currentCompanyId) return;
+    const payload = {
+        vehicleModel: document.getElementById('editVehicleModelInput')?.value?.trim() || '',
+        vehicleType: document.getElementById('editVehicleTypeInput')?.value || 'Bus Interurbain',
+        mileage: Number(document.getElementById('editVehicleMileageInput')?.value || 0)
+    };
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/drivers/${driverId}/vehicle?companyId=${currentCompanyId}`, {
+            method: 'PUT',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Mise à jour impossible');
+        document.getElementById('editVehicleModal').style.display = 'none';
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Mise à jour Véhicule', `Véhicule mis à jour : ${payload.vehicleModel} (${payload.mileage} km)`, 'FLOTTE');
+        }
+        window.showNotificationDrawer('Véhicule Enregistré', data.message || 'Informations véhicule mises à jour.', false);
+        loadDashboardData();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Échec de mise à jour.', true);
+    }
+};
+
+window.detachCompanyDriver = async function(driverId, driverName) {
+    if (!confirm(`Retirer définitivement ${driverName} de votre compagnie ? Il ne pourra plus recevoir vos trajets privés.`)) return;
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/drivers/${driverId}/detach?companyId=${currentCompanyId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${currentToken}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Détachement impossible');
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Retrait Chauffeur', `${driverName} détaché de la flotte compagnie`, 'CHAUFFEURS');
+        }
+        window.showNotificationDrawer('Chauffeur Détaché', data.message || 'Chauffeur retiré de votre flotte.', false);
+        loadDashboardData();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Action impossible.', true);
+    }
+};
+
+/* ── 4. Sentinelle Flotte & Alertes Opérationnelles (#section-fleet-sentinel) */
+window.syncFleetSentinelSection = async function(silent = false) {
+    const alerts = [];
+    const drivers = window.loadedDriversCache || [];
+    const trips = window.loadedTrips || [];
+    const walletBal = window.loadedWalletData?.balance ?? null;
+    const stats = window.loadedStats || {};
+    const kyc = window.loadedKycStatus || {};
+
+    // Check 1: KYC Status
+    if (kyc.status && kyc.status !== 'APPROVED') {
+        alerts.push({
+            severity: kyc.status === 'REJECTED' ? 'critical' : 'warning',
+            title: kyc.status === 'REJECTED' ? 'Dossier KYC Rejeté' : 'Validation KYC en attente',
+            desc: kyc.status === 'REJECTED'
+                ? `Votre dossier a été refusé (${kyc.rejectionReason || 'pièces à corriger'}). Vos départs publics peuvent être limités.`
+                : 'Votre dossier réglementaire (RCCM / NINEA / Autorisation) est en cours de vérification.',
+            actionLabel: 'Ouvrir Dossier KYC',
+            actionSection: 'kyc'
+        });
+    }
+
+    // Check 2: Low Wallet Balance
+    const threshold = parseInt(localStorage.getItem('wallet_critical_threshold') || '25000', 10);
+    if (walletBal !== null && walletBal < threshold) {
+        alerts.push({
+            severity: walletBal < 5000 ? 'critical' : 'warning',
+            title: `Solde TransPay bas (${walletBal.toLocaleString('fr-FR')} FCFA)`,
+            desc: `En dessous de votre seuil d'alerte (${threshold.toLocaleString('fr-FR')} FCFA). Rechargez pour garantir le prélèvement des commissions 2 % et le remboursement des notes de frais.`,
+            actionLabel: 'Recharger SenePay',
+            actionSection: 'wallet'
+        });
+    }
+
+    // Check 3: Unassigned PENDING trips
+    const unassignedTrips = trips.filter(t => t.status === 'PENDING' && (!t.driverName || t.driverName === 'Non assigné'));
+    if (unassignedTrips.length > 0) {
+        alerts.push({
+            severity: 'warning',
+            title: `${unassignedTrips.length} course(s) en attente sans chauffeur assigné`,
+            desc: 'Des départs ou commandes clients attendent l’affectation d’un chauffeur de votre flotte.',
+            actionLabel: 'Dispatcher les Courses',
+            actionSection: 'trips'
+        });
+    }
+
+    // Check 4: Suspended or Warned Drivers
+    const suspendedDrivers = drivers.filter(d => d.status !== 'ACTIVE');
+    const warnedDrivers = drivers.filter(d => (d.warningsCount || 0) >= 2);
+    if (warnedDrivers.length > 0) {
+        alerts.push({
+            severity: 'warning',
+            title: `${warnedDrivers.length} chauffeur(s) avec plusieurs avertissements`,
+            desc: `Vérifiez le dossier disciplinaire de : ${warnedDrivers.slice(0, 3).map(d => d.name).join(', ')}.`,
+            actionLabel: 'Gérer mes Chauffeurs',
+            actionSection: 'drivers'
+        });
+    }
+    if (drivers.length === 0) {
+        alerts.push({
+            severity: 'warning',
+            title: 'Aucun chauffeur rattaché à votre flotte',
+            desc: 'Partagez votre Code de Recrutement (en haut à droite) dans l’application mobile TranSen Chauffeur pour connecter vos véhicules.',
+            actionLabel: 'Copier Code Recrutement',
+            customAction: 'copyCode'
+        });
+    }
+
+    // Check 5: Pending Expense Claims
+    let pendingExpensesCount = 0;
+    try {
+        if (currentCompanyId && !silent) {
+            const expList = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/expenses?companyId=${currentCompanyId}`);
+            if (Array.isArray(expList)) {
+                window.loadedExpensesCache = expList;
+            }
+        }
+        pendingExpensesCount = (window.loadedExpensesCache || []).filter(e => e.status === 'ATTENTE').length;
+    } catch {
+        // Non-blocking
+    }
+    if (pendingExpensesCount > 0) {
+        alerts.push({
+            severity: 'warning',
+            title: `${pendingExpensesCount} note(s) de frais chauffeur(s) en attente`,
+            desc: 'Des justificatifs carburant/péage/entretien soumis par vos chauffeurs attendent votre décision.',
+            actionLabel: 'Traiter les Notes de Frais',
+            actionSection: 'wallet'
+        });
+    }
+
+    // Update KPIs & Header Badges
+    const alertCntEl = document.getElementById('sentinelFleetAlertCount');
+    const unassEl = document.getElementById('sentinelUnassignedTripsCount');
+    const expEl = document.getElementById('sentinelPendingExpensesCount');
+    const occEl = document.getElementById('sentinelBusOccupancyRate');
+    const navBadge = document.getElementById('fleetSentinelNavBadge');
+    const bellBadge = document.getElementById('headerAlertBellCount');
+    const healthBadge = document.getElementById('sentinelFleetHealthBadge');
+
+    if (alertCntEl) alertCntEl.innerText = alerts.length;
+    if (unassEl) unassEl.innerText = unassignedTrips.length;
+    if (expEl) expEl.innerText = pendingExpensesCount;
+    if (occEl) occEl.innerText = `${stats.occupancyRate ?? 0}%`;
+
+    if (navBadge) {
+        navBadge.innerText = alerts.length;
+        navBadge.style.display = alerts.length > 0 ? 'inline-flex' : 'none';
+    }
+    if (bellBadge) {
+        bellBadge.innerText = alerts.length;
+        bellBadge.style.display = alerts.length > 0 ? 'flex' : 'none';
+    }
+    if (healthBadge) {
+        const hasCrit = alerts.some(a => a.severity === 'critical');
+        healthBadge.innerText = hasCrit ? 'ATTENTION CRITIQUE' : (alerts.length > 0 ? `${alerts.length} POINT(S) À VÉRIFIER` : 'FLOTTE 100 % OPÉRATIONNELLE');
+        healthBadge.className = `status-tag ${hasCrit ? 'cancelled' : (alerts.length > 0 ? 'pending' : 'active')}`;
+    }
+
+    const container = document.getElementById('fleetSentinelAlertsContainer');
+    if (!container) return;
+
+    if (alerts.length === 0) {
+        container.innerHTML = `
+            <div class="aurora-sentinel-item">
+                <div>
+                    <strong style="color:#6ee7b7;"><i class="fas fa-circle-check"></i> Aucune anomalie détectée sur votre flotte</strong>
+                    <p style="margin:4px 0 0; font-size:0.84rem; color:var(--text-dim);">Trésorerie saine, dossier conforme, aucune course orpheline et ${suspendedDrivers.length} chauffeur(s) suspendu(s).</p>
+                </div>
+                <span class="status-tag active">NOMINAL</span>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = alerts.map(a => `
+        <div class="aurora-sentinel-item severity-${a.severity}">
+            <div style="flex:1; min-width:240px;">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                    <span class="status-tag ${a.severity === 'critical' ? 'cancelled' : 'pending'}">${a.severity === 'critical' ? 'CRITIQUE' : 'ALERTE'}</span>
+                    <strong style="font-size:0.94rem; color:var(--text-main);">${escapeHtml(a.title)}</strong>
+                </div>
+                <p style="margin:0; font-size:0.84rem; color:var(--text-dim);">${escapeHtml(a.desc)}</p>
+            </div>
+            <button type="button" onclick="${a.customAction === 'copyCode' ? 'window.copyCompanyAccessCode()' : `window.navigateToCompanySection('${a.actionSection}')`}" class="btn-aurora-primary" style="padding:9px 15px; font-size:0.8rem;">
+                ${escapeHtml(a.actionLabel)} <i class="fas fa-arrow-right"></i>
+            </button>
+        </div>
+    `).join('');
+};
+
+/* ── 5. Billetterie QR Code & Contrôle Colis Yobanté (#section-boarding) ── */
+window.syncCompanyBoardingSection = async function() {
+    if (!currentCompanyId) return;
+    window.renderCompanyYobanteTable();
+    const tbody = document.getElementById('b2bBookingsTableBody');
+    try {
+        const list = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/bookings?companyId=${currentCompanyId}`);
+        window.loadedCompanyBookings = Array.isArray(list) ? list : [];
+        window.renderCompanyBookingsTable();
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Impossible de charger les billets (${escapeHtml(e.message || 'API indisponible')}).</td></tr>`;
+    }
+};
+
+window.renderCompanyBookingsTable = function() {
+    const tbody = document.getElementById('b2bBookingsTableBody');
+    const badge = document.getElementById('b2bBookingsCountBadge');
+    const q = (document.getElementById('b2bBookingsSearchInput')?.value || '').toLowerCase().trim();
+    const list = window.loadedCompanyBookings || [];
+    if (badge) badge.innerText = list.length;
+    if (!tbody) return;
+
+    const filtered = list.filter(b => {
+        if (!q) return true;
+        return `${b.boardingCode} ${b.passengerName} ${b.passengerPhone} ${b.departure} ${b.destination} ${b.status}`.toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="loading-cell">Aucun billet trouvé pour votre compagnie.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.slice(0, 120).map(b => {
+        const dt = b.scheduledTime ? new Date(b.scheduledTime).toLocaleString('fr-FR') : (b.createdAt ? new Date(b.createdAt).toLocaleString('fr-FR') : '--');
+        const isBoardable = b.status !== 'BOARDED' && b.status !== 'CANCELLED';
+        return `
+            <tr>
+                <td><code style="color:var(--gold); font-weight:800; font-family:'JetBrains Mono',monospace;">${escapeHtml(b.boardingCode)}</code></td>
+                <td><b>${escapeHtml(b.passengerName || 'Passager')}</b><br><small style="color:var(--text-dim);">${escapeHtml(b.passengerPhone || '')}</small></td>
+                <td><b>${escapeHtml(b.departure || '--')} ➔ ${escapeHtml(b.destination || '--')}</b><br><small style="color:var(--text-dim);">${escapeHtml(dt)}</small></td>
+                <td>Siège(s): <b>${escapeHtml(b.seatNumbers || b.seatsBooked)}</b><br><small style="color:#6ee7b7; font-weight:700;">${Number(b.totalPrice || 0).toLocaleString('fr-FR')} F</small></td>
+                <td><span class="status-tag ${b.paymentStatus === 'PAID_IN_ADVANCE' ? 'active' : 'pending'}">${escapeHtml(b.paymentStatus)}</span></td>
+                <td><span class="status-tag ${b.status === 'BOARDED' ? 'active' : (b.status === 'CANCELLED' ? 'cancelled' : 'pending')}">${escapeHtml(b.status)}</span></td>
+                <td>
+                    ${isBoardable ? `<button type="button" onclick="window.scanCompanyQrBoarding('${escapeHtml(b.boardingCode)}')" class="btn-aurora-primary" style="padding:6px 11px; font-size:0.75rem;"><i class="fas fa-check-double"></i> Embarquer</button>` : '<span style="color:var(--text-dim); font-size:0.78rem;">Traité</span>'}
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.scanCompanyQrBoarding = async function(explicitCode) {
+    const input = document.getElementById('b2bQrCodeInput');
+    const code = (explicitCode || input?.value || '').trim().toUpperCase();
+    const resBox = document.getElementById('b2bQrScanResult');
+    if (!code) {
+        window.showNotificationDrawer('Code Requis', 'Veuillez saisir ou scanner un code QR (ex: TX-8923A).', true);
+        return;
+    }
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/bookings/${encodeURIComponent(code)}/scan?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || data.message || 'Validation impossible');
+
+        if (input && !explicitCode) input.value = '';
+        if (resBox) {
+            resBox.style.display = 'block';
+            resBox.style.background = 'rgba(16,185,129,0.16)';
+            resBox.style.border = '1px solid rgba(52,211,153,0.45)';
+            resBox.style.color = '#6ee7b7';
+            resBox.innerHTML = `<i class="fas fa-circle-check"></i> <b>EMBARQUEMENT VALIDÉ (${escapeHtml(data.boardingCode)})</b> — Passager : <b>${escapeHtml(data.passengerName)}</b> · Siège(s) : <b>${escapeHtml(data.seatNumbers)}</b> · ${escapeHtml(data.route)}`;
+        }
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Scan QR Embarquement', `Billet ${code} embarqué (${data.passengerName})`, 'BILLETTERIE');
+        }
+        window.showNotificationDrawer('Billet Validé', `Embarquement confirmé pour ${data.passengerName} (${code}).`, false);
+        window.syncCompanyBoardingSection();
+    } catch (e) {
+        if (resBox) {
+            resBox.style.display = 'block';
+            resBox.style.background = 'rgba(244,63,94,0.16)';
+            resBox.style.border = '1px solid rgba(244,63,94,0.45)';
+            resBox.style.color = '#fda4af';
+            resBox.innerHTML = `<i class="fas fa-triangle-exclamation"></i> <b>REFUSÉ :</b> ${escapeHtml(e.message || 'Code invalide')}`;
+        }
+        window.showNotificationDrawer('Scan Refusé', e.message || 'Billet invalide.', true);
+    }
+};
+
+window.renderCompanyYobanteTable = function() {
+    const tbody = document.getElementById('b2bYobanteTableBody');
+    const badge = document.getElementById('b2bYobanteCountBadge');
+    const parcels = (window.loadedTrips || []).filter(t => t.category === 'YOBANTE' || t.senderPhone || t.receiverPhone || t.baggageDescription);
+    if (badge) badge.innerText = parcels.length;
+    if (!tbody) return;
+    if (parcels.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Aucun colis Yobanté actif ou historique pour votre flotte.</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = parcels.map(p => `
+        <tr>
+            <td><code style="color:#22d3ee;">#${escapeHtml(p.id.substring(0, 6))}</code><br><small style="color:var(--text-dim);">${p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '--'}</small></td>
+            <td><b>${escapeHtml(p.departure || '--')} ➔ ${escapeHtml(p.destination || '--')}</b></td>
+            <td>Exp: <b>${escapeHtml(p.senderPhone || '--')}</b><br>Dest: <b>${escapeHtml(p.receiverPhone || '--')}</b></td>
+            <td>${escapeHtml(p.baggageDescription || 'Colis standard')}</td>
+            <td>${escapeHtml(p.driverName || 'Non assigné')}</td>
+            <td><b>${Number(p.price || 0).toLocaleString('fr-FR')} F</b><br><span class="status-tag ${escapeHtml((p.status || 'pending').toLowerCase())}">${escapeHtml(p.status)}</span></td>
+        </tr>
+    `).join('');
+};
+
+/* ── 6. Avis Clients Flotte & Guichet Support Prioritaire (#section-reviews-support) */
+window.syncCompanyReviewsAndSupport = async function() {
+    const revBox = document.getElementById('b2bReviewsListContainer');
+    const avgBadge = document.getElementById('b2bAvgRatingBadge');
+    const tickBox = document.getElementById('b2bMyTicketsList');
+
+    // A. Avis clients filtrés strictement sur les chauffeurs de cette compagnie
+    try {
+        const driverIds = new Set((window.loadedDriversCache || []).map(d => d.id));
+        const driverNames = new Map((window.loadedDriversCache || []).map(d => [d.id, d.name]));
+        const snap = await getDocs(query(collection(db, "reviews"), limit(120)));
+        const myReviews = [];
+        snap.forEach(d => {
+            const r = d.data();
+            if (driverIds.has(r.driverId) || r.companyId === currentCompanyId) {
+                myReviews.push({ id: d.id, ...r });
+            }
+        });
+
+        if (myReviews.length === 0) {
+            if (avgBadge) avgBadge.innerText = '5.0 / 5 ★';
+            if (revBox) revBox.innerHTML = `<p style="color:var(--text-dim); font-size:0.85rem;">Aucun avis passager enregistré sur vos chauffeurs pour le moment.</p>`;
+        } else {
+            const avg = (myReviews.reduce((acc, r) => acc + Number(r.rating || 5), 0) / myReviews.length).toFixed(1);
+            if (avgBadge) avgBadge.innerText = `${avg} / 5 ★ (${myReviews.length})`;
+            if (revBox) {
+                revBox.innerHTML = myReviews.slice(0, 40).map(r => `
+                    <div style="padding:12px 14px; border-radius:12px; background:rgba(3,16,11,0.75); border:1px solid var(--glass-border);">
+                        <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                            <strong style="color:#6ee7b7; font-size:0.86rem;">${escapeHtml(driverNames.get(r.driverId) || r.driverName || 'Chauffeur Flotte')}</strong>
+                            <span style="color:var(--gold); font-weight:800;">${'★'.repeat(Math.max(1, Math.min(5, Math.round(r.rating || 5))))} (${r.rating || 5}/5)</span>
+                        </div>
+                        <p style="margin:0; font-size:0.82rem; color:var(--text-main);">${escapeHtml(r.comment || r.text || 'Service évalué sans commentaire.')}</p>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch {
+        if (revBox) revBox.innerHTML = `<p style="color:var(--text-dim); font-size:0.84rem;">Évaluations clients en attente de synchronisation.</p>`;
+    }
+
+    // B. Tickets support de cette compagnie
+    try {
+        const snap = await getDocs(query(collection(db, "support_tickets"), where("companyId", "==", currentCompanyId), limit(30)));
+        const tickets = [];
+        snap.forEach(d => tickets.push({ id: d.id, ...d.data() }));
+        tickets.sort((a, b) => String(b.createdAtIso || '').localeCompare(String(a.createdAtIso || '')));
+
+        if (tickBox) {
+            if (tickets.length === 0) {
+                tickBox.innerHTML = `<p style="color:var(--text-dim); font-size:0.82rem;">Aucun ticket support envoyé par votre compagnie.</p>`;
+            } else {
+                tickBox.innerHTML = tickets.map(t => `
+                    <div style="padding:10px 12px; border-radius:10px; background:rgba(3,16,11,0.75); border:1px solid var(--glass-border); display:flex; justify-content:space-between; align-items:center; gap:10px;">
+                        <div>
+                            <strong style="font-size:0.84rem; color:var(--text-main);">${escapeHtml(t.subject || t.category || 'Demande')}</strong>
+                            <p style="margin:2px 0 0; font-size:0.78rem; color:var(--text-dim);">${escapeHtml(t.message || '')}</p>
+                        </div>
+                        <span class="status-tag ${t.status === 'RESOLVED' ? 'active' : 'pending'}">${escapeHtml(t.status || 'OPEN')}</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch {
+        if (tickBox) tickBox.innerHTML = `<p style="color:var(--text-dim); font-size:0.82rem;">Historique tickets en cours d'initialisation.</p>`;
+    }
+};
+
+window.submitCompanySupportTicket = async function(e) {
+    if (e) e.preventDefault();
+    if (!currentCompanyId) return;
+    const category = document.getElementById('b2bTicketCategory')?.value || 'TECHNIQUE_CONSOLE';
+    const subject = document.getElementById('b2bTicketSubject')?.value?.trim();
+    const message = document.getElementById('b2bTicketMessage')?.value?.trim();
+    if (!subject || !message) return;
+
+    const compName = document.getElementById('companyName')?.innerText || 'Compagnie B2B';
+    const compPhone = document.getElementById('companyPhone')?.innerText || '';
+    try {
+        await addDoc(collection(db, "support_tickets"), {
+            companyId: currentCompanyId,
+            userName: `${compName} (B2B)`,
+            userPhone: compPhone,
+            role: 'COMPANY_MANAGER',
+            category,
+            subject,
+            message,
+            status: 'OPEN',
+            createdAtIso: new Date().toISOString(),
+            createdAt: serverTimestamp()
+        });
+        document.getElementById('b2bTicketSubject').value = '';
+        document.getElementById('b2bTicketMessage').value = '';
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Ticket Support', `Ticket ouvert : ${subject}`, 'SUPPORT');
+        }
+        window.showNotificationDrawer('Ticket Transmis', 'Votre demande prioritaire a été transmise au Centre de Commandement TranSen.', false);
+        window.syncCompanyReviewsAndSupport();
+    } catch (err) {
+        window.showNotificationDrawer('Erreur', err.message || "Impossible d'envoyer le ticket.", true);
+    }
+};
+
+/* ── 7. Journal d'Audit & Export CSV Compagnie (#section-activity-logs) ─── */
+window.syncCompanyActivityLogs = function() {
+    window.renderCompanyActivityLogsTable();
+};
+
+window.renderCompanyActivityLogsTable = function() {
+    const tbody = document.getElementById('b2bActivityLogsTableBody');
+    if (!tbody) return;
+    const q = (document.getElementById('b2bAuditSearchInput')?.value || '').toLowerCase().trim();
+    let logs = [];
+    try {
+        const raw = localStorage.getItem('transen_company_audit_logs') || localStorage.getItem('auditLogs');
+        if (raw) logs = JSON.parse(raw);
+    } catch {}
+    if (!Array.isArray(logs)) logs = [];
+
+    const filtered = logs.filter(l => {
+        if (!q) return true;
+        return `${l.date || l.timestamp || ''} ${l.category || ''} ${l.action || l.title || ''} ${l.details || l.description || ''}`.toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune action journalisée dans cette session.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.slice(0, 150).map(l => `
+        <tr>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-dim);">${escapeHtml(l.date || l.timestamp || '--')}</td>
+            <td><span class="status-tag active">${escapeHtml(l.category || 'OPÉRATION')}</span></td>
+            <td><b>${escapeHtml(l.action || l.title || '--')}</b></td>
+            <td style="color:var(--text-dim);">${escapeHtml(l.details || l.description || '--')}</td>
+        </tr>
+    `).join('');
+};
+
+window.exportCompanyAuditCsv = function() {
+    let logs = [];
+    try {
+        const raw = localStorage.getItem('transen_company_audit_logs') || localStorage.getItem('auditLogs');
+        if (raw) logs = JSON.parse(raw);
+    } catch {}
+    if (!Array.isArray(logs) || logs.length === 0) {
+        window.showNotificationDrawer('Export CSV', "Aucune entrée d'audit à exporter.", true);
+        return;
+    }
+    const header = "Date,Categorie,Action,Details\n";
+    const rows = logs.map(l => [
+        l.date || l.timestamp || '',
+        l.category || '',
+        l.action || l.title || '',
+        l.details || l.description || ''
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `audit-compagnie-transen-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.showNotificationDrawer('Export Réussi', `${logs.length} lignes d'audit exportées en CSV.`, false);
+};
+
+/* ── 8. Palette de Commandes B2B (Ctrl+K) ───────────────────────────────── */
+const B2B_COMMAND_MODULES = [
+    { section: 'dashboard', icon: 'fa-th-large', title: "Vue d'ensemble & Radar GPS Flotte" },
+    { section: 'fleet-sentinel', icon: 'fa-radar', title: "Sentinelle Flotte & Alertes Opérationnelles" },
+    { section: 'trips', icon: 'fa-route', title: "Courses & Dispatching Flotte" },
+    { section: 'boarding', icon: 'fa-qrcode', title: "Scanner QR d'Embarquement, Billets & Colis Yobanté" },
+    { section: 'schedule', icon: 'fa-calendar-days', title: "Planification & Calendrier des Départs" },
+    { section: 'drivers', icon: 'fa-users-viewfinder', title: "Mes Chauffeurs, Véhicules & Discipline" },
+    { section: 'wallet', icon: 'fa-wallet', title: "Trésorerie TransPay, SenePay & Notes de Frais" },
+    { section: 'reviews-support', icon: 'fa-star-half-stroke', title: "Avis Clients & Ticket Support TranSen" },
+    { section: 'activity-logs', icon: 'fa-clipboard-list', title: "Journal d'Audit & Export CSV" },
+    { section: 'kyc', icon: 'fa-id-card-clip', title: "Dossier KYC & Agrément Transport" },
+    { section: 'profile', icon: 'fa-user-gear', title: "Paramètres Compagnie & Sécurité" }
+];
+
+window.openB2bCommandPalette = function() {
+    const modal = document.getElementById('b2bCmdModal');
+    const input = document.getElementById('b2bCmdInput');
+    if (!modal) return;
+    modal.style.display = 'flex';
+    if (input) {
+        input.value = '';
+        setTimeout(() => input.focus(), 40);
+    }
+    window.renderB2bCommandPalette('');
+};
+
+window.renderB2bCommandPalette = function(q = '') {
+    const box = document.getElementById('b2bCmdResults');
+    if (!box) return;
+    const term = String(q || '').toLowerCase().trim();
+    const items = [];
+
+    B2B_COMMAND_MODULES.forEach(m => {
+        if (!term || m.title.toLowerCase().includes(term) || m.section.includes(term)) {
+            items.push({
+                icon: m.icon,
+                title: m.title,
+                tag: 'MODULE',
+                onClick: `document.getElementById('b2bCmdModal').style.display='none'; window.navigateToCompanySection('${m.section}')`
+            });
+        }
+    });
+
+    if (term.length >= 2) {
+        (window.loadedDriversCache || []).forEach(d => {
+            if (`${d.name} ${d.phone} ${d.vehicleModel || ''}`.toLowerCase().includes(term)) {
+                items.push({
+                    icon: 'fa-user-tie',
+                    title: `${d.name} (${d.phone}) — ${d.vehicleModel || 'Flotte'}`,
+                    tag: 'CHAUFFEUR',
+                    onClick: `document.getElementById('b2bCmdModal').style.display='none'; window.navigateToCompanySection('drivers')`
+                });
+            }
+        });
+        (window.loadedCompanyBookings || []).forEach(b => {
+            if (`${b.boardingCode} ${b.passengerName} ${b.passengerPhone}`.toLowerCase().includes(term)) {
+                items.push({
+                    icon: 'fa-ticket',
+                    title: `Billet ${b.boardingCode} — ${b.passengerName} (${b.departure} ➔ ${b.destination})`,
+                    tag: 'BILLET QR',
+                    onClick: `document.getElementById('b2bCmdModal').style.display='none'; window.navigateToCompanySection('boarding')`
+                });
+            }
+        });
+    }
+
+    if (items.length === 0) {
+        box.innerHTML = `<div style="padding:14px; text-align:center; color:var(--text-dim); font-size:0.86rem;">Aucun résultat pour "${escapeHtml(q)}".</div>`;
+        return;
+    }
+
+    box.innerHTML = items.slice(0, 14).map(it => `
+        <div class="b2b-cmd-item" onclick="${it.onClick}">
+            <div style="display:flex; align-items:center; gap:11px;">
+                <i class="fas ${it.icon}" style="color:var(--primary); width:18px; text-align:center;"></i>
+                <span style="font-size:0.88rem; font-weight:600;">${escapeHtml(it.title)}</span>
+            </div>
+            <span class="aurora-pill-tag" style="font-size:0.62rem;">${escapeHtml(it.tag)}</span>
+        </div>
+    `).join('');
+};
+
+document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        window.openB2bCommandPalette();
+    } else if (e.key === 'Escape') {
+        const cmd = document.getElementById('b2bCmdModal');
+        if (cmd && cmd.style.display === 'flex') cmd.style.display = 'none';
+    }
+});

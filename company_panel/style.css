@@ -2883,3 +2883,240 @@ button#registerBtn:hover {
         inset 0 1px 0 rgba(255, 255, 255, 0.8),
         0 20px 42px -8px rgba(245, 184, 61, 0.65) !important;
 }
+
+/* ============================================================================
+   TRANSEN AURORA B2B MISSION CONTROL — COCKPIT COMPAGNIE UNIFIÉ
+   ============================================================================ */
+
+.nav-group-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: rgba(110, 231, 183, 0.58);
+    padding: 12px 14px 4px;
+    user-select: none;
+}
+
+.nav-pill-badge {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.7rem;
+    font-weight: 800;
+    background: rgba(244, 63, 94, 0.22);
+    color: #fda4af;
+    border: 1px solid rgba(244, 63, 94, 0.45);
+}
+
+.aurora-hero-strip {
+    background: linear-gradient(135deg, rgba(6, 78, 59, 0.48) 0%, rgba(7, 26, 18, 0.92) 55%, rgba(14, 116, 144, 0.22) 100%) !important;
+    border: 1px solid rgba(52, 211, 153, 0.32) !important;
+    box-shadow: 0 22px 50px -18px rgba(16, 185, 129, 0.28) !important;
+}
+
+.aurora-pill-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 11px;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    background: rgba(16, 185, 129, 0.16);
+    color: #6ee7b7;
+    border: 1px solid rgba(52, 211, 153, 0.38);
+}
+
+.btn-aurora-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    font-size: 0.84rem;
+    background: linear-gradient(135deg, #10b981 0%, #34d399 55%, #22d3ee 100%);
+    color: #03100b;
+    box-shadow: 0 10px 26px -8px rgba(16, 185, 129, 0.6);
+    transition: var(--transition);
+}
+
+.btn-aurora-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 14px 32px -6px rgba(34, 211, 238, 0.55);
+}
+
+.btn-aurora-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 11px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(245, 184, 61, 0.45);
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+    font-weight: 700;
+    font-size: 0.84rem;
+    background: rgba(245, 184, 61, 0.12);
+    color: #fde68a;
+    transition: var(--transition);
+}
+
+.btn-aurora-secondary:hover {
+    background: rgba(245, 184, 61, 0.22);
+    transform: translateY(-1px);
+}
+
+/* Aurora Notification Drawer (fixes silent #notificationDrawer bug) */
+.aurora-notif-drawer {
+    position: fixed;
+    top: 22px;
+    right: 22px;
+    z-index: 99998;
+    max-width: 440px;
+    width: calc(100% - 36px);
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-18px) scale(0.97);
+    transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.aurora-notif-drawer.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0) scale(1);
+}
+
+.aurora-notif-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: 16px;
+    background: rgba(4, 20, 14, 0.96);
+    border: 1px solid rgba(52, 211, 153, 0.45);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.78), 0 0 28px rgba(16, 185, 129, 0.22);
+    backdrop-filter: blur(18px);
+}
+
+.aurora-sentinel-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 16px 18px;
+    border-radius: 14px;
+    background: rgba(3, 16, 11, 0.78);
+    border: 1px solid rgba(52, 211, 153, 0.22);
+    transition: var(--transition);
+}
+
+.aurora-sentinel-item.severity-critical {
+    border-color: rgba(244, 63, 94, 0.55);
+    background: rgba(136, 19, 55, 0.18);
+}
+
+.aurora-sentinel-item.severity-warning {
+    border-color: rgba(245, 184, 61, 0.5);
+    background: rgba(180, 83, 9, 0.14);
+}
+
+.b2b-cmd-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: 11px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    color: var(--text-main);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.b2b-cmd-item:hover {
+    background: rgba(16, 185, 129, 0.15);
+    border-color: rgba(52, 211, 153, 0.45);
+    transform: translateX(3px);
+}
+
+.driver-action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+}
+
+.driver-action-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(255, 255, 255, 0.04);
+    color: var(--text-main);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.78rem;
+    transition: var(--transition);
+}
+
+.driver-action-btn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(52, 211, 153, 0.55);
+}
+
+/* Harmonisation totale Aurora Dark-Mode contre les anciens styles inline clairs */
+body.dark-mode .admin-section [style*="background: white"],
+body.dark-mode .admin-section [style*="background:#fff"],
+body.dark-mode .admin-section [style*="background: #fff"],
+body.dark-mode .admin-section [style*="background: #f8fafc"],
+body.dark-mode .admin-section [style*="background:#f8fafc"],
+body.dark-mode .admin-section [style*="background: #f1f5f9"],
+body.dark-mode .admin-section [style*="background:#f1f5f9"],
+body.dark-mode .modal-overlay [style*="background: white"],
+body.dark-mode .modal-overlay [style*="background: #ffffff"] {
+    background: rgba(7, 26, 18, 0.92) !important;
+    color: var(--text-main) !important;
+    border-color: var(--glass-border) !important;
+}
+
+body.dark-mode .admin-section [style*="color: #0f172a"],
+body.dark-mode .admin-section [style*="color: #1e293b"],
+body.dark-mode .admin-section [style*="color: #334155"],
+body.dark-mode .admin-section [style*="color: #333"],
+body.dark-mode .modal-overlay [style*="color: #0f172a"],
+body.dark-mode .modal-overlay [style*="color: #1e293b"] {
+    color: var(--text-main) !important;
+}
+
+body.dark-mode .fc {
+    color: var(--text-main);
+}
+
+body.dark-mode .fc-theme-standard td,
+body.dark-mode .fc-theme-standard th,
+body.dark-mode .fc-theme-standard .fc-scrollgrid {
+    border-color: rgba(52, 211, 153, 0.16) !important;
+}
+
+body.dark-mode .fc .fc-col-header-cell {
+    background: rgba(16, 185, 129, 0.12);
+}
+
+body.dark-mode .fc .fc-daygrid-day.fc-day-today {
+    background: rgba(16, 185, 129, 0.14) !important;
+}

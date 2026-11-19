@@ -231,11 +231,22 @@
                 <span>TRAN<span style="color: var(--primary);">SEN</span> B2B</span>
             </div>
             <nav id="mainNav">
+                <div class="nav-group-label">Pilotage Flotte</div>
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Vue d'ensemble</a>
-                <a href="#" data-section="wallet"><i class="fas fa-wallet"></i> Mon Portefeuille</a>
-                <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
-                <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses de la Flotte</a>
+                <a href="#" data-section="fleet-sentinel"><i class="fas fa-radar"></i> Sentinelle Flotte <span id="fleetSentinelNavBadge" class="nav-pill-badge" style="display:none;">0</span></a>
+
+                <div class="nav-group-label">Opérations & Circuits</div>
+                <a href="#" data-section="trips"><i class="fas fa-route"></i> Courses & Dispatch</a>
+                <a href="#" data-section="boarding"><i class="fas fa-qrcode"></i> Billetterie QR & Colis</a>
                 <a href="#" data-section="schedule"><i class="fas fa-calendar-days"></i> Planification</a>
+                <a href="#" data-section="drivers"><i class="fas fa-users-viewfinder"></i> Mes Chauffeurs</a>
+
+                <div class="nav-group-label">Finances & Qualité</div>
+                <a href="#" data-section="wallet"><i class="fas fa-wallet"></i> Trésorerie & Frais</a>
+                <a href="#" data-section="reviews-support"><i class="fas fa-star-half-stroke"></i> Avis & Support</a>
+                <a href="#" data-section="activity-logs"><i class="fas fa-clipboard-list"></i> Journal d'Audit</a>
+
+                <div class="nav-group-label">Conformité</div>
                 <a href="#" data-section="kyc"><i class="fas fa-id-card-clip"></i> Dossier KYC</a>
                 <a href="#" data-section="profile"><i class="fas fa-user-gear"></i> Mon Profil</a>
             </nav>
@@ -272,30 +283,39 @@
                 </button>
                 <div class="header-left">
                     <h1 id="sectionTitle">Vue d'ensemble</h1>
-                    <div class="header-search">
-                        <i class="fas fa-search" style="color: var(--text-dim);"></i>
-                        <input type="text" placeholder="Rechercher chauffeur, course...">
+                    <div class="header-search" onclick="window.openB2bCommandPalette && window.openB2bCommandPalette()" style="cursor:pointer;" title="Ouvrir la Palette de Commandes (Ctrl+K)">
+                        <i class="fas fa-search" style="color: var(--primary);"></i>
+                        <input type="text" id="headerGlobalSearchInput" placeholder="Rechercher chauffeur, course, billet QR... (Ctrl+K)" readonly style="cursor:pointer;">
+                        <kbd style="font-family:'JetBrains Mono',monospace; font-size:0.68rem; padding:2px 6px; border-radius:6px; background:rgba(16,185,129,0.14); border:1px solid rgba(52,211,153,0.3); color:#6ee7b7;">Ctrl+K</kbd>
                     </div>
                 </div>
                 <div class="header-actions">
-                    <div class="sync-indicator" id="syncIndicator" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); background: var(--dark-lighter); border: 1px solid var(--glass-border); padding: 5px 12px; border-radius: 16px; transition: var(--transition);" title="Actualisation automatique toutes les 10 secondes">
+                    <div class="sync-indicator" id="companyApiHealthPill" style="display: flex; align-items: center; gap: 6px; font-size: 0.74rem; color: var(--text-dim); background: rgba(7,26,18,0.85); border: 1px solid var(--glass-border); padding: 5px 12px; border-radius: 16px;" title="État de connexion API TranSen">
+                        <span id="companyApiHealthDot" style="width: 7px; height: 7px; background-color: var(--primary); border-radius: 50%; display: inline-block; box-shadow: 0 0 8px var(--primary);"></span>
+                        <span id="companyApiHealthText" style="font-weight: 700; font-family:'JetBrains Mono',monospace;">API LIVE</span>
+                    </div>
+                    <div class="sync-indicator" id="syncIndicator" style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: var(--text-dim); background: var(--dark-lighter); border: 1px solid var(--glass-border); padding: 5px 12px; border-radius: 16px; transition: var(--transition);" title="Actualisation automatique intelligente">
                         <span class="pulse-dot" style="width: 6px; height: 6px; background-color: var(--primary); border-radius: 50%; display: inline-block;"></span>
                         <span id="syncText" style="font-weight: 500;">Temps réel</span>
                         <i class="fas fa-sync-alt" id="syncIcon" style="font-size: 0.7rem; margin-left: 2px;"></i>
                     </div>
-                    <button id="themeToggleBtn" class="theme-toggle" title="Mode sombre / clair" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; transition: var(--transition);">
+                    <button id="themeToggleBtn" class="theme-toggle" title="Mode sombre / clair" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; transition: var(--transition);">
                         <i class="far fa-moon"></i>
                     </button>
-                    <button id="onboardingTutorialBtn" class="theme-toggle" title="Tutoriel d'intégration interactif" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; transition: var(--transition);">
+                    <button id="onboardingTutorialBtn" class="theme-toggle" title="Tutoriel d'intégration interactif" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; transition: var(--transition);">
                         <i class="fas fa-question-circle" style="color: var(--primary);"></i>
                     </button>
-                    <button id="fullscreenToggleBtn" class="theme-toggle" title="Plein écran (Mode Immersif)" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; transition: var(--transition);">
+                    <button id="fullscreenToggleBtn" class="theme-toggle" title="Plein écran (Mode Immersif)" style="background: var(--dark-lighter); border: 1px solid var(--glass-border); font-size: 1rem; color: var(--text-dim); cursor: pointer; display: flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; transition: var(--transition);">
                         <i class="fas fa-expand"></i>
                     </button>
-                    <div class="company-code-badge" title="Code Recrutement Chauffeurs">
-                        CODE RECRUTEMENT: <span id="companyCodeDisplay" style="margin-left: 5px;">--</span>
+                    <div class="company-code-badge" onclick="window.copyCompanyAccessCode && window.copyCompanyAccessCode()" style="cursor:pointer;" title="Cliquez pour copier le Code Recrutement Chauffeurs">
+                        <i class="fas fa-key" style="margin-right:4px; color:var(--gold);"></i>CODE: <span id="companyCodeDisplay" style="margin-left: 4px; font-family:'JetBrains Mono',monospace;">--</span>
+                        <i class="far fa-copy" style="margin-left:6px; opacity:0.8;"></i>
                     </div>
-                    <div style="font-size: 1.2rem; cursor: pointer; color: var(--text-dim);"><i class="far fa-bell"></i></div>
+                    <button id="headerAlertBellBtn" type="button" onclick="window.navigateToCompanySection && window.navigateToCompanySection('fleet-sentinel')" title="Ouvrir Sentinelle Flotte & Alertes" style="position:relative; background: var(--dark-lighter); border: 1px solid var(--glass-border); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--gold);">
+                        <i class="fas fa-bell"></i>
+                        <span id="headerAlertBellCount" style="display:none; position:absolute; top:-4px; right:-4px; min-width:18px; height:18px; padding:0 4px; border-radius:999px; background:#f43f5e; color:#fff; font-size:0.68rem; font-weight:800; align-items:center; justify-content:center; box-shadow:0 0 10px rgba(244,63,94,0.6);">0</span>
+                    </button>
                     <p id="currentDate" style="display:none;">--</p>
                 </div>
             </header>
@@ -1835,7 +1855,296 @@
 
                 </div>
             </div>
+
+            <!-- ====================================================================== -->
+            <!-- NOUVEAU MODULE 1 : SENTINELLE FLOTTE & ALERTES OPÉRATIONNELLES B2B     -->
+            <!-- ====================================================================== -->
+            <div id="section-fleet-sentinel" class="admin-section" style="display: none;">
+                <div class="glass-card aurora-hero-strip" style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                    <div>
+                        <span class="aurora-pill-tag"><i class="fas fa-radar"></i> SURVEILLANCE FLOTTE TEMPS RÉEL</span>
+                        <h2 style="font-family:'Sora',sans-serif; font-size:1.45rem; margin:8px 0 4px;">Sentinelle Flotte & Centre d'Alertes</h2>
+                        <p style="color:var(--text-dim); font-size:0.88rem; margin:0;">Détection automatique des anomalies de votre compagnie : trésorerie basse, départs sans chauffeur, notes de frais en attente et discipline flotte.</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button type="button" onclick="window.syncFleetSentinelSection && window.syncFleetSentinelSection()" class="btn-aurora-primary">
+                            <i class="fas fa-rotate"></i> Scanner ma Flotte
+                        </button>
+                        <button type="button" onclick="window.regenerateCompanyAccessCode && window.regenerateCompanyAccessCode()" class="btn-aurora-secondary">
+                            <i class="fas fa-key"></i> Régénérer Code Recrutement
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="margin-bottom: 24px;">
+                    <div class="stat-card glass">
+                        <div class="stat-icon" style="background:rgba(244,63,94,0.16); color:#f43f5e;"><i class="fas fa-triangle-exclamation"></i></div>
+                        <div class="stat-info">
+                            <h3>Alertes Actives</h3>
+                            <p id="sentinelFleetAlertCount" style="color:#fda4af;">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon" style="background:rgba(245,184,61,0.16); color:#f5b83d;"><i class="fas fa-user-clock"></i></div>
+                        <div class="stat-info">
+                            <h3>Courses sans Chauffeur</h3>
+                            <p id="sentinelUnassignedTripsCount" style="color:var(--gold);">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon" style="background:rgba(34,211,238,0.16); color:#22d3ee;"><i class="fas fa-receipt"></i></div>
+                        <div class="stat-info">
+                            <h3>Frais en Attente</h3>
+                            <p id="sentinelPendingExpensesCount" style="color:#22d3ee;">0</p>
+                        </div>
+                    </div>
+                    <div class="stat-card glass">
+                        <div class="stat-icon" style="background:rgba(16,185,129,0.16); color:#10b981;"><i class="fas fa-bus"></i></div>
+                        <div class="stat-info">
+                            <h3>Taux Remplissage Bus</h3>
+                            <p id="sentinelBusOccupancyRate" style="color:#6ee7b7;">0%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                        <h3 style="margin:0; display:flex; align-items:center; gap:10px;"><i class="fas fa-shield-halved" style="color:var(--primary);"></i> Incidents & Actions Recommandées (Périmètre Compagnie)</h3>
+                        <span id="sentinelFleetHealthBadge" class="status-tag active">FLOTTE OPÉRATIONNELLE</span>
+                    </div>
+                    <div id="fleetSentinelAlertsContainer" style="display:flex; flex-direction:column; gap:12px;">
+                        <div style="color:var(--text-dim); font-size:0.88rem;">Analyse de votre flotte en cours...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================================== -->
+            <!-- NOUVEAU MODULE 2 : BILLETTERIE QR, EMBARQUEMENT & COLIS YOBANTÉ        -->
+            <!-- ====================================================================== -->
+            <div id="section-boarding" class="admin-section" style="display: none;">
+                <div class="glass-card aurora-hero-strip" style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                    <div>
+                        <span class="aurora-pill-tag"><i class="fas fa-qrcode"></i> BILLETTERIE INTERURBAINE & FRET YOBANTÉ</span>
+                        <h2 style="font-family:'Sora',sans-serif; font-size:1.45rem; margin:8px 0 4px;">Scanner d'Embarquement QR & Contrôle Colis</h2>
+                        <p style="color:var(--text-dim); font-size:0.88rem; margin:0;">Validez instantanément les billets QR de vos passagers, suivez vos réservations payées SenePay et contrôlez vos colis Yobanté.</p>
+                    </div>
+                    <button type="button" onclick="window.syncCompanyBoardingSection && window.syncCompanyBoardingSection()" class="btn-aurora-primary">
+                        <i class="fas fa-sync-alt"></i> Actualiser Billetterie
+                    </button>
+                </div>
+
+                <!-- Scanner QR Express -->
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <h3 style="margin-bottom:12px; display:flex; align-items:center; gap:10px;"><i class="fas fa-barcode" style="color:var(--gold);"></i> Validation Express Billet QR Code (Guichet / Contrôleur)</h3>
+                    <div style="display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+                        <input type="text" id="b2bQrCodeInput" placeholder="Saisir ou scanner le code QR (ex: TX-8923A)..." style="flex:1; min-width:240px; padding:12px 16px; border-radius:12px; background:rgba(3,16,11,0.85); border:1px solid var(--glass-border); color:var(--text-main); font-family:'JetBrains Mono',monospace; font-size:0.95rem; text-transform:uppercase;">
+                        <button type="button" id="b2bScanQrBtn" onclick="window.scanCompanyQrBoarding && window.scanCompanyQrBoarding()" class="btn-aurora-primary">
+                            <i class="fas fa-check-double"></i> Valider l'Embarquement
+                        </button>
+                    </div>
+                    <div id="b2bQrScanResult" style="margin-top:14px; display:none; padding:14px 16px; border-radius:12px; font-size:0.86rem;"></div>
+                </div>
+
+                <!-- Registre Billets de la Compagnie -->
+                <div class="glass-card" style="margin-bottom: 24px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+                        <h3 style="margin:0; display:flex; align-items:center; gap:10px;"><i class="fas fa-ticket" style="color:#22d3ee;"></i> Registre des Billets & Réservations Compagnie <span id="b2bBookingsCountBadge" class="nav-pill-badge">0</span></h3>
+                        <input type="text" id="b2bBookingsSearchInput" oninput="window.renderCompanyBookingsTable && window.renderCompanyBookingsTable()" placeholder="Filtrer par QR, nom, téléphone, trajet..." style="padding:9px 14px; border-radius:10px; background:rgba(3,16,11,0.85); border:1px solid var(--glass-border); color:var(--text-main); min-width:250px; font-size:0.84rem;">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Code QR</th>
+                                    <th>Passager</th>
+                                    <th>Trajet & Date</th>
+                                    <th>Sièges / Montant</th>
+                                    <th>Paiement</th>
+                                    <th>Statut</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="b2bBookingsTableBody">
+                                <tr><td colspan="7" class="loading-cell">Chargement des billets de la compagnie...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tour de contrôle Colis Yobanté Compagnie -->
+                <div class="glass-card">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+                        <h3 style="margin:0; display:flex; align-items:center; gap:10px;"><i class="fas fa-box-open" style="color:var(--gold);"></i> Suivi Colis & Fret Yobanté de la Compagnie <span id="b2bYobanteCountBadge" class="nav-pill-badge">0</span></h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date / Réf</th>
+                                    <th>Trajet</th>
+                                    <th>Expéditeur ➔ Destinataire</th>
+                                    <th>Description Colis</th>
+                                    <th>Chauffeur</th>
+                                    <th>Tarif / Statut</th>
+                                </tr>
+                            </thead>
+                            <tbody id="b2bYobanteTableBody">
+                                <tr><td colspan="6" class="loading-cell">Aucun colis Yobanté enregistré pour votre flotte.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================================== -->
+            <!-- NOUVEAU MODULE 3 : AVIS PASSAGERS & GUICHET SUPPORT PRIORITAIRE        -->
+            <!-- ====================================================================== -->
+            <div id="section-reviews-support" class="admin-section" style="display: none;">
+                <div class="glass-card aurora-hero-strip" style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                    <div>
+                        <span class="aurora-pill-tag"><i class="fas fa-star"></i> QUALITÉ DE SERVICE & ASSISTANCE TRAN-SEN</span>
+                        <h2 style="font-family:'Sora',sans-serif; font-size:1.45rem; margin:8px 0 4px;">Avis Clients & Support Prioritaire B2B</h2>
+                        <p style="color:var(--text-dim); font-size:0.88rem; margin:0;">Consultez la satisfaction passagers de vos chauffeurs et ouvrez un ticket direct vers le Centre de Commandement TranSen.</p>
+                    </div>
+                    <button type="button" onclick="window.syncCompanyReviewsAndSupport && window.syncCompanyReviewsAndSupport()" class="btn-aurora-primary">
+                        <i class="fas fa-sync-alt"></i> Actualiser
+                    </button>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap:22px;">
+                    <!-- Avis Clients sur les chauffeurs de la compagnie -->
+                    <div class="glass-card">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                            <h3 style="margin:0;"><i class="fas fa-star" style="color:var(--gold);"></i> Avis Passagers Flotte</h3>
+                            <span id="b2bAvgRatingBadge" class="status-tag active" style="font-family:'JetBrains Mono',monospace;">-- / 5 ★</span>
+                        </div>
+                        <div id="b2bReviewsListContainer" style="display:flex; flex-direction:column; gap:10px; max-height:460px; overflow-y:auto;">
+                            <p style="color:var(--text-dim); font-size:0.85rem;">Chargement des évaluations...</p>
+                        </div>
+                    </div>
+
+                    <!-- Guichet Support Direct TranSen -->
+                    <div class="glass-card">
+                        <h3 style="margin-bottom:14px;"><i class="fas fa-headset" style="color:#22d3ee;"></i> Ouvrir un Ticket Support Prioritaire</h3>
+                        <form id="b2bSupportTicketForm" onsubmit="window.submitCompanySupportTicket && window.submitCompanySupportTicket(event)" style="display:flex; flex-direction:column; gap:12px; margin-bottom:20px;">
+                            <select id="b2bTicketCategory" required style="padding:11px 14px; border-radius:11px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                                <option value="PAIEMENT_SENEPAY">Trésorerie / Retrait SenePay</option>
+                                <option value="KYC_COMPAGNIE">Validation KYC / Agrément</option>
+                                <option value="FLOTTE_CHAUFFEUR">Incident Chauffeur / Course</option>
+                                <option value="TECHNIQUE_CONSOLE">Support Technique Console B2B</option>
+                            </select>
+                            <input type="text" id="b2bTicketSubject" placeholder="Objet de votre demande..." required style="padding:11px 14px; border-radius:11px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                            <textarea id="b2bTicketMessage" rows="3" placeholder="Décrivez précisément votre besoin ou incident..." required style="padding:11px 14px; border-radius:11px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main); resize:vertical;"></textarea>
+                            <button type="submit" class="btn-aurora-primary"><i class="fas fa-paper-plane"></i> Transmettre au Centre TranSen</button>
+                        </form>
+                        <h4 style="font-size:0.84rem; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:10px;">Mes Tickets Récents</h4>
+                        <div id="b2bMyTicketsList" style="display:flex; flex-direction:column; gap:8px; max-height:240px; overflow-y:auto;">
+                            <p style="color:var(--text-dim); font-size:0.82rem;">Aucun ticket ouvert pour le moment.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ====================================================================== -->
+            <!-- NOUVEAU MODULE 4 : JOURNAL D'AUDIT & TRAÇABILITÉ COMPAGNIE             -->
+            <!-- ====================================================================== -->
+            <div id="section-activity-logs" class="admin-section" style="display: none;">
+                <div class="glass-card aurora-hero-strip" style="margin-bottom: 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px;">
+                    <div>
+                        <span class="aurora-pill-tag"><i class="fas fa-clipboard-list"></i> TRAÇABILITÉ COMPTABLE & OPÉRATIONNELLE</span>
+                        <h2 style="font-family:'Sora',sans-serif; font-size:1.45rem; margin:8px 0 4px;">Journal d'Audit de la Compagnie</h2>
+                        <p style="color:var(--text-dim); font-size:0.88rem; margin:0;">Historique horodaté de toutes les opérations de gestion (statuts courses, scans QR, validations frais, retraits, gouvernance chauffeurs).</p>
+                    </div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <button type="button" onclick="window.exportCompanyAuditCsv && window.exportCompanyAuditCsv()" class="btn-aurora-primary">
+                            <i class="fas fa-file-csv"></i> Exporter CSV
+                        </button>
+                        <button type="button" onclick="window.syncCompanyActivityLogs && window.syncCompanyActivityLogs()" class="btn-aurora-secondary">
+                            <i class="fas fa-sync-alt"></i> Actualiser
+                        </button>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+                        <input type="text" id="b2bAuditSearchInput" oninput="window.renderCompanyActivityLogsTable && window.renderCompanyActivityLogsTable()" placeholder="Rechercher une action, catégorie, détail..." style="flex:1; min-width:240px; padding:10px 14px; border-radius:10px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Heure</th>
+                                    <th>Catégorie</th>
+                                    <th>Action</th>
+                                    <th>Détails de l'opération</th>
+                                </tr>
+                            </thead>
+                            <tbody id="b2bActivityLogsTableBody">
+                                <tr><td colspan="4" class="loading-cell">Aucune activité journalisée pour le moment.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </main>
+
+        <!-- ===== TIROIR NOTIFICATION AURORA (CORRECTION BUG CRITIQUE #notificationDrawer) ===== -->
+        <div id="notificationDrawer" class="aurora-notif-drawer" role="dialog" aria-live="polite">
+            <div class="aurora-notif-card">
+                <div id="notificationIcon" class="confirm-icon success-icon">
+                    <i class="fas fa-check-circle" style="color: var(--primary);"></i>
+                </div>
+                <div style="flex:1;">
+                    <h4 id="notificationTitle" style="margin:0 0 4px; font-family:'Sora',sans-serif; font-size:0.98rem; color:var(--text-main);">Information</h4>
+                    <p id="notificationMessage" style="margin:0; font-size:0.84rem; color:var(--text-dim); line-height:1.45;">--</p>
+                </div>
+                <button id="notificationOkBtn" type="button" style="padding:8px 16px; border-radius:10px; border:none; background:var(--primary); color:#03100b; font-weight:800; cursor:pointer; font-size:0.8rem;">OK</button>
+            </div>
+        </div>
+
+        <!-- ===== MODALE ÉDITION VÉHICULE CHAUFFEUR ===== -->
+        <div id="editVehicleModal" class="modal-overlay" style="display:none; align-items:center; justify-content:center; z-index:1060; padding:20px;">
+            <div class="glass-card" style="width:100%; max-width:440px; border-color:rgba(52,211,153,0.4);">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                    <h3 style="margin:0; font-family:'Sora',sans-serif;"><i class="fas fa-bus" style="color:var(--primary);"></i> Véhicule du Chauffeur</h3>
+                    <button type="button" onclick="document.getElementById('editVehicleModal').style.display='none'" style="background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:var(--text-main); width:32px; height:32px; border-radius:50%; cursor:pointer;"><i class="fas fa-times"></i></button>
+                </div>
+                <p id="editVehicleDriverName" style="color:var(--gold); font-weight:700; margin-bottom:14px; font-size:0.9rem;">--</p>
+                <input type="hidden" id="editVehicleDriverId">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <label style="font-size:0.8rem; color:var(--text-dim);">Modèle / Immatriculation du véhicule
+                        <input type="text" id="editVehicleModelInput" placeholder="Ex: Mercedes Sprinter — DK-4821-AB" style="width:100%; margin-top:6px; padding:11px 14px; border-radius:10px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                    </label>
+                    <label style="font-size:0.8rem; color:var(--text-dim);">Type de véhicule
+                        <select id="editVehicleTypeInput" style="width:100%; margin-top:6px; padding:11px 14px; border-radius:10px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                            <option value="Bus Interurbain">Bus Interurbain</option>
+                            <option value="Minibus 16 Places">Minibus 16 Places</option>
+                            <option value="7 Places Interurbain">7 Places Interurbain</option>
+                            <option value="Berline VTC">Berline VTC</option>
+                            <option value="Utilitaire Colis Yobanté">Utilitaire Colis Yobanté</option>
+                        </select>
+                    </label>
+                    <label style="font-size:0.8rem; color:var(--text-dim);">Kilométrage actuel (km)
+                        <input type="number" id="editVehicleMileageInput" placeholder="Ex: 84500" style="width:100%; margin-top:6px; padding:11px 14px; border-radius:10px; background:rgba(3,16,11,0.9); border:1px solid var(--glass-border); color:var(--text-main);">
+                    </label>
+                    <button type="button" onclick="window.saveDriverVehicleUpdate && window.saveDriverVehicleUpdate()" class="btn-aurora-primary" style="margin-top:6px;">
+                        <i class="fas fa-floppy-disk"></i> Enregistrer les modifications
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== PALETTE DE COMMANDES B2B (Ctrl+K) ===== -->
+        <div id="b2bCmdModal" class="modal-overlay" style="display:none; align-items:flex-start; justify-content:center; padding-top:9vh; z-index:2200;" onclick="if(event.target===this) this.style.display='none'">
+            <div class="glass-card" style="width:94%; max-width:600px; padding:18px; border-color:rgba(52,211,153,0.45); box-shadow:0 30px 90px rgba(0,0,0,0.85);">
+                <div style="display:flex; align-items:center; gap:12px; padding-bottom:12px; border-bottom:1px solid var(--glass-border);">
+                    <i class="fas fa-terminal" style="color:var(--primary); font-size:1.1rem;"></i>
+                    <input type="text" id="b2bCmdInput" oninput="window.renderB2bCommandPalette && window.renderB2bCommandPalette(this.value)" placeholder="Sauter vers un module, un chauffeur, un trajet ou un code QR..." style="flex:1; background:transparent; border:none; outline:none; color:var(--text-main); font-size:0.96rem;">
+                    <kbd style="font-family:'JetBrains Mono',monospace; font-size:0.7rem; padding:3px 7px; border-radius:6px; background:rgba(255,255,255,0.08); color:var(--text-dim);">ESC</kbd>
+                </div>
+                <div id="b2bCmdResults" style="margin-top:12px; max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:6px;"></div>
+            </div>
+        </div>
 
         <!-- ===== BOTTOM NAVIGATION (Mobile Only) ===== -->
         <nav class="bottom-nav" id="bottomNav">
