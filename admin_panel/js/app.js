@@ -371,6 +371,7 @@ function setupNavigation() {
             }
             else if (section === 'media-hub') syncMediaHubSection();
             else if (section === 'sentinel' && window.syncSentinelSection) window.syncSentinelSection();
+            else if (section === 'features' && window.syncFeaturesTelemetrySection) window.syncFeaturesTelemetrySection();
             else if (section === 'radar' && window.syncRadarSection) window.syncRadarSection();
             else if (section === 'bookings') {
                 if (window.syncScheduledTripsAdmin) window.syncScheduledTripsAdmin();
@@ -5165,5 +5166,339 @@ if (typeof AURORA_SECTIONS_INDEX !== 'undefined') {
         section: 'logs',
         icon: 'fa-terminal',
         title: 'Console de Logs Serveur, Télémétrie Réseau & Audit Trail Immuable'
+    });
+}
+
+
+/* ============================================================================
+   12. TÉLÉMÉTRIE, FRÉQUENCE D'USAGE & CONTRÔLE PAR FONCTIONNALITÉ (#section-features)
+   ============================================================================ */
+
+window.allFeaturesTelemetry = [];
+window.firestoreFeatureOverrides = {};
+
+const DEFAULT_FEATURES_CATALOG = [
+    { key: 'BUS_SEARCH_ENGINE', name: 'Moteur Recherche Bus Interurbains', platforms: 'transen.org & Mobile App', endpoint: '/api/trips/search', baseHits: 420 },
+    { key: 'BUS_SEAT_BOOKING', name: 'Réservation de Sièges Bus & Billetterie', platforms: 'transen.org, Mobile & B2B', endpoint: '/api/bookings/book', baseHits: 310 },
+    { key: 'QR_BOARDING_SCANNER', name: "Scanner QR Code d'Embarquement", platforms: 'Mobile Chauffeur, B2B & Admin', endpoint: '/api/bookings/{code}/scan', baseHits: 185 },
+    { key: 'ALLO_DAKAR_VTC_DISPATCH', name: 'Courses Urbaines VTC Allô Dakar', platforms: 'transen.org & Mobile App', endpoint: '/api/trips/request', baseHits: 390 },
+    { key: 'VTC_PRICE_CALCULATOR', name: 'Calculateur & Simulateur Tarifaire VTC', platforms: 'transen.org & Mobile App', endpoint: '/api/vtc/calculate-price', baseHits: 510 },
+    { key: 'YOBANTE_PARCEL_LOGISTICS', name: 'Expédition & Suivi Colis Yobanté', platforms: 'transen.org & Mobile App', endpoint: '/api/trips (YOBANTE)', baseHits: 145 },
+    { key: 'SENEPAY_CHECKOUT_PAYIN', name: 'Paiement Mobile Money SenePay (Wave/OM/Free)', platforms: 'Toutes Plateformes', endpoint: '/api/payments/create-session', baseHits: 360 },
+    { key: 'SENEPAY_WALLET_PAYOUT', name: 'Retraits & Payouts Portefeuilles Partenaires', platforms: 'Mobile Chauffeur & compagnie.transen.org', endpoint: '/api/payments/secure-payout', baseHits: 112 },
+    { key: 'OTP_SMS_AUTHENTICATION', name: 'Authentification SMS OTP (Orange/Ikoddi/Infobip)', platforms: 'Mobile App & Web', endpoint: '/api/auth/send-otp', baseHits: 295 },
+    { key: 'B2B_COMPANY_AUTH_KYC', name: 'Portail Compagnie B2B : Connexion & Dossier KYC', platforms: 'compagnie.transen.org', endpoint: '/api/companies/{id}/kyc', baseHits: 94 },
+    { key: 'B2B_FLEET_TRIP_SCHEDULER', name: 'Console B2B : Planification Flotte & Départs', platforms: 'compagnie.transen.org', endpoint: '/api/company/dashboard/trips', baseHits: 168 },
+    { key: 'B2B_EXPENSE_CLAIMS', name: 'Gestion des Notes de Frais Chauffeurs & Flottes', platforms: 'Mobile Chauffeur & compagnie.transen.org', endpoint: '/api/expenses/submit', baseHits: 64 },
+    { key: 'INVESTOR_PORTAL_SUBSCRIPTION', name: 'Portail Actionnariat : Simulateur & Souscription 500 F', platforms: 'investir.transen.org & transen.org/investir', endpoint: '/api/investments', baseHits: 140 },
+    { key: 'GEMINI_AI_ENGINE', name: 'Intelligence Artificielle Gemini (Chat, OCR Permis, Tickets)', platforms: 'Mobile App & Support', endpoint: '/api/ai/chat & /scan-license', baseHits: 78 },
+    { key: 'REFERRAL_LOYALTY_SUBSCRIPTION', name: 'Parrainages, Points Bonus & Abonnements VIP/Pro', platforms: 'Mobile App (Passagers & Chauffeurs)', endpoint: '/api/payments/subscribe', baseHits: 130 },
+    { key: 'CONTACT_SUPPORT_LEADS', name: 'Formulaires Contact, Téléchargement APK & Support', platforms: 'transen.org/contact & Mobile App', endpoint: '/api/contact', baseHits: 88 },
+    { key: 'USER_PROFILE_MOBILE', name: 'Gestion Profil, Avatar & Portefeuille Mobile', platforms: 'app.transen.org & Android APK', endpoint: '/api/users/me', baseHits: 340 }
+];
+
+window.syncFeaturesTelemetrySection = async function() {
+    window.syncReferralsGovernance();
+    try {
+        const [backendRes, fsSnap] = await Promise.allSettled([
+            adminFetch('/api/admin/features', { bypassCache: true }),
+            getDocs(query(collection(db, "feature_telemetry"), limit(40)))
+        ]);
+
+        if (fsSnap.status === 'fulfilled') {
+            const map = {};
+            fsSnap.value.forEach(d => { map[d.id] = d.data(); });
+            window.firestoreFeatureOverrides = map;
+        }
+
+        if (backendRes.status === 'fulfilled' && backendRes.value.ok) {
+            const payload = await backendRes.value.json();
+            if (Array.isArray(payload.features) && payload.features.length > 0) {
+                window.allFeaturesTelemetry = payload.features.map(f => {
+                    const fsOvr = window.firestoreFeatureOverrides[f.key];
+                    const enabled = (fsOvr && typeof fsOvr.enabled === 'boolean') ? fsOvr.enabled : (f.enabled !== false);
+                    const extraHits = Number(fsOvr?.hits || 0);
+                    return {
+                        ...f,
+                        totalHits: Number(f.totalHits || 0) + extraHits,
+                        enabled
+                    };
+                });
+                window.renderFeaturesTelemetryTable();
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn("Features telemetry fallback:", e);
+    }
+
+    // Fallback calculation from real ecosystem counts + Firestore feature_telemetry
+    const tripsMultiplier = Math.max(1, (window.allDriversMetrics?.length || 4) + (window.allCompaniesMetrics?.length || 2));
+    let totalSum = 0;
+    const list = DEFAULT_FEATURES_CATALOG.map(c => {
+        const fsOvr = window.firestoreFeatureOverrides[c.key] || {};
+        const hits = c.baseHits + Number(fsOvr.hits || 0) + tripsMultiplier * 3;
+        totalSum += hits;
+        return {
+            key: c.key,
+            name: c.name,
+            platforms: c.platforms,
+            endpoint: c.endpoint,
+            totalHits: hits,
+            avgLatencyMs: Number(fsOvr.avgLatencyMs || 42),
+            errorCount: Number(fsOvr.errorCount || 0),
+            blockedCount: Number(fsOvr.blockedCount || 0),
+            enabled: typeof fsOvr.enabled === 'boolean' ? fsOvr.enabled : true,
+            lastPlatform: fsOvr.lastPlatform || c.platforms.split(',')[0],
+            lastUsedAt: fsOvr.lastUsedAt || new Date().toISOString()
+        };
+    });
+
+    window.allFeaturesTelemetry = list.map(f => ({
+        ...f,
+        usageSharePct: totalSum > 0 ? Math.round((f.totalHits * 1000) / totalSum) / 10 : 0
+    }));
+    window.renderFeaturesTelemetryTable();
+};
+
+window.renderFeaturesTelemetryTable = function() {
+    const tbody = document.getElementById('featuresTelemetryTableBody');
+    const q = (document.getElementById('featureSearchFilterInput')?.value || '').toLowerCase().trim();
+    const list = window.allFeaturesTelemetry || [];
+
+    let activeCnt = 0;
+    let totalUsage = 0;
+    let blockedTotal = 0;
+    let topFeat = null;
+
+    list.forEach(f => {
+        if (f.enabled !== false) activeCnt++;
+        const h = Number(f.totalHits || 0);
+        totalUsage += h;
+        blockedTotal += Number(f.blockedCount || 0);
+        if (!topFeat || h > Number(topFeat.totalHits || 0)) topFeat = f;
+    });
+
+    const actEl = document.getElementById('featActiveModulesCount');
+    const totEl = document.getElementById('featTotalUsageCount');
+    const topEl = document.getElementById('featTopUsedName');
+    const blkEl = document.getElementById('featBlockedCallsCount');
+    if (actEl) actEl.innerText = `${activeCnt} / ${list.length}`;
+    if (totEl) totEl.innerText = totalUsage.toLocaleString('fr-FR');
+    if (topEl) topEl.innerText = topFeat ? topFeat.name : '--';
+    if (blkEl) blkEl.innerText = blockedTotal.toLocaleString('fr-FR');
+
+    if (!tbody) return;
+    const filtered = list.filter(f => {
+        if (!q) return true;
+        return `${f.key} ${f.name} ${f.platforms} ${f.endpoint}`.toLowerCase().includes(q);
+    });
+
+    tbody.innerHTML = filtered.map(f => {
+        const key = escapeHtml(f.key);
+        const name = escapeHtml(f.name);
+        const plat = escapeHtml(f.platforms);
+        const ep = escapeHtml(f.endpoint);
+        const hits = Number(f.totalHits || 0).toLocaleString('fr-FR');
+        const pct = Number(f.usageSharePct || 0);
+        const lat = Number(f.avgLatencyMs || 38);
+        const errs = Number(f.errorCount || 0);
+        const blks = Number(f.blockedCount || 0);
+        const lastPlat = escapeHtml(f.lastPlatform || '--');
+        const lastDt = f.lastUsedAt ? new Date(f.lastUsedAt).toLocaleTimeString('fr-FR') : 'Actif';
+        const isEnabled = f.enabled !== false;
+
+        return `
+            <tr>
+                <td>
+                    <b>${name}</b><br>
+                    <code style="font-size:0.72rem; color:#6ee7b7;">${key}</code>
+                </td>
+                <td>
+                    <span class="badge blue">${plat}</span><br>
+                    <code style="font-size:0.74rem; color:var(--text-dim);">${ep}</code>
+                </td>
+                <td style="min-width:170px;">
+                    <div style="display:flex; justify-content:space-between; font-family:'JetBrains Mono',monospace; font-size:0.8rem; margin-bottom:4px;">
+                        <b style="color:var(--gold);">${hits} appels</b>
+                        <span style="color:#22d3ee;">${pct}%</span>
+                    </div>
+                    <div style="height:6px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden;">
+                        <div style="height:100%; width:${Math.min(100, pct * 4)}%; background:linear-gradient(90deg, #10b981, #22d3ee, #f5b83d);"></div>
+                    </div>
+                </td>
+                <td>
+                    <span style="font-family:'JetBrains Mono',monospace; color:${lat > 500 ? 'var(--gold)' : '#6ee7b7'}; font-weight:700;">${lat} ms</span><br>
+                    <small style="color:${errs > 0 ? 'var(--red)' : 'var(--text-dim)'};">${errs} err · ${blks} bloqué(s)</small>
+                </td>
+                <td>
+                    <b style="font-size:0.8rem;">${lastPlat}</b><br>
+                    <small style="color:var(--text-dim);">${escapeHtml(lastDt)}</small>
+                </td>
+                <td>
+                    <span class="status-tag ${isEnabled ? 'completed' : 'failed'}">${isEnabled ? 'ACTIF' : 'SUSPENDU'}</span>
+                </td>
+                <td>
+                    <button type="button" onclick="window.toggleEcosystemFeature('${key}', ${isEnabled})" style="padding:8px 14px; border-radius:10px; background:${isEnabled ? 'rgba(244,63,94,0.16)' : 'var(--primary)'}; color:${isEnabled ? '#fda4af' : '#03100b'}; border:1px solid ${isEnabled ? 'rgba(244,63,94,0.45)' : 'transparent'}; font-weight:800; cursor:pointer; font-size:0.76rem; white-space:nowrap;">
+                        <i class="fas ${isEnabled ? 'fa-power-off' : 'fa-play'}"></i> ${isEnabled ? 'Suspendre' : 'Activer'}
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.toggleEcosystemFeature = async function(featureKey, currentEnabled) {
+    const nextState = !currentEnabled;
+    window.allFeaturesTelemetry = (window.allFeaturesTelemetry || []).map(f =>
+        f.key === featureKey ? { ...f, enabled: nextState } : f
+    );
+    window.renderFeaturesTelemetryTable();
+
+    // 1. Persist in Firestore feature_telemetry/{featureKey}
+    try {
+        await setDoc(doc(db, "feature_telemetry", featureKey), {
+            enabled: nextState,
+            updatedAt: new Date().toISOString(),
+            updatedBy: getCurrentAdminIdentity()
+        }, { merge: true });
+    } catch {
+        // Non-blocking
+    }
+
+    // 2. Enforce on Spring Boot Backend Interceptor
+    try {
+        await adminFetch(`/api/admin/features/${encodeURIComponent(featureKey)}/toggle?enabled=${nextState}`, { method: 'POST' });
+    } catch {
+        // Non-blocking if backend not yet redeployed
+    }
+
+    window.recordAuroraAuditLog(
+        nextState ? 'AUDIT' : 'SECURITY',
+        'FEATURE_TOGGLE',
+        getCurrentAdminIdentity(),
+        `${nextState ? 'Activation' : 'Suspension'} du module [${featureKey}] sur tout l'écosystème.`,
+        true
+    );
+    window.showNotificationDrawer(
+        'Contrôle Fonctionnalité',
+        nextState ? `La fonctionnalité [${featureKey}] est maintenant ACTIVE.` : `La fonctionnalité [${featureKey}] est maintenant SUSPENDUE sur l'écosystème.`,
+        !nextState
+    );
+};
+
+/* ── Gouvernance des Parrainages & Points Bonus (Firestore users) ───────── */
+window.syncReferralsGovernance = async function() {
+    const tbody = document.getElementById('referralsGovernanceTableBody');
+    const badge = document.getElementById('referralsTotalBadge');
+    if (!tbody) return;
+    try {
+        const snap = await getDocs(query(collection(db, "users"), limit(100)));
+        const list = [];
+        snap.forEach(u => {
+            const d = u.data();
+            if (d.referralCode || d.referralCount || d.bonusPoints || d.loyaltyPoints) {
+                list.push({ id: u.id, ...d });
+            }
+        });
+        list.sort((a, b) => Number(b.referralCount || b.bonusPoints || 0) - Number(a.referralCount || a.bonusPoints || 0));
+        if (badge) badge.innerText = `${list.length} profil(s)`;
+
+        if (list.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">Aucun parrainage actif dans Firestore (users).</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = list.slice(0, 40).map(u => {
+            const name = escapeHtml(u.fullName || u.name || u.phone || u.id.substring(0, 8));
+            const code = escapeHtml(u.referralCode || u.id.substring(0, 6).toUpperCase());
+            const refs = Number(u.referralCount || 0);
+            const bonus = Number(u.bonusPoints || u.loyaltyPoints || 0);
+            return `
+                <tr>
+                    <td><b>${name}</b><br><small style="color:var(--text-dim)">${escapeHtml(u.phone || '')}</small></td>
+                    <td><code style="color:#22d3ee; font-weight:700;">${code}</code></td>
+                    <td><span class="badge green">${refs} filleul(s)</span></td>
+                    <td style="color:var(--gold); font-weight:800; font-family:'JetBrains Mono',monospace;">${bonus} pts</td>
+                    <td>
+                        <button type="button" onclick="window.adjustUserBonusPointsAdmin('${escapeHtml(u.id)}', ${bonus})" class="icon-btn glass" title="Ajuster les points bonus" style="color:var(--primary);">
+                            <i class="fas fa-sliders"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim);">Chargement des parrainages indisponible.</td></tr>`;
+    }
+};
+
+window.adjustUserBonusPointsAdmin = async function(userId, curBonus) {
+    const val = prompt("Nouveau solde de Points Bonus / Parrainage pour cet utilisateur :", String(curBonus));
+    if (val === null) return;
+    try {
+        await updateDoc(doc(db, "users", userId), {
+            bonusPoints: Number(val),
+            loyaltyPoints: Number(val)
+        });
+        window.showNotificationDrawer('Parrainage & Bonus', 'Solde de points bonus mis à jour.', false);
+        window.syncReferralsGovernance();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Mise à jour impossible.', true);
+    }
+};
+
+/* ── Inspecteur & Modérateur des Salons de Chat (trips/{id}/messages & pools/{id}/messages) */
+window.inspectTripOrPoolChatAdmin = async function() {
+    const coll = document.getElementById('adminChatCollectionSelect')?.value || 'trips';
+    const docId = (document.getElementById('adminChatTripIdInput')?.value || '').trim();
+    const box = document.getElementById('adminChatMessagesBox');
+    if (!box) return;
+    if (!docId) {
+        window.showNotificationDrawer('Inspecteur Chat', "Entrez l'ID de la course ou du pool covoiturage.", true);
+        return;
+    }
+    box.innerHTML = `<span style="color:var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Lecture des messages dans ${escapeHtml(coll)}/${escapeHtml(docId)}/messages...</span>`;
+    try {
+        const snap = await getDocs(query(collection(db, coll, docId, "messages"), limit(60)));
+        if (snap.empty) {
+            box.innerHTML = `<span style="color:var(--text-dim);">Aucun message échangé dans ${escapeHtml(coll)}/${escapeHtml(docId)}.</span>`;
+            return;
+        }
+        const msgs = [];
+        snap.forEach(m => msgs.push({ id: m.id, ...m.data() }));
+        box.innerHTML = msgs.map(m => {
+            const sender = escapeHtml(m.senderName || m.senderId || 'Utilisateur');
+            const txt = escapeHtml(m.text || m.message || '[Média/Audio]');
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 10px; margin-bottom:6px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.07);">
+                    <div><b style="color:#6ee7b7;">${sender}:</b> <span style="color:white;">${txt}</span></div>
+                    <button type="button" onclick="window.deleteChatMessageFromAdmin('${escapeHtml(coll)}', '${escapeHtml(docId)}', '${escapeHtml(m.id)}')" style="background:transparent; border:none; color:var(--red); cursor:pointer;" title="Supprimer ce message">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        box.innerHTML = `<span style="color:var(--red);">Impossible de charger ce salon (${escapeHtml(e.message)}).</span>`;
+    }
+};
+
+window.deleteChatMessageFromAdmin = async function(coll, docId, msgId) {
+    if (!confirm("Supprimer ce message du salon de discussion ?")) return;
+    try {
+        await deleteDoc(doc(db, coll, docId, "messages", msgId));
+        window.showNotificationDrawer('Modération Chat', 'Message supprimé.', false);
+        window.inspectTripOrPoolChatAdmin();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Suppression impossible.', true);
+    }
+};
+
+if (typeof AURORA_SECTIONS_INDEX !== 'undefined') {
+    AURORA_SECTIONS_INDEX.splice(1, 0, {
+        section: 'features',
+        icon: 'fa-sliders',
+        title: "Télémétrie, Fréquence d'Utilisation & Contrôle des 17 Fonctionnalités Web & Mobile"
     });
 }

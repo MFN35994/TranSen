@@ -65,6 +65,7 @@
                 <div class="nav-group-label">PILOTAGE TEMPS RÉEL</div>
                 <a href="#" data-section="dashboard" class="active"><i class="fas fa-th-large"></i> Aperçu Global</a>
                 <a href="#" data-section="sentinel"><i class="fas fa-bell-exclamation"></i> Sentinelle &amp; Alertes <span class="badge red" id="sentinelAlertBadge">0</span></a>
+                <a href="#" data-section="features"><i class="fas fa-sliders"></i> Fonctionnalités &amp; Usage</a>
                 <a href="#" data-section="trips"><i class="fas fa-tower-broadcast"></i> Flux Live</a>
                 <a href="#" data-section="radar"><i class="fas fa-satellite-dish"></i> Radar &amp; Covoiturage <span class="badge green" id="onlineDriversBadge">0</span></a>
                 <a href="#" data-section="bookings"><i class="fas fa-qrcode"></i> Billetterie QR &amp; Bus</a>
@@ -2175,6 +2176,123 @@
                         </table>
                     </div>
                 </section>
+            </div>
+
+            <!-- =========================================================================
+                 20. TÉLÉMÉTRIE, FRÉQUENCE D'UTILISATION & CONTRÔLE DE CHAQUE FONCTIONNALITÉ (#section-features)
+                 ========================================================================= -->
+            <div id="section-features" class="admin-section" style="display: none;">
+                <div class="stats-grid">
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon green"><i class="fas fa-cubes"></i></div>
+                        <div class="stat-info">
+                            <p>Modules &amp; Fonctionnalités Actifs</p>
+                            <h3 id="featActiveModulesCount">17 / 17</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon blue"><i class="fas fa-chart-simple"></i></div>
+                        <div class="stat-info">
+                            <p>Total Sollicitations &amp; Appels</p>
+                            <h3 id="featTotalUsageCount">0</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon gold"><i class="fas fa-fire-flame-curved"></i></div>
+                        <div class="stat-info">
+                            <p>Module #1 Le Plus Utilisé</p>
+                            <h3 id="featTopUsedName" style="font-size: 1.05rem;">--</h3>
+                        </div>
+                    </div>
+                    <div class="stat-card glass-card">
+                        <div class="stat-icon red"><i class="fas fa-ban"></i></div>
+                        <div class="stat-info">
+                            <p>Appels Bloqués par Disjoncteur</p>
+                            <h3 id="featBlockedCallsCount">0</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tableau Maitre des 17 Fonctionnalités Web & Mobile (/api/admin/features) -->
+                <section class="table-container glass-card" style="margin-top: 24px;">
+                    <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+                        <div>
+                            <span class="aurora-eyebrow"><i class="fas fa-microchip"></i> MATRICE D'USAGE &amp; DE COMMANDE PAR FONCTIONNALITÉ (WEB · MOBILE · B2B · INVEST)</span>
+                            <h3 style="margin: 6px 0 2px 0; font-size: 1.2rem;">Fréquence d'Utilisation, Latence, Plateforme Source &amp; Contrôle Direct ON/OFF</h3>
+                            <small style="color: var(--text-dim);">Chaque action ici active ou verrouille immédiatement la fonctionnalité sur le serveur Spring Boot (WebConfig Interceptor) et dans Firestore (feature_telemetry).</small>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="text" id="featureSearchFilterInput" oninput="window.renderFeaturesTelemetryTable()" placeholder="Filtrer un module ou une plateforme..." style="padding: 9px 14px; border-radius: 10px; min-width: 220px;">
+                            <button type="button" onclick="window.syncFeaturesTelemetrySection()" class="icon-btn glass" style="color: var(--primary);"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                    </div>
+                    <div class="custom-table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Fonctionnalité / Module</th>
+                                    <th>Plateformes &amp; Endpoint</th>
+                                    <th>Volume &amp; Fréquence (%)</th>
+                                    <th>Latence &amp; Santé</th>
+                                    <th>Dernière Activité</th>
+                                    <th>Statut</th>
+                                    <th>Commande Directe</th>
+                                </tr>
+                            </thead>
+                            <tbody id="featuresTelemetryTableBody">
+                                <tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Chargement de la télémétrie par fonctionnalité...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Gouvernance des Parrainages & Inspecteur de Messagerie Chat Course/Covoiturage -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 24px; margin-top: 24px;">
+                    <section class="table-container glass-card" style="margin-bottom: 0;">
+                        <div style="padding: 18px 20px; border-bottom: 1px solid var(--glass-border); display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="margin: 0; font-size: 1.06rem; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-gift" style="color: var(--gold);"></i>
+                                Système de Parrainage, Filleuls &amp; Points Bonus (Mobile App)
+                            </h3>
+                            <span class="badge gold" id="referralsTotalBadge">0 parrain(s)</span>
+                        </div>
+                        <div class="custom-table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Utilisateur</th>
+                                        <th>Code Parrain</th>
+                                        <th>Filleuls</th>
+                                        <th>Points Bonus / Fidélité</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="referralsGovernanceTableBody">
+                                    <tr><td colspan="5" style="text-align:center; color: var(--text-dim);">Synchronisation des parrainages...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </section>
+
+                    <div class="glass-card">
+                        <span class="aurora-eyebrow"><i class="fas fa-comments"></i> INSPECTEUR &amp; MODÉRATEUR DES SALONS DE CHAT (trips/{id}/messages &amp; pools/{id}/messages)</span>
+                        <h3 style="margin: 8px 0 6px 0; font-size: 1.12rem;">Audit des Conversations Passagers ↔ Chauffeurs</h3>
+                        <p style="margin: 0 0 14px 0; color: var(--text-dim); font-size: 0.84rem;">En cas de litige, inspectez et modérez les messages échangés dans une course ou un groupe de covoiturage.</p>
+                        <div style="display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap;">
+                            <select id="adminChatCollectionSelect" style="padding: 10px 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid var(--glass-border); color: white;">
+                                <option value="trips">Course (trips)</option>
+                                <option value="pools">Covoiturage (pools)</option>
+                            </select>
+                            <input type="text" id="adminChatTripIdInput" placeholder="ID de la course ou du pool covoiturage..." style="flex: 1; min-width: 180px; padding: 10px 14px; border-radius: 10px;">
+                            <button type="button" onclick="window.inspectTripOrPoolChatAdmin()" style="padding: 10px 16px; border-radius: 10px; background: var(--primary); color: #03100b; font-weight: 800; border: none; cursor: pointer;">
+                                <i class="fas fa-magnifying-glass"></i> Inspecter Chat
+                            </button>
+                        </div>
+                        <div id="adminChatMessagesBox" style="max-height: 220px; overflow-y: auto; padding: 12px; border-radius: 12px; background: rgba(3,16,11,0.75); border: 1px solid var(--glass-border); font-size: 0.82rem; color: var(--text-dim);">
+                            Entrez l'ID d'un trajet ou cliquez sur un pool pour inspecter ses messages.
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>

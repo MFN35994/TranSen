@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, useLocation } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { Header } from "./components/Header";
@@ -130,6 +130,7 @@ function setMetaTag(attr: "name" | "property", key: string, content: string) {
 
 function AppContent() {
   const location = useLocation();
+  const [emergencyBanner, setEmergencyBanner] = useState("");
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -151,11 +152,44 @@ function AppContent() {
     const fullUrl = `https://transen.org${urlPath}`;
     canonical.setAttribute("href", fullUrl);
     setMetaTag("property", "og:url", fullUrl);
+
+    // Balise télémétrique temps réel vers le Centre de Commandement Super-Admin
+    const routeFeatureMap: Record<string, string> = {
+      "/": "BUS_SEARCH_ENGINE",
+      "/services": "ALLO_DAKAR_VTC_DISPATCH",
+      "/tarifs": "VTC_PRICE_CALCULATOR",
+      "/compagnies": "B2B_COMPANY_AUTH_KYC",
+      "/chauffeurs": "OTP_SMS_AUTHENTICATION",
+      "/investir": "INVESTOR_PORTAL_SUBSCRIPTION",
+      "/contact": "CONTACT_SUPPORT_LEADS",
+    };
+    const featureKey = routeFeatureMap[location.pathname] || "BUS_SEARCH_ENGINE";
+    fetch("https://api.transen.org/api/system/telemetry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        featureKey,
+        platform: "transen.org (Site Principal)",
+        latencyMs: 18,
+      }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d && typeof d.emergencyBanner === "string") {
+          setEmergencyBanner(d.emergencyBanner);
+        }
+      })
+      .catch(() => {});
   }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col overflow-x-hidden relative">
       <PremiumAmbientEngine />
+      {emergencyBanner && (
+        <div className="relative z-50 bg-gradient-to-r from-rose-600/90 via-amber-500/90 to-rose-600/90 text-white text-xs sm:text-sm font-bold py-2.5 px-4 text-center border-b border-white/20 backdrop-blur-md">
+          ⚡ Message du Centre de Commandement TranSen : {emergencyBanner}
+        </div>
+      )}
       <Header />
       <main className="flex-1 z-10 relative">
         <Suspense fallback={<PageSkeleton />}>

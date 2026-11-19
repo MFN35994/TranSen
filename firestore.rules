@@ -66,6 +66,19 @@ service cloud.firestore {
         allow create: if isSignedIn();
         allow update, delete: if false;
       }
+
+      match /payouts/{payoutId} {
+        allow read, create: if isSignedIn();
+        allow update, delete: if request.auth != null || isAdmin();
+      }
+
+      match /notifications/{notifId} {
+        allow read, write: if isSignedIn();
+      }
+    }
+
+    match /wallets/{walletId} {
+      allow read, write: if isSignedIn();
     }
 
     // ── TRIPS ──────────────────────────────────────────────────────────────────
@@ -176,6 +189,10 @@ service cloud.firestore {
     match /audit_logs/{logId} {
       allow read, create: if isSignedIn();
       allow update, delete: if request.auth != null || isAdmin();
+    }
+
+    match /feature_telemetry/{featureId} {
+      allow read, write: if isSignedIn();
     }
 
     // ── TRIAL & FRAUD PREVENTION ───────────────────────────────────────────────
