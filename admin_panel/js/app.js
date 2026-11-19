@@ -127,6 +127,17 @@ async function adminFetch(url, options = {}) {
 
             if (isMutation && !isAuthRoute) {
                 clearAdminCache();
+                if (window.recordAuroraAuditLog && !url.includes('/api/admin/logs')) {
+                    window.recordAuroraAuditLog(
+                        response.ok ? 'AUDIT' : 'ERROR',
+                        `API_${method}`,
+                        'SuperAdminConsole',
+                        `${method} ${url} -> HTTP ${response.status}`,
+                        true
+                    );
+                }
+            } else if (!response.ok && window.recordAuroraAuditLog) {
+                window.recordAuroraAuditLog('WARN', `HTTP_${response.status}`, 'API_Gateway', `${method} ${url} -> HTTP ${response.status}`, false);
             }
 
             if (method === 'GET' && response.ok && !isAuthRoute && !options.bypassCache) {
@@ -340,7 +351,10 @@ function setupNavigation() {
             // Lazy-load & refresh active section
             if (section === 'companies') syncCompanies();
             else if (section === 'admins') syncAdmins();
-            else if (section === 'trips' || section === 'live') syncLiveFeed();
+            else if (section === 'trips' || section === 'live') {
+                syncLiveFeed();
+                if (window.syncBackendTripsAdmin) window.syncBackendTripsAdmin('');
+            }
             else if (section === 'dashboard') {
                 syncGlobalStats();
                 syncRecentActivity();
@@ -366,7 +380,11 @@ function setupNavigation() {
                 if (window.syncSupportAndReviewsSection) window.syncSupportAndReviewsSection();
                 if (window.syncContactLeadsAdmin) window.syncContactLeadsAdmin();
             }
-            else if (section === 'security' && window.syncSecuritySection) window.syncSecuritySection();
+            else if (section === 'security') {
+                if (window.syncSecuritySection) window.syncSecuritySection();
+                if (window.syncOtpSecurityAdmin) window.syncOtpSecurityAdmin();
+            }
+            else if (section === 'logs' && window.syncAdminLogsSection) window.syncAdminLogsSection();
             else if (section === 'ecosystem' && window.syncEcosystemHealth) window.syncEcosystemHealth();
         };
     });
@@ -3950,6 +3968,10 @@ window.exportAdminDataCsv = function(dataset) {
         const list = window.allInvestments || [];
         rows.push(['ID', 'Nom Complet', 'Email', 'Telephone', 'Actions', 'Montant FCFA', 'Statut', 'Date']);
         list.forEach(i => rows.push([i.id, i.fullName, i.email, i.phone, i.sharesCount, i.amount, i.status, i.createdAt]));
+    } else if (dataset === 'logs') {
+        const list = window.allUnifiedAdminLogs || [];
+        rows.push(['Horodatage', 'Niveau', 'Categorie', 'Source', 'Message']);
+        list.forEach(l => rows.push([l.timestamp, l.level, l.category, l.source, l.message]));
     }
 
     if (rows.length <= 1) {
@@ -4763,5 +4785,385 @@ if (typeof AURORA_SECTIONS_INDEX !== 'undefined') {
         section: 'sentinel',
         icon: 'fa-shield-virus',
         title: 'Sentinelle SOC : Alertes Pirates, Bugs, Perf & Disjoncteurs Services'
+    });
+}
+
+
+/* ============================================================================
+   11. REGISTRE POSTGRESQL COURSES & COLIS YOBANTÉ, BOUCLIER OTP, IA & LOGS
+   ============================================================================ */
+
+window.auroraClientLogs = window.auroraClientLogs || [];
+window.auroraBackendLogs = [];
+window.auroraFirestoreAuditLogs = [];
+window.allUnifiedAdminLogs = [];
+window.currentAdminLogsFilter = 'ALL';
+
+function getCurrentAdminIdentity() {
+    try {
+        const u = JSON.parse(localStorage.getItem('adminUser') || '{}');
+        return u.email || u.fullName || 'SuperAdmin';
+    } catch {
+        return 'SuperAdmin';
+    }
+}
+
+window.recordAuroraAuditLog = async function(level = 'AUDIT', category = 'ADMIN_ACTION', source = '', message = '', persist = false) {
+    const actor = source || getCurrentAdminIdentity();
+    const item = {
+        id: `CLOG-${Date.now()}-${Math.floor(Math.random() * 900 + 100)}`,
+        timestamp: new Date().toISOString(),
+        level: level.toUpperCase(),
+        category: category.toUpperCase(),
+        source: actor,
+        message: String(message || '')
+    };
+    window.auroraClientLogs.unshift(item);
+    if (window.auroraClientLogs.length > 250) window.auroraClientLogs.pop();
+
+    if (persist) {
+        try {
+            await addDoc(collection(db, "audit_logs"), item);
+        } catch {
+            // Non-blocking if Firestore rules not yet deployed
+        }
+    }
+    if (document.getElementById('section-logs')?.style.display === 'block') {
+        window.renderUnifiedAdminLogs();
+    }
+};
+
+// Capture frontend runtime errors & unhandled rejections into the Logs Console
+window.addEventListener('error', (ev) => {
+    window.recordAuroraAuditLog('ERROR', 'FRONTEND_RUNTIME', 'admin.transen.org', `${ev.message || 'Erreur JS'} (${ev.filename || ''}:${ev.lineno || 0})`, false);
+});
+window.addEventListener('unhandledrejection', (ev) => {
+    const reason = ev.reason?.message || String(ev.reason || 'Promise rejetée');
+    window.recordAuroraAuditLog('ERROR', 'PROMISE_REJECTION', 'admin.transen.org', reason, false);
+});
+
+/* ── A. Registre PostgreSQL des Courses, Colis Yobanté & Forçage Statut ── */
+window.syncBackendTripsAdmin = async function(category = '') {
+    const tbody = document.getElementById('backendTripsAdminTableBody');
+    if (!tbody) return;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--secondary);"><i class="fas fa-spinner fa-spin"></i> Chargement des courses &amp; colis PostgreSQL...</td></tr>`;
+    try {
+        const qs = category ? `?category=${encodeURIComponent(category)}` : '';
+        const res = await adminFetch(`/api/admin/trips${qs}`, { bypassCache: true });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const list = await res.json();
+        const trips = Array.isArray(list) ? list : [];
+
+        if (trips.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Aucun trajet ou colis trouvé pour ce filtre.</td></tr>`;
+            return;
+        }
+
+        tbody.innerHTML = trips.slice(0, 80).map(t => {
+            const id = escapeHtml(t.id || '');
+            const dt = t.createdAt ? new Date(t.createdAt).toLocaleString('fr-FR') : '--';
+            const cat = escapeHtml(t.category || 'ALLO_DAKAR');
+            const routing = escapeHtml(t.routingType || 'PUBLIC');
+            const dep = escapeHtml(t.pickupLocation || 'Dakar');
+            const arr = escapeHtml(t.dropoffLocation || 'Destination');
+            const isYobante = cat === 'YOBANTE' || t.senderPhone || t.receiverPhone || t.baggageDescription;
+            const detailHtml = isYobante
+                ? `<div><span class="badge gold">COLIS YOBANTÉ</span><br><small>Exp: <b>${escapeHtml(t.senderPhone || t.passengerPhone || '--')}</b> → Dest: <b>${escapeHtml(t.receiverPhone || '--')}</b></small>${t.baggageDescription ? `<br><small style="color:var(--secondary)">📦 ${escapeHtml(t.baggageDescription)}</small>` : ''}</div>`
+                : `<div><b>${escapeHtml(t.passengerName || 'Passager')}</b><br><small style="color:var(--text-dim)">${escapeHtml(t.passengerPhone || '')}</small></div>`;
+            const actorHtml = `${escapeHtml(t.driverName || 'Non assigné')}<br><small style="color:var(--secondary)">${escapeHtml(t.companyName || 'Indépendant / Bourse')}</small>`;
+            const price = Number(t.price || 0).toLocaleString('fr-FR');
+            const paySt = escapeHtml(t.paymentStatus || 'UNPAID');
+            const curSt = escapeHtml(t.status || 'PENDING');
+
+            return `
+                <tr>
+                    <td><code style="font-size:0.75rem;">${escapeHtml(dt)}</code></td>
+                    <td><span class="badge blue">${cat}</span><br><small style="color:var(--text-dim)">${routing}</small></td>
+                    <td><b>${dep}</b> <i class="fas fa-arrow-right" style="color:var(--secondary); font-size:0.72rem;"></i> <b>${arr}</b></td>
+                    <td>${detailHtml}</td>
+                    <td>${actorHtml}</td>
+                    <td><b style="color:var(--gold); font-family:'JetBrains Mono',monospace;">${price} F</b><br><small>${paySt}</small></td>
+                    <td>
+                        <select onchange="window.forceBackendTripStatus('${id}', this.value)" style="padding:6px 10px; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid var(--glass-border); color:white; font-size:0.75rem; font-weight:700;">
+                            ${['PENDING', 'ACCEPTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].map(s => `<option value="${s}" ${s === curSt ? 'selected' : ''}>${s}</option>`).join('')}
+                        </select>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    } catch {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color: var(--text-dim);">Poussez la mise à jour transen-backend pour activer l'inspection SQL directe des colis Yobanté et le forçage de statut.</td></tr>`;
+    }
+};
+
+window.forceBackendTripStatus = async function(tripId, newStatus) {
+    try {
+        const res = await adminFetch(`/api/admin/trips/${encodeURIComponent(tripId)}/status?status=${encodeURIComponent(newStatus)}`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Statut Forcé', `Le trajet #${tripId.substring(0, 8)} est passé à ${newStatus}.`, false);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Impossible de forcer le statut.', true);
+    }
+};
+
+/* ── B. Purge Manuelle des Réservations Expirées (> 5 min) ──────────────── */
+window.triggerManualBookingsCleanupAdmin = async function() {
+    try {
+        const res = await adminFetch('/api/admin/bookings/cleanup-expired', { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        window.showNotificationDrawer('Nettoyage Exécuté', data.message || 'Sièges expirés libérés.', false);
+        window.syncAllBookingsAdmin();
+    } catch (e) {
+        window.showNotificationDrawer('Info Backend', e.message || 'Redéployez le backend pour exécuter le scheduler à la demande.', true);
+    }
+};
+
+/* ── C. Supervision & Déblocage du Bouclier OTP Anti-Brute-Force ────────── */
+window.syncOtpSecurityAdmin = async function() {
+    const badge = document.getElementById('otpSmsProviderBadge');
+    const box = document.getElementById('otpBlockedPhonesList');
+    if (!box) return;
+    try {
+        const res = await adminFetch('/api/admin/otp/status', { bypassCache: true });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (badge) badge.innerText = `Passerelle SMS : ${(data.smsProvider || 'ORANGE').toUpperCase()} · Sessions OTP : ${data.activeOtpSessions || 0}`;
+        const blocked = Array.isArray(data.blockedPhones) ? data.blockedPhones : [];
+        if (blocked.length === 0) {
+            box.innerHTML = `<span style="color:#6ee7b7;"><i class="fas fa-shield-check"></i> Aucun numéro de téléphone n'est actuellement bloqué par l'anti-brute-force OTP.</span>`;
+        } else {
+            box.innerHTML = blocked.map(b => `
+                <div style="display:inline-flex; align-items:center; gap:10px; padding:8px 14px; margin:4px; border-radius:10px; background:rgba(244,63,94,0.16); border:1px solid rgba(244,63,94,0.45); color:#fda4af;">
+                    <span><b>${escapeHtml(b.phone)}</b> (${escapeHtml(String(b.minutesRemaining))} min restantes)</span>
+                    <button type="button" onclick="window.unblockOtpPhoneFromAdmin('${escapeHtml(b.phone)}')" style="padding:4px 10px; border-radius:6px; background:var(--primary); color:#03100b; border:none; font-weight:800; cursor:pointer; font-size:0.75rem;">Débloquer</button>
+                </div>
+            `).join('');
+        }
+    } catch {
+        box.innerHTML = `<span style="color:var(--text-dim);">Saisissez un numéro ci-dessus pour lever un verrouillage anti-brute-force OTP (15 min).</span>`;
+    }
+};
+
+window.unblockOtpPhoneFromAdmin = async function(phoneOpt) {
+    const input = document.getElementById('otpUnblockPhoneInput');
+    const phone = (phoneOpt || (input ? input.value.trim() : '')).trim();
+    if (!phone) {
+        window.showNotificationDrawer('OTP Anti-Brute-Force', 'Veuillez saisir le numéro de téléphone à débloquer.', true);
+        return;
+    }
+    try {
+        const res = await adminFetch(`/api/admin/otp/unblock?phone=${encodeURIComponent(phone)}`, { method: 'POST' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Numéro Débloqué', `Le verrouillage OTP du numéro ${phone} a été levé.`, false);
+        if (input) input.value = '';
+        window.syncOtpSecurityAdmin();
+    } catch (e) {
+        window.showNotificationDrawer('Erreur OTP', e.message || 'Impossible de débloquer ce numéro.', true);
+    }
+};
+
+/* ── D. Pilotage IA Gemini, Notification Push FCM & Gouvernance Fidélité ── */
+window.testGeminiFromAdmin = async function(mode) {
+    const input = document.getElementById('adminGeminiPromptInput');
+    const out = document.getElementById('adminGeminiOutputBox');
+    if (!input || !out) return;
+    const text = input.value.trim() || "Quels sont les horaires et tarifs entre Dakar et Saint-Louis sur TranSen ?";
+    out.style.display = 'block';
+    out.innerText = "Interrogation du contrôleur Gemini (/api/ai)...";
+    try {
+        const endpoint = mode === 'refine' ? '/api/ai/refine-ticket' : '/api/ai/chat';
+        const body = mode === 'refine'
+            ? { text }
+            : { history: [{ isUser: true, text }] };
+        const res = await fetch(`${API_HOST}${endpoint}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        const data = await res.json();
+        out.innerText = JSON.stringify(data, null, 2);
+        window.recordAuroraAuditLog('INFO', 'GEMINI_AI_TEST', getCurrentAdminIdentity(), `Test IA (${endpoint}) exécuté avec succès (HTTP ${res.status}).`, false);
+    } catch (e) {
+        out.innerText = `Erreur IA : ${e.message}`;
+    }
+};
+
+window.sendAdminDirectPush = async function() {
+    const userId = document.getElementById('adminTargetUserIdInput')?.value.trim();
+    const title = document.getElementById('adminPushTitleInput')?.value.trim();
+    const body = document.getElementById('adminPushBodyInput')?.value.trim();
+    if (!userId || !title || !body) {
+        window.showNotificationDrawer('Notification Push', 'Renseignez l’UUID utilisateur, le titre et le message.', true);
+        return;
+    }
+    try {
+        const res = await adminFetch('/api/admin/push-notification', {
+            method: 'POST',
+            body: JSON.stringify({ userId, title, body })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Push Envoyé', `Notification FCM envoyée à ${userId}.`, false);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur Push', e.message || 'Impossible d’envoyer la notification.', true);
+    }
+};
+
+window.updateUserLoyaltyFromAdmin = async function() {
+    const userId = document.getElementById('adminTargetUserIdInput')?.value.trim();
+    if (!userId) {
+        window.showNotificationDrawer('Fidélité & Abonnement', "Saisissez l'UUID de l'utilisateur ou du chauffeur.", true);
+        return;
+    }
+    const pts = prompt("Nouveau solde de Points de Fidélité (ex: 250) :", "100");
+    if (pts === null) return;
+    const plan = prompt("Plan d'abonnement (ex: VIP_MONTHLY, PRO_DRIVER ou laisser vide) :", "VIP_MONTHLY");
+    if (plan === null) return;
+
+    try {
+        const res = await adminFetch(`/api/admin/users/${encodeURIComponent(userId)}/loyalty-subscription`, {
+            method: 'POST',
+            body: JSON.stringify({ loyaltyPoints: Number(pts), subscriptionPlan: plan.trim() })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        window.showNotificationDrawer('Gouvernance Utilisateur', 'Points de fidélité et abonnement mis à jour.', false);
+    } catch (e) {
+        window.showNotificationDrawer('Erreur', e.message || 'Mise à jour impossible.', true);
+    }
+};
+
+/* ── E. Console Unifiée de Logs & Audit Trail (#section-logs) ───────────── */
+window.syncAdminLogsSection = async function() {
+    try {
+        const [backendRes, auditSnap] = await Promise.allSettled([
+            adminFetch('/api/admin/logs', { bypassCache: true }),
+            getDocs(query(collection(db, "audit_logs"), limit(120)))
+        ]);
+
+        if (backendRes.status === 'fulfilled' && backendRes.value.ok) {
+            const list = await backendRes.value.json();
+            window.auroraBackendLogs = Array.isArray(list) ? list : [];
+        }
+
+        if (auditSnap.status === 'fulfilled') {
+            const fsList = [];
+            auditSnap.value.forEach(d => fsList.push({ id: d.id, ...d.data() }));
+            window.auroraFirestoreAuditLogs = fsList;
+        }
+    } catch (e) {
+        console.warn("Logs sync warning:", e);
+    }
+    window.renderUnifiedAdminLogs();
+};
+
+window.setAdminLogsFilter = function(level, btnEl) {
+    window.currentAdminLogsFilter = level || 'ALL';
+    document.querySelectorAll('#logsLevelFilters .filter-chip').forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+    window.renderUnifiedAdminLogs();
+};
+
+window.renderUnifiedAdminLogs = function() {
+    const tbody = document.getElementById('adminUnifiedLogsTableBody');
+    const searchQ = (document.getElementById('logsSearchInput')?.value || '').toLowerCase().trim();
+
+    // Synthesize fallback telemetry logs from already loaded transactions/trips if backend logs endpoint isn't deployed yet
+    const syntheticLogs = [];
+    if (window.auroraBackendLogs.length === 0) {
+        (window.allFinanceTransactions || []).slice(0, 20).forEach((t, i) => {
+            syntheticLogs.push({
+                id: `SYN-TX-${i}`,
+                timestamp: t.createdAt || new Date().toISOString(),
+                level: t.status === 'FAILED' ? 'ERROR' : 'INFO',
+                category: `FINANCE_${t.type || 'TX'}`,
+                source: 'SenePay / WalletEngine',
+                message: `Transaction ${t.type} · Détenteur: ${t.ownerName || 'Système'} · Montant: ${t.amount} FCFA · Statut: ${t.status} · Réf: ${t.reference || 'direct'}`
+            });
+        });
+    }
+
+    const combinedMap = new Map();
+    [
+        ...window.auroraClientLogs,
+        ...window.auroraFirestoreAuditLogs,
+        ...window.auroraBackendLogs,
+        ...syntheticLogs
+    ].forEach(item => {
+        const key = `${item.timestamp}-${item.category}-${item.message}`;
+        if (!combinedMap.has(key)) combinedMap.set(key, item);
+    });
+
+    const allLogs = Array.from(combinedMap.values()).sort((a, b) =>
+        String(b.timestamp || '').localeCompare(String(a.timestamp || ''))
+    );
+    window.allUnifiedAdminLogs = allLogs;
+
+    let auditCnt = 0;
+    let warnCnt = 0;
+    let errCnt = 0;
+    allLogs.forEach(l => {
+        const lv = (l.level || 'INFO').toUpperCase();
+        if (lv === 'AUDIT') auditCnt++;
+        else if (lv === 'WARN' || lv === 'SECURITY') warnCnt++;
+        else if (lv === 'ERROR') errCnt++;
+    });
+
+    const totEl = document.getElementById('logsTotalCount');
+    const audEl = document.getElementById('logsAuditCount');
+    const wrnEl = document.getElementById('logsWarnCount');
+    const errEl = document.getElementById('logsErrorCount');
+    if (totEl) totEl.innerText = allLogs.length;
+    if (audEl) audEl.innerText = auditCnt;
+    if (wrnEl) wrnEl.innerText = warnCnt;
+    if (errEl) errEl.innerText = errCnt;
+
+    if (!tbody) return;
+    const filtered = allLogs.filter(l => {
+        const lv = (l.level || 'INFO').toUpperCase();
+        if (window.currentAdminLogsFilter !== 'ALL' && lv !== window.currentAdminLogsFilter) return false;
+        if (!searchQ) return true;
+        const hay = `${l.timestamp} ${l.level} ${l.category} ${l.source} ${l.message}`.toLowerCase();
+        return hay.includes(searchQ);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color: var(--text-dim); padding:22px;">Aucun événement ne correspond aux critères de filtrage.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.slice(0, 150).map(l => {
+        const dt = l.timestamp ? new Date(l.timestamp).toLocaleString('fr-FR') : '--';
+        const lv = (l.level || 'INFO').toUpperCase();
+        const badgeCls = lv === 'ERROR' ? 'red' : (lv === 'WARN' || lv === 'SECURITY') ? 'gold' : lv === 'AUDIT' ? 'green' : 'blue';
+        return `
+            <tr>
+                <td><code style="font-size:0.76rem; color:var(--text-dim);">${escapeHtml(dt)}</code></td>
+                <td><span class="badge ${badgeCls}">${escapeHtml(lv)}</span></td>
+                <td><code style="color:#22d3ee; font-size:0.78rem;">${escapeHtml(l.category || 'SYSTEM')}</code></td>
+                <td><b>${escapeHtml(l.source || 'TranSen')}</b></td>
+                <td style="font-family:'JetBrains Mono',monospace; font-size:0.8rem;">${escapeHtml(l.message || '')}</td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.clearBackendLogsFromAdmin = async function() {
+    if (!confirm("Purger le tampon mémoire des logs serveur et de la session courante ?")) return;
+    window.auroraClientLogs = [];
+    window.auroraBackendLogs = [];
+    try {
+        await adminFetch('/api/admin/logs', { method: 'DELETE' });
+    } catch {
+        // Ignore if backend not yet redeployed
+    }
+    window.renderUnifiedAdminLogs();
+    window.showNotificationDrawer('Logs Purgés', 'Tampon des logs réinitialisé.', false);
+};
+
+if (typeof AURORA_SECTIONS_INDEX !== 'undefined') {
+    AURORA_SECTIONS_INDEX.splice(1, 0, {
+        section: 'logs',
+        icon: 'fa-terminal',
+        title: 'Console de Logs Serveur, Télémétrie Réseau & Audit Trail Immuable'
     });
 }
