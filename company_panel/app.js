@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-app.js";
-import { getFirestore, collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteField, query, where, limit, getDocs, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, doc, updateDoc, arrayUnion, arrayRemove, deleteField, query, where, limit, getDocs, addDoc, serverTimestamp, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore.js";
 import axios from "https://cdn.jsdelivr.net/npm/axios@1.6.8/+esm";
 
 // ==========================================
@@ -875,7 +875,7 @@ document.getElementById('shareReceiptBtn').onclick = async () => {
         
     } catch (error) {
         console.error("Erreur lors de la génération du reçu:", error);
-        alert("Impossible de générer le reçu.");
+        window.showNotificationDrawer("Reçu Indisponible", "Impossible de générer le reçu pour le moment. Veuillez réessayer.", true);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -1296,7 +1296,7 @@ window.updateTripStatus = async function(tripId, status) {
             window.showNotificationDrawer("Erreur Statut", result.error || "Impossible de mettre à jour le statut", true);
         }
     } catch (error) {
-        alert("Erreur de connexion au serveur.");
+        window.showNotificationDrawer("Connexion Interrompue", "Impossible de joindre le serveur TranSen. Vérifiez votre connexion internet.", true);
     }
 };
 
@@ -1600,7 +1600,7 @@ window.revokePassenger = async function(bookingId, passengerId) {
         true,
         async () => {
             try {
-                const response = await customTransenFetch(`${API_BASE_URL}/api/bookings/${bookingId}/cancel`, {
+                const response = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/bookings/${bookingId}/cancel?companyId=${currentCompanyId}`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${currentToken}`,
@@ -1660,7 +1660,7 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
     const seats = document.getElementById('pmPassengerSeats').value;
     
     try {
-        const response = await customTransenFetch(`${API_BASE_URL}/api/bookings/manual-book?tripId=${currentPassengerTripId}&passengerPhone=${encodeURIComponent(phone)}&fullName=${encodeURIComponent(name)}&seats=${seats}`, {
+        const response = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/bookings/manual-book?companyId=${currentCompanyId}&tripId=${currentPassengerTripId}&passengerPhone=${encodeURIComponent(phone)}&fullName=${encodeURIComponent(name)}&seats=${seats}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${currentToken}`
@@ -1692,18 +1692,24 @@ document.getElementById('pmAddPassengerForm').onsubmit = async (e) => {
                 } catch(err) {}
             }
 
-            alert("Passager ajouté avec succès !");
+            window.showNotificationDrawer("Passager Enregistré", `${name} (${seats} place(s)) a été ajouté au manifeste du départ.`, false);
             document.getElementById('pmPassengerName').value = "";
             document.getElementById('pmPassengerPhone').value = "";
             document.getElementById('pmPassengerSeats').value = "1";
             await loadTripBookings();
             loadDashboardData();
         } else {
-            const err = await response.text();
-            alert("Erreur: " + err);
+            let errMsg = "Impossible d'ajouter ce passager.";
+            try {
+                const errObj = await response.json();
+                errMsg = errObj.error || errObj.message || errMsg;
+            } catch {
+                errMsg = await response.text() || errMsg;
+            }
+            window.showNotificationDrawer("Enregistrement Refusé", errMsg, true);
         }
     } catch (error) {
-        alert("Erreur de connexion.");
+        window.showNotificationDrawer("Erreur Réseau", "Impossible de joindre le serveur pour enregistrer ce passager.", true);
     } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
@@ -1735,7 +1741,7 @@ window.handleExpressAddPassenger = async function(event) {
     submitBtn.disabled = true;
 
     try {
-        const response = await customTransenFetch(`${API_BASE_URL}/api/bookings/manual-book?tripId=${currentPassengerTripId}&passengerPhone=${encodeURIComponent(phone)}&fullName=${encodeURIComponent(name)}&seats=${seats}`, {
+        const response = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/bookings/manual-book?companyId=${currentCompanyId}&tripId=${currentPassengerTripId}&passengerPhone=${encodeURIComponent(phone)}&fullName=${encodeURIComponent(name)}&seats=${seats}`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${currentToken}`
@@ -2123,7 +2129,7 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
         } else if (recurrenceType === 'WEEKLY') {
             const selectedDays = Array.from(document.querySelectorAll('input[name="schWeeklyDays"]:checked')).map(el => parseInt(el.value));
             if (selectedDays.length === 0) {
-                alert("Veuillez sélectionner au moins un jour de la semaine pour la récurrence hebdomadaire.");
+                window.showNotificationDrawer("Planification Incomplète", "Veuillez sélectionner au moins un jour de la semaine pour la récurrence hebdomadaire.", true);
                 btn.innerHTML = originalText;
                 btn.disabled = false;
                 return;
@@ -2398,7 +2404,7 @@ function exportActivitiesToCSV() {
     });
     
     if (csv.length === 1 || (csv.length === 2 && rows[0].innerText.includes("Chargement"))) {
-        alert("Aucune activité disponible à exporter.");
+        window.showNotificationDrawer("Export CSV", "Aucune activité n'est disponible à exporter pour le moment.", true);
         return;
     }
     
@@ -2428,7 +2434,7 @@ function exportDriversToCSV() {
     });
     
     if (csv.length === 1 || (csv.length === 2 && rows[0].innerText.includes("Aucun chauffeur"))) {
-        alert("Aucun chauffeur disponible à exporter.");
+        window.showNotificationDrawer("Export Flotte", "Aucun chauffeur n'est rattaché à votre flotte pour le moment.", true);
         return;
     }
     
@@ -2914,15 +2920,38 @@ function renderKPIBarCharts(driversList = [], tripsList = []) {
 }
 
 // ====================================================
-// PREVENTIVE MAINTENANCE STORAGE & LOGIC
+// PREVENTIVE MAINTENANCE STORAGE & CLOUD SYNC LOGIC
 // ====================================================
 function getMaintenanceRules() {
-    return JSON.parse(localStorage.getItem('transen_maintenance_rules')) || [];
+    try {
+        return JSON.parse(localStorage.getItem('transen_maintenance_rules')) || [];
+    } catch {
+        return [];
+    }
 }
 
 function saveMaintenanceRules(rules) {
     localStorage.setItem('transen_maintenance_rules', JSON.stringify(rules));
+    if (currentCompanyId) {
+        setDoc(doc(db, "companies", currentCompanyId, "maintenance_rules", "all"), {
+            rules: Array.isArray(rules) ? rules : [],
+            updatedAtIso: new Date().toISOString()
+        }, { merge: true }).catch(() => {});
+    }
 }
+
+window.syncCloudMaintenanceRules = async function() {
+    if (!currentCompanyId) return;
+    try {
+        const snap = await getDoc(doc(db, "companies", currentCompanyId, "maintenance_rules", "all"));
+        if (snap.exists() && Array.isArray(snap.data().rules) && snap.data().rules.length > 0) {
+            localStorage.setItem('transen_maintenance_rules', JSON.stringify(snap.data().rules));
+            if (typeof renderMaintenanceRules === 'function') renderMaintenanceRules();
+        }
+    } catch {
+        // Non-blocking fallback
+    }
+};
 
 function updateMaintDriverDropdown(drivers) {
     const select = document.getElementById('maintDriverSelect');
@@ -3041,11 +3070,11 @@ function setupMaintenanceForm() {
         const triggerKm = parseInt(document.getElementById('maintTriggerKm').value) || 0;
         
         if (!driverName) {
-            alert("Veuillez sélectionner un chauffeur.");
+            window.showNotificationDrawer("Sélection Requise", "Veuillez choisir un chauffeur de votre flotte.", true);
             return;
         }
         if (triggerKm <= 0) {
-            alert("Le seuil d'alerte doit être supérieur à 0.");
+            window.showNotificationDrawer("Seuil Invalide", "Le seuil kilométrique d'alerte doit être strictement supérieur à 0.", true);
             return;
         }
         
@@ -3064,7 +3093,7 @@ function setupMaintenanceForm() {
         renderMaintenanceTable();
         loadDashboardData(); // Redraw with badges
         
-        alert("Règle de maintenance ajoutée avec succès !");
+        window.showNotificationDrawer("Maintenance Enregistrée", "Règle d'entretien ajoutée et synchronisée dans le cloud de votre compagnie.", false);
     };
 }
 
@@ -3158,7 +3187,7 @@ function setupActivityFiltersEvents() {
 // ====================================================
 function startOnboardingTutorial() {
     if (typeof introJs === 'undefined') {
-        alert("Le module de tutoriel n'est pas encore complètement disponible.");
+        window.showNotificationDrawer("Tutoriel Interactif", "Le guide interactif est en cours de chargement. Réessayez dans un instant.", false);
         return;
     }
 
@@ -3690,7 +3719,7 @@ window.handleTimelineDrop = async function(event, tripId) {
 
     const driverObj = (window.loadedDriversCache || []).find(d => d.name === driverName);
     if (!driverObj) {
-        alert("Chauffeur introuvable.");
+        window.showNotificationDrawer("Chauffeur Introuvable", "Ce chauffeur n'a pas été retrouvé dans votre flotte active.", true);
         return;
     }
 
@@ -4609,7 +4638,7 @@ async function initExpensesTracker() {
             const select = document.getElementById('expenseDriverSelect');
             const driverId = select.value;
             if (!driverId) {
-                alert("Veuillez choisir un chauffeur.");
+                window.showNotificationDrawer("Chauffeur Requis", "Veuillez sélectionner le chauffeur concerné avant de soumettre.", true);
                 return;
             }
 
@@ -4891,7 +4920,7 @@ function initExportAuditLogs() {
                         jsPDFClass = window.jsPDF;
                     }
                     if (!jsPDFClass) {
-                        alert("La bibliothèque jsPDF n'est pas complètement chargée. Veuillez réessayer.");
+                        window.showNotificationDrawer("Export PDF", "Le moteur PDF est en cours d'initialisation. Veuillez réessayer dans 2 secondes.", true);
                         return;
                     }
                     const doc = new jsPDFClass('p', 'mm', 'a4');
@@ -4992,10 +5021,10 @@ function initExportAuditLogs() {
                     }).showToast();
                 } catch (pdfErr) {
                     console.error("PDF Export failed", pdfErr);
-                    alert("Erreur lors de l'export PDF : " + pdfErr.message);
+                    window.showNotificationDrawer("Erreur Export PDF", "La génération du PDF a échoué : " + pdfErr.message, true);
                 }
             } else {
-                alert("Format non supporté. Veuillez taper 'json' ou 'pdf'.");
+                window.showNotificationDrawer("Format Non Supporté", "Veuillez saisir « json » ou « pdf » pour lancer l'export.", true);
             }
         };
     }
@@ -5076,7 +5105,7 @@ window.generateGlobalReport = async function(format) {
             }
 
             if (!jsPDFClass) {
-                alert("La bibliothèque jsPDF n'est pas complètement chargée. Veuillez recharger ou patienter.");
+                window.showNotificationDrawer("Export PDF", "Le moteur PDF est en cours de chargement. Veuillez patienter un instant.", true);
                 return;
             }
 
@@ -5456,7 +5485,7 @@ window.generateGlobalReport = async function(format) {
 
         } catch (err) {
             console.error(err);
-            alert("Erreur export PDF : " + err.message);
+            window.showNotificationDrawer("Erreur Export PDF", "La génération du rapport PDF a échoué : " + err.message, true);
         }
     } else if (format === 'word') {
         const logoBase64 = await window.getLogoBase64();
@@ -7287,7 +7316,7 @@ window.syncCompanyAnalyticsSection = async function() {
 /* ── 11. Palette de Commandes B2B (Ctrl+K — 14 Modules) ─────────────────── */
 const B2B_COMMAND_MODULES = [
     { section: 'dashboard', icon: 'fa-th-large', title: "Vue d'ensemble & Radar GPS Flotte" },
-    { section: 'fleet-sentinel', icon: 'fa-radar', title: "Sentinelle Flotte & Alertes Opérationnelles" },
+    { section: 'fleet-sentinel', icon: 'fa-shield-halved', title: "Sentinelle Flotte & Alertes Opérationnelles" },
     { section: 'analytics', icon: 'fa-chart-pie', title: "Rentabilité P&L, Performance par Ligne & Cash/SenePay" },
     { section: 'trips', icon: 'fa-route', title: "Courses & Dispatching Flotte" },
     { section: 'boarding', icon: 'fa-qrcode', title: "Scanner QR d'Embarquement, Billets & Colis Yobanté" },
@@ -7379,3 +7408,116 @@ document.addEventListener('keydown', (e) => {
         if (cmd && cmd.style.display === 'flex') cmd.style.display = 'none';
     }
 });
+
+/* ── 12. Intervention Directe Compagnie dans les Salons Chat (trips/{id}/messages) */
+window.sendCompanyChatReply = async function(e) {
+    if (e) e.preventDefault();
+    const tripId = document.getElementById('b2bChatTripSelect')?.value;
+    const input = document.getElementById('b2bChatReplyInput');
+    const text = input?.value?.trim();
+    if (!tripId) {
+        window.showNotificationDrawer('Course Requise', 'Veuillez d’abord sélectionner et ouvrir une course avant de répondre.', true);
+        return;
+    }
+    if (!text) return;
+
+    const compName = document.getElementById('companyName')?.innerText?.trim() || 'Compagnie';
+    try {
+        await addDoc(collection(db, "trips", tripId, "messages"), {
+            senderId: currentCompanyId || 'company_manager',
+            senderRole: 'COMPANY_MANAGER',
+            senderName: `Direction ${compName}`,
+            text,
+            message: text,
+            timestamp: serverTimestamp(),
+            createdAtIso: new Date().toISOString()
+        });
+        input.value = '';
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Médiation Chat', `Réponse envoyée sur la course #${tripId.substring(0, 6)} : ${text.substring(0, 80)}`, 'COMMUNICATION');
+        }
+        window.showNotificationDrawer('Message Envoyé', 'Votre message a été publié en temps réel dans le salon de la course.', false);
+        window.inspectCompanyTripChat();
+    } catch (err) {
+        window.showNotificationDrawer('Envoi Impossible', err.message || 'Impossible de publier dans ce salon.', true);
+    }
+};
+
+/* ── 13. Impression Manifeste Officiel Passagers (Gare & Contrôle Routier) ── */
+window.printCompanyTripManifest = async function() {
+    if (!currentPassengerTripId) {
+        window.showNotificationDrawer('Aucun Départ Sélectionné', 'Veuillez d’abord ouvrir le détail d’une course.', true);
+        return;
+    }
+    const compName = document.getElementById('companyName')?.innerText?.trim() || 'Compagnie Partenaire TranSen';
+    const route = document.getElementById('detTripRoute')?.innerText?.trim() || '--';
+    const driver = document.getElementById('detDriverName')?.innerText?.trim() || 'Non assigné';
+    const driverPhone = document.getElementById('detDriverPhone')?.innerText?.trim() || '--';
+    const dateStr = document.getElementById('detTripDate')?.innerText?.trim() || new Date().toLocaleString('fr-FR');
+
+    let bookings = [];
+    try {
+        bookings = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/trips/${currentPassengerTripId}/bookings`);
+        if (!Array.isArray(bookings)) bookings = [];
+    } catch {
+        bookings = [];
+    }
+
+    const active = bookings.filter(b => b.status !== 'CANCELLED');
+    const totalSeats = active.reduce((acc, b) => acc + Number(b.seatsBooked || 1), 0);
+
+    const rowsHtml = active.length === 0
+        ? '<tr><td colspan="6" style="text-align:center; padding:18px; color:#555;">Aucun passager inscrit sur ce départ.</td></tr>'
+        : active.map((b, idx) => `
+            <tr>
+                <td>${idx + 1}</td>
+                <td><b>${escapeHtml(b.passengerName || 'Passager')}</b></td>
+                <td>${escapeHtml(b.passengerPhone || '--')}</td>
+                <td style="text-align:center;">${escapeHtml(b.seatNumbers || b.seatsBooked || 1)}</td>
+                <td><code>${escapeHtml(b.boardingCode || '--')}</code></td>
+                <td>${escapeHtml(b.paymentStatus || '--')} · ${escapeHtml(b.status || '--')}</td>
+            </tr>`).join('');
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) {
+        window.showNotificationDrawer('Pop-up Bloqué', 'Autorisez l’ouverture de fenêtre pour imprimer le manifeste officiel.', true);
+        return;
+    }
+    win.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Manifeste Passagers — ${escapeHtml(compName)}</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 28px; color: #111; }
+            .hdr { display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #065f46; padding-bottom: 14px; margin-bottom: 18px; }
+            .hdr h1 { margin:0; font-size:20px; color:#065f46; }
+            .meta { display:grid; grid-template-columns: 1fr 1fr; gap:8px; margin-bottom:18px; font-size:13px; background:#f8fafc; padding:12px; border:1px solid #cbd5e1; border-radius:8px; }
+            table { width:100%; border-collapse:collapse; font-size:12.5px; }
+            th, td { border:1px solid #cbd5e1; padding:8px 10px; text-align:left; }
+            th { background:#065f46; color:#fff; }
+            .foot { margin-top:26px; display:flex; justify-content:space-between; font-size:12px; color:#475569; }
+        </style></head><body>
+        <div class="hdr">
+            <div><h1>MANIFESTE OFFICIEL DES PASSAGERS</h1><div>${escapeHtml(compName)} · Réseau TranSen Sénégal</div></div>
+            <div style="text-align:right; font-size:12px;">Réf. Course : <b>#${escapeHtml(currentPassengerTripId.substring(0, 8).toUpperCase())}</b><br>Édité le ${new Date().toLocaleString('fr-FR')}</div>
+        </div>
+        <div class="meta">
+            <div><b>Trajet :</b> ${escapeHtml(route)}</div>
+            <div><b>Date / Départ :</b> ${escapeHtml(dateStr)}</div>
+            <div><b>Chauffeur :</b> ${escapeHtml(driver)} (${escapeHtml(driverPhone)})</div>
+            <div><b>Passagers à bord :</b> ${active.length} dossier(s) · <b>${totalSeats} place(s)</b></div>
+        </div>
+        <table>
+            <thead><tr><th>#</th><th>Nom & Prénom</th><th>Téléphone</th><th style="text-align:center;">Siège(s)</th><th>Code QR</th><th>Paiement / Statut</th></tr></thead>
+            <tbody>${rowsHtml}</tbody>
+        </table>
+        <div class="foot">
+            <div>Visa & Cachet de la Compagnie : ______________________</div>
+            <div>Signature Chauffeur / Contrôleur : ______________________</div>
+        </div>
+        <script>window.onload = function(){ window.print(); };</script>
+    </body></html>`);
+    win.document.close();
+};
+
+// Synchroniser les règles de maintenance cloud au démarrage dès que la compagnie est connectée
+setTimeout(() => {
+    if (typeof window.syncCloudMaintenanceRules === 'function') window.syncCloudMaintenanceRules();
+}, 1800);

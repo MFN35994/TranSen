@@ -3175,6 +3175,201 @@ body.dark-mode textarea:focus {
     box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18) !important;
 }
 
+/* ============================================================================
+   REFONTE ERGONOMIE, FLEXIBILITÉ & ADAPTABILITÉ MULTI-ÉCRANS (320px ➔ 4K)
+   ============================================================================ */
+
+.aurora-split-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 22px;
+    width: 100%;
+}
+
+.aurora-express-grid {
+    display: grid;
+    grid-template-columns: 2fr 2fr 1fr;
+    gap: 8px;
+    width: 100%;
+}
+
+main.content {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.admin-section {
+    max-width: 100%;
+    overflow-x: clip;
+}
+
+.table-responsive,
+.custom-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 12px;
+}
+
+.stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 215px), 1fr)) !important;
+    gap: 16px !important;
+}
+
+/* 1. Très grands écrans & 4K (>= 1600px) : confort de lecture centré */
+@media (min-width: 1600px) {
+    main.content > .admin-section {
+        max-width: 1520px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+}
+
+/* 2. Laptops compacts & Tablettes Paysage (<= 1280px) */
+@media (max-width: 1280px) {
+    header {
+        flex-wrap: wrap !important;
+        gap: 12px !important;
+        padding: 14px 18px !important;
+    }
+    .header-left {
+        flex: 1 1 260px;
+        min-width: 0;
+    }
+    .header-search {
+        max-width: 280px;
+        min-width: 0;
+    }
+    .header-actions {
+        flex-wrap: wrap;
+        gap: 8px !important;
+    }
+    #syncIndicator {
+        display: none !important;
+    }
+}
+
+/* 3. Tablettes Portrait & Petits Écrans (<= 992px) */
+@media (max-width: 992px) {
+    header {
+        padding: 12px 16px !important;
+    }
+    .header-left h1 {
+        font-size: 1.2rem !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .header-search {
+        display: none !important;
+    }
+    .company-code-badge {
+        font-size: 0.72rem !important;
+        padding: 6px 10px !important;
+    }
+    #companyApiHealthPill {
+        padding: 5px 9px !important;
+        font-size: 0.68rem !important;
+    }
+    .aurora-hero-strip {
+        padding: 18px !important;
+    }
+    .aurora-hero-strip h2 {
+        font-size: 1.22rem !important;
+    }
+    .glass-card {
+        padding: 18px !important;
+        border-radius: 15px !important;
+    }
+}
+
+/* 4. Smartphones & Écrans Compacts (<= 640px) — Ergonomie Tactile Totale */
+@media (max-width: 640px) {
+    main.content {
+        padding: 12px 12px 96px 12px !important;
+    }
+    header {
+        padding: 10px 12px !important;
+        border-radius: 14px !important;
+        margin-bottom: 14px !important;
+    }
+    .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        gap: 6px !important;
+    }
+    #onboardingTutorialBtn,
+    #fullscreenToggleBtn {
+        display: none !important;
+    }
+    .company-code-badge {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+        font-size: 0.72rem !important;
+        padding: 7px 8px !important;
+    }
+    .aurora-express-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .btn-aurora-primary,
+    .btn-aurora-secondary {
+        width: 100%;
+        min-height: 44px;
+        font-size: 0.84rem !important;
+    }
+    .driver-action-btn {
+        width: 36px;
+        height: 36px;
+    }
+    .aurora-notif-drawer {
+        top: 12px;
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: none;
+    }
+    .aurora-sentinel-item {
+        padding: 14px !important;
+    }
+    .stat-card.glass {
+        padding: 16px !important;
+    }
+    .stat-info p {
+        font-size: 1.25rem !important;
+    }
+    .modal-overlay {
+        padding: 10px !important;
+    }
+    .modal-overlay .glass-card,
+    .modal-overlay .login-card {
+        padding: 18px !important;
+        max-height: 92vh;
+        overflow-y: auto;
+    }
+    .bottom-nav {
+        background: rgba(3, 16, 11, 0.96) !important;
+        border-top: 1px solid rgba(52, 211, 153, 0.28) !important;
+        backdrop-filter: blur(18px);
+        padding-bottom: env(safe-area-inset-bottom, 6px);
+    }
+}
+
+/* 5. Mode Impression Propre (Manifeste Passagers Officiel) */
+@media print {
+    .sidebar, header, .bottom-nav, .modal-overlay, .aurora-notif-drawer {
+        display: none !important;
+    }
+    body {
+        background: #ffffff !important;
+        color: #000000 !important;
+    }
+}
+
 body.dark-mode .fc {
     color: var(--text-main);
 }
