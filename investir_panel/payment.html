@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#050811">
+    <meta name="theme-color" content="#03100b">
     <meta name="robots" content="noindex, nofollow">
-    <title>Paiement - TranSen Invest</title>
+    <title>Paiement Sécurisé SenePay — TranSen Invest</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="shortcut icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
@@ -15,247 +16,228 @@
     <link rel="preconnect" href="https://api.transen.org" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        .payment-container {
-            max-width: 620px;
-            margin: 0 auto;
-            padding: 20px;
+        .payment-container { max-width: 660px; width: 100%; margin: 0 auto; }
+        .payment-card { padding: 34px 30px; position: relative; overflow: hidden; border-color: rgba(245, 184, 61, 0.38); }
+        .payment-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3.5px;
+            background: linear-gradient(90deg, #fde68a, #f5b83d, #10b981, #22d3ee);
         }
-        .payment-card {
-            padding: 40px 35px;
-            box-shadow: var(--shadow-premium);
+        .checkout-steps {
+            display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+            margin-bottom: 26px;
         }
-        .payment-header {
+        .step-chip {
+            padding: 9px 10px; border-radius: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            font-size: 0.72rem; font-weight: 600; color: var(--text-dim);
             text-align: center;
-            margin-bottom: 35px;
         }
+        .step-chip.done {
+            background: rgba(16, 185, 129, 0.12);
+            border-color: rgba(52, 211, 153, 0.35);
+            color: var(--accent-emerald-light);
+        }
+        .step-chip.current {
+            background: rgba(245, 184, 61, 0.14);
+            border-color: rgba(245, 184, 61, 0.45);
+            color: var(--primary-gold-bright);
+        }
+        .payment-header { text-align: center; margin-bottom: 26px; }
         .payment-header .check-icon {
-            width: 70px; height: 70px;
-            background: rgba(46, 204, 113, 0.12);
-            border: 2px solid #2ecc71;
-            color: #2ecc71;
-            font-size: 1.8rem;
-            border-radius: 50%;
+            width: 68px; height: 68px; border-radius: 50%;
+            background: rgba(16, 185, 129, 0.15); border: 2px solid var(--accent-emerald);
+            color: var(--accent-emerald-light); font-size: 1.7rem;
             display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 20px;
+            margin: 0 auto 16px;
         }
-        .payment-header h1 {
-            font-size: 1.6rem; font-weight: 800; color: var(--text-main); margin-bottom: 8px;
-        }
-        .payment-header p {
-            font-size: 0.9rem; color: var(--text-dim); line-height: 1.5;
-        }
-        .detail-grid {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 15px;
-            margin-bottom: 25px;
-        }
+        .payment-header h1 { font-size: 1.55rem; margin-bottom: 6px; }
+        .payment-header p { font-size: 0.88rem; color: var(--text-dim); }
+
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
         .detail-item {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--glass-border);
-            border-radius: 14px; padding: 18px;
+            background: rgba(0, 0, 0, 0.26);
+            border: 1px solid rgba(255, 255, 255, 0.09);
+            border-radius: 14px; padding: 15px 16px;
         }
         .detail-item .label {
-            font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;
-            letter-spacing: 0.8px; font-weight: 600; margin-bottom: 6px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.68rem;
+            color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 5px;
         }
-        .detail-item .value {
-            font-size: 1.1rem; font-weight: 700; color: var(--text-main);
-        }
+        .detail-item .value { font-size: 1.02rem; font-weight: 700; color: #ffffff; }
         .detail-item.full { grid-column: 1 / -1; }
-        .detail-item.highlight {
-            background: rgba(241, 196, 15, 0.08);
-            border-color: rgba(241, 196, 15, 0.25);
-        }
-        .detail-item.highlight .value { color: var(--primary-gold); font-size: 1.4rem; }
+        .detail-item.highlight { background: rgba(245, 184, 61, 0.09); border-color: rgba(245, 184, 61, 0.36); }
+        .detail-item.highlight .value { color: var(--primary-gold-bright); font-size: 1.4rem; font-family: 'JetBrains Mono', monospace; }
 
-        .operator-select {
-            margin-bottom: 30px;
-        }
-        .operator-select label {
-            font-size: 0.9rem; font-weight: 600; display: block; margin-bottom: 12px;
-        }
-        .operator-grid {
-            display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
-        }
+        .operator-select { margin-bottom: 24px; }
+        .operator-select label { font-size: 0.88rem; font-weight: 700; display: block; margin-bottom: 12px; }
+        .operator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
         .operator-btn {
-            padding: 16px 10px;
-            background: rgba(0,0,0,0.25);
-            border: 2px solid var(--glass-border);
-            border-radius: 14px;
-            color: var(--text-main);
-            font-family: inherit; font-size: 0.9rem; font-weight: 700;
+            padding: 15px 10px;
+            background: rgba(0, 0, 0, 0.28);
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            border-radius: 14px; color: var(--text-main);
+            font-family: inherit; font-size: 0.86rem; font-weight: 700;
             cursor: pointer; transition: var(--transition);
             display: flex; flex-direction: column; align-items: center; gap: 8px;
         }
-        .operator-btn i { font-size: 1.4rem; }
-        .operator-btn:hover { border-color: rgba(255,255,255,0.15); transform: translateY(-2px); }
+        .operator-btn i { font-size: 1.35rem; color: var(--text-dim); }
+        .operator-btn:hover { border-color: rgba(245, 184, 61, 0.45); transform: translateY(-2px); }
         .operator-btn.active {
             border-color: var(--primary-gold);
-            background: rgba(241, 196, 15, 0.08);
-            box-shadow: 0 4px 15px rgba(241, 196, 15, 0.15);
+            background: rgba(245, 184, 61, 0.12);
+            box-shadow: 0 8px 20px rgba(245, 184, 61, 0.16);
         }
-        .operator-btn.active i { color: var(--primary-gold); }
-
-        .btn-pay {
-            width: 100%; padding: 18px;
-            background: linear-gradient(135deg, var(--primary-gold) 0%, var(--primary-gold-hover) 100%);
-            border: none; border-radius: 14px;
-            color: #000; font-family: inherit; font-size: 1.05rem; font-weight: 800;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 12px;
-            box-shadow: 0 8px 25px rgba(241, 196, 15, 0.25);
-            transition: var(--transition);
-        }
-        .btn-pay:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(241, 196, 15, 0.35); }
-        .btn-pay:disabled { background: #555; color: #999; cursor: not-allowed; box-shadow: none; }
+        .operator-btn.active i { color: var(--primary-gold-bright); }
 
         .security-note {
-            text-align: center; margin-top: 20px;
-            font-size: 0.78rem; color: var(--text-dim);
+            text-align: center; margin-top: 16px; font-size: 0.78rem; color: var(--text-dim);
             display: flex; align-items: center; justify-content: center; gap: 8px;
         }
-        .security-note i { color: #2ecc71; }
+        .security-note i { color: var(--accent-emerald-light); }
 
-        /* Loading State */
-        .loading-state {
-            text-align: center; padding: 60px 20px;
-        }
-        .loading-state i { font-size: 2.5rem; color: var(--primary-gold); margin-bottom: 15px; }
-        .loading-state p { color: var(--text-dim); font-size: 1rem; }
+        .state-box { text-align: center; padding: 48px 16px; }
+        .state-box i { font-size: 2.4rem; margin-bottom: 14px; }
+        .state-box h2 { font-size: 1.35rem; margin-bottom: 8px; }
+        .state-box p { color: var(--text-dim); font-size: 0.9rem; line-height: 1.55; max-width: 440px; margin: 0 auto; }
 
-        /* Error State */
-        .error-state {
-            text-align: center; padding: 60px 20px;
-        }
-        .error-state i { font-size: 2.5rem; color: #e74c3c; margin-bottom: 15px; }
-        .error-state h2 { font-size: 1.4rem; margin-bottom: 10px; }
-        .error-state p { color: var(--text-dim); font-size: 0.95rem; line-height: 1.5; }
-
-        /* Status badges */
         .status-pill {
-            display: inline-block; padding: 5px 14px;
-            border-radius: 50px; font-size: 0.8rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: 0.5px;
+            display: inline-block; padding: 4px 12px; border-radius: 999px;
+            font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+            background: rgba(16, 185, 129, 0.16); color: var(--accent-emerald-light);
+            border: 1px solid rgba(52, 211, 153, 0.35);
         }
-        .status-pill.approved { background: rgba(46,204,113,0.12); color: #2ecc71; }
-        .status-pill.pending { background: rgba(241,196,15,0.12); color: #f1c40f; }
-        .status-pill.cancelled { background: rgba(231,76,60,0.12); color: #e74c3c; }
 
         @media (max-width: 600px) {
-            .payment-card { padding: 25px 18px; }
+            .payment-card { padding: 24px 16px; }
             .detail-grid { grid-template-columns: 1fr; }
-            .operator-grid { grid-template-columns: repeat(3, 1fr); }
+            .checkout-steps { grid-template-columns: 1fr; }
+            .operator-grid { grid-template-columns: 1fr; }
         }
     </style>
 </head>
+
 <body>
-    <!-- Background glow elements -->
-    <div class="glow-container">
+    <div class="glow-container" aria-hidden="true">
         <div class="glow-orb orb-gold"></div>
-        <div class="glow-orb orb-purple"></div>
+        <div class="glow-orb orb-emerald"></div>
     </div>
 
     <div class="app-container">
-        <!-- Header -->
         <header class="header glass">
-            <div class="logo">
-                <img src="assets/transen-logo.png" alt="TranSen Logo" onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
-                <span>TranSen Invest</span>
+            <a href="index.html" class="logo">
+                <img src="assets/transen-logo.png" alt="Logo TranSen"
+                    onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
+                <div class="logo-text">
+                    <span class="logo-title">TranSen Invest</span>
+                    <span class="logo-sub">Règlement SenePay</span>
+                </div>
+            </a>
+            <div class="header-actions">
+                <a href="dashboard.html" class="btn-ghost"><i class="fas fa-wallet"></i> <span class="back-label">Portefeuille</span></a>
+                <a href="index.html" class="btn-back"><i class="fas fa-arrow-left"></i> <span class="back-label">Accueil</span></a>
             </div>
-            <a href="index.html" class="btn-back"><i class="fas fa-arrow-left"></i> Retour</a>
         </header>
 
-        <!-- Payment Card -->
-        <div class="payment-container">
+        <main class="payment-container">
             <div class="payment-card glass" id="paymentCard">
-                <!-- Loading State (default) -->
-                <div id="loadingState" class="loading-state">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    <p id="loadingText">Chargement de votre dossier d'investissement...</p>
+                <!-- Loading State -->
+                <div id="loadingState" class="state-box">
+                    <i class="fas fa-spinner fa-spin text-gold"></i>
+                    <p id="loadingText">Chargement sécurisé de votre dossier d'investissement...</p>
                 </div>
 
-                <!-- Error State (hidden by default) -->
-                <div id="errorState" class="error-state" style="display: none;">
-                    <i class="fas fa-exclamation-circle"></i>
+                <!-- Error State -->
+                <div id="errorState" class="state-box" style="display:none;">
+                    <i class="fas fa-circle-exclamation text-rose"></i>
                     <h2>Dossier introuvable</h2>
-                    <p id="errorMessage">Ce lien de paiement est invalide ou a expiré. Veuillez vérifier l'e-mail reçu ou contacter le support à contact@transen.org.</p>
+                    <p id="errorMessage">Ce lien de paiement est invalide ou a expiré. Vérifiez l'e-mail reçu ou contactez contact@transen.org.</p>
+                    <div style="margin-top:20px;">
+                        <a href="index.html" class="btn-ghost"><i class="fas fa-arrow-left"></i> Retour au portail investisseurs</a>
+                    </div>
                 </div>
 
-                <!-- Payment Content (hidden by default) -->
-                <div id="paymentContent" style="display: none;">
+                <!-- Payment Form -->
+                <div id="paymentContent" style="display:none;">
+                    <div class="checkout-steps">
+                        <div class="step-chip done"><i class="fas fa-check"></i> 1. KYC Approuvé</div>
+                        <div class="step-chip current"><i class="fas fa-mobile-screen"></i> 2. Opérateur Mobile</div>
+                        <div class="step-chip"><i class="fas fa-award"></i> 3. Certificat émis</div>
+                    </div>
+
                     <div class="payment-header">
                         <div class="check-icon"><i class="fas fa-check-double"></i></div>
                         <h1>Dossier Approuvé !</h1>
-                        <p>Votre promesse d'investissement a été validée. Procédez au paiement sécurisé ci-dessous.</p>
+                        <p>Votre promesse d'investissement a été validée. Finalisez le règlement sécurisé ci-dessous.</p>
                     </div>
 
                     <div class="detail-grid">
                         <div class="detail-item">
                             <div class="label">Investisseur</div>
-                            <div class="value" id="investorName">--</div>
+                            <div class="value" id="investorName">—</div>
                         </div>
                         <div class="detail-item">
                             <div class="label">Statut</div>
-                            <div class="value" id="investorStatus"><span class="status-pill approved">Approuvé</span></div>
+                            <div class="value" id="investorStatus"><span class="status-pill">Approuvé</span></div>
                         </div>
                         <div class="detail-item">
                             <div class="label">Actions réservées</div>
-                            <div class="value" id="sharesCount">--</div>
+                            <div class="value mono" id="sharesCount">—</div>
                         </div>
                         <div class="detail-item">
                             <div class="label">Prix unitaire</div>
-                            <div class="value">500 FCFA</div>
+                            <div class="value mono">500 FCFA</div>
                         </div>
                         <div class="detail-item full highlight">
                             <div class="label">Montant total à régler</div>
-                            <div class="value" id="totalAmount">-- FCFA</div>
+                            <div class="value" id="totalAmount">— FCFA</div>
                         </div>
                     </div>
 
                     <div class="operator-select">
-                        <label><i class="fas fa-mobile-alt" style="color: var(--primary-gold); margin-right: 8px;"></i>Choisissez votre moyen de paiement</label>
+                        <label><i class="fas fa-mobile-screen-button text-gold" style="margin-right:6px;"></i> Choisissez votre opérateur Mobile Money</label>
                         <div class="operator-grid">
-                            <button class="operator-btn active" data-operator="wave" onclick="selectOperator(this)">
+                            <button type="button" class="operator-btn active" data-operator="wave" onclick="selectOperator(this)">
                                 <i class="fas fa-water"></i> Wave
                             </button>
-                            <button class="operator-btn" data-operator="orange_money" onclick="selectOperator(this)">
+                            <button type="button" class="operator-btn" data-operator="orange_money" onclick="selectOperator(this)">
                                 <i class="fas fa-sim-card"></i> Orange Money
                             </button>
-                            <button class="operator-btn" data-operator="free_money" onclick="selectOperator(this)">
+                            <button type="button" class="operator-btn" data-operator="free_money" onclick="selectOperator(this)">
                                 <i class="fas fa-wifi"></i> Free Money
                             </button>
                         </div>
                     </div>
 
-                    <button class="btn-pay" id="payBtn" onclick="initiatePayment()">
+                    <button type="button" class="btn-submit" id="payBtn" onclick="initiatePayment()">
                         <i class="fas fa-lock"></i>
-                        <span>Payer maintenant</span>
+                        <span>Payer maintenant via SenePay</span>
                     </button>
 
                     <div class="security-note">
-                        <i class="fas fa-shield-alt"></i>
-                        Paiement sécurisé via SenePay. Vos informations sont protégées.
+                        <i class="fas fa-shield-halved"></i>
+                        Transaction chiffrée via SenePay. Votre certificat nominatif est généré automatiquement dès validation.
                     </div>
                 </div>
 
-                <!-- Already Paid / Wrong Status (hidden by default) -->
-                <div id="wrongStatusState" style="display: none; text-align: center; padding: 40px 20px;">
-                    <i class="fas fa-info-circle" style="font-size: 2.5rem; color: var(--primary-gold); margin-bottom: 15px;"></i>
-                    <h2 style="font-size: 1.4rem; margin-bottom: 10px;">Paiement non disponible</h2>
-                    <p id="wrongStatusMessage" style="color: var(--text-dim); font-size: 0.95rem; line-height: 1.5;">Ce dossier n'est pas encore prêt pour le paiement.</p>
-                    <div id="wrongStatusAction" style="margin-top:20px; display:none;">
-                        <a href="dashboard.html" style="background:linear-gradient(135deg,var(--primary-gold),var(--primary-gold-hover));color:#000;padding:14px 28px;border-radius:12px;text-decoration:none;font-weight:700;display:inline-block;"><i class="fas fa-wallet"></i> Accéder à mon portefeuille</a>
+                <!-- Wrong Status / Already Paid -->
+                <div id="wrongStatusState" class="state-box" style="display:none;">
+                    <i class="fas fa-circle-info text-gold"></i>
+                    <h2>Paiement non requis</h2>
+                    <p id="wrongStatusMessage">Ce dossier n'est pas encore prêt pour le paiement.</p>
+                    <div id="wrongStatusAction" style="margin-top:22px;display:none;">
+                        <a href="dashboard.html" class="btn-gold"><i class="fas fa-wallet"></i> Accéder à mon portefeuille</a>
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
 
-        <!-- Footer -->
         <footer class="footer">
-            <p>&copy; 2026 TranSen. Tous droits réservés. Espace d'investissement sécurisé.</p>
+            <p>&copy; 2026 TranSen. Tous droits réservés. Espace de règlement sécurisé.</p>
         </footer>
     </div>
 
@@ -266,44 +248,50 @@
         let investmentData = null;
         let selectedOperator = 'wave';
 
-        function selectOperator(btn) {
-            document.querySelectorAll('.operator-btn').forEach(b => b.classList.remove('active'));
+        function normalizeSenegalMsisdn(raw) {
+            let digits = String(raw || '').replace(/\D/g, '');
+            if (digits.startsWith('00221') && digits.length > 9) digits = digits.slice(5);
+            else if (digits.startsWith('221') && digits.length > 9) digits = digits.slice(3);
+            return `221${digits}`;
+        }
+
+        window.selectOperator = function selectOperator(btn) {
+            document.querySelectorAll('.operator-btn').forEach((b) => b.classList.remove('active'));
             btn.classList.add('active');
             selectedOperator = btn.dataset.operator;
-        }
+        };
 
         async function loadInvestment() {
             const params = new URLSearchParams(window.location.search);
             const id = params.get('id');
 
             if (!id) {
-                showError("Aucun identifiant d'investissement trouvé dans l'URL.");
+                showError('Aucun identifiant d\'investissement trouvé dans l\'URL.');
                 return;
             }
 
             try {
                 const response = await fetchWithSafety(`/api/investments/${encodeURIComponent(id)}`, { bypassCache: true });
                 if (!response.ok) {
-                    showError("Ce dossier d'investissement est introuvable ou le lien a expiré.");
+                    showError('Ce dossier d\'investissement est introuvable ou le lien a expiré.');
                     return;
                 }
 
                 investmentData = await response.json();
 
                 if (investmentData.status === 'PAID') {
-                    showWrongStatus("Ce dossier a déjà été payé avec succès. Consultez votre portefeuille pour le suivi.", true);
+                    showWrongStatus('Ce dossier a déjà été payé avec succès. Consultez votre portefeuille pour télécharger votre certificat.', true);
                 } else if (investmentData.status === 'APPROVED') {
                     showPaymentForm();
                 } else if (investmentData.status === 'PENDING') {
-                    showWrongStatus("Votre dossier est encore en cours de vérification KYC. Vous recevrez un e-mail dès qu'il sera approuvé.", false);
+                    showWrongStatus('Votre dossier est encore en cours de vérification KYC. Vous recevrez un e-mail dès son approbation.', false);
                 } else if (investmentData.status === 'CANCELLED') {
-                    showWrongStatus("Ce dossier d'investissement a été annulé. Si vous pensez qu'il s'agit d'une erreur, contactez le support à contact@transen.org.", false);
+                    showWrongStatus('Ce dossier d\'investissement a été annulé. Contactez le support à contact@transen.org si besoin.', false);
                 } else {
-                    showWrongStatus("Ce dossier n'est pas dans un état valide pour le paiement.", false);
+                    showWrongStatus('Ce dossier n\'est pas dans un état valide pour le paiement.', false);
                 }
             } catch (error) {
-                console.error("Erreur:", error);
-                showError(error.message || "Impossible de contacter le serveur. Vérifiez votre connexion internet et réessayez.");
+                showError(error.message || 'Impossible de contacter le serveur. Vérifiez votre connexion internet.');
             }
         }
 
@@ -313,9 +301,9 @@
             document.getElementById('wrongStatusState').style.display = 'none';
             document.getElementById('paymentContent').style.display = 'block';
 
-            document.getElementById('investorName').innerText = investmentData.fullName;
-            document.getElementById('sharesCount').innerText = investmentData.sharesCount + ' actions';
-            document.getElementById('totalAmount').innerText = Number(investmentData.amount).toLocaleString('fr-FR') + ' FCFA';
+            document.getElementById('investorName').textContent = investmentData.fullName;
+            document.getElementById('sharesCount').textContent = `${Number(investmentData.sharesCount).toLocaleString('fr-FR')} actions`;
+            document.getElementById('totalAmount').textContent = `${Number(investmentData.amount).toLocaleString('fr-FR')} FCFA`;
         }
 
         function showError(message) {
@@ -323,7 +311,7 @@
             document.getElementById('paymentContent').style.display = 'none';
             document.getElementById('wrongStatusState').style.display = 'none';
             document.getElementById('errorState').style.display = 'block';
-            document.getElementById('errorMessage').innerText = message;
+            document.getElementById('errorMessage').textContent = message;
         }
 
         function showWrongStatus(message, showWalletLink = false) {
@@ -331,34 +319,33 @@
             document.getElementById('paymentContent').style.display = 'none';
             document.getElementById('errorState').style.display = 'none';
             document.getElementById('wrongStatusState').style.display = 'block';
-            document.getElementById('wrongStatusMessage').innerText = message;
+            document.getElementById('wrongStatusMessage').textContent = message;
             const actionEl = document.getElementById('wrongStatusAction');
             if (actionEl) actionEl.style.display = showWalletLink ? 'block' : 'none';
         }
 
-        async function initiatePayment() {
+        window.initiatePayment = async function initiatePayment() {
             if (!investmentData) return;
 
             const btn = document.getElementById('payBtn');
             if (btn.disabled) return;
             btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation du paiement...';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Initialisation SenePay...';
 
             try {
-                const cleanedPhone = (investmentData.phone || '').replace(/\s/g, '');
-                const phone = cleanedPhone.startsWith('221') ? cleanedPhone : '221' + cleanedPhone;
-                const orderRef = 'INVEST-' + investmentData.id;
+                const phone = normalizeSenegalMsisdn(investmentData.phone);
+                const orderRef = `INVEST-${investmentData.id}`;
                 const returnBase = window.location.origin + window.location.pathname;
 
                 const response = await fetchWithSafety('/api/payments/create-session', {
                     method: 'POST',
                     body: JSON.stringify({
                         amount: investmentData.amount,
-                        phone: phone,
+                        phone,
                         currency: 'XOF',
                         orderReference: orderRef,
                         order_reference: orderRef,
-                        description: 'Achat actions TranSen - ' + investmentData.fullName + ' (' + investmentData.sharesCount + ' actions)',
+                        description: `Achat actions TranSen - ${investmentData.fullName} (${investmentData.sharesCount} actions)`,
                         operator: selectedOperator,
                         successUrl: `${returnBase}?id=${encodeURIComponent(investmentData.id)}&status=success`,
                         cancelUrl: `${returnBase}?id=${encodeURIComponent(investmentData.id)}&status=cancel`,
@@ -371,40 +358,37 @@
                     })
                 });
 
-                const result = await response.json();
+                const result = await response.json().catch(() => ({}));
                 if (!response.ok) {
                     throw new Error(result.error || result.message || 'Initialisation SenePay refusée.');
                 }
 
                 const checkoutUrl = result.checkoutUrl || result.checkout_url || result.payment_url || result.redirect_url || result.url;
-
                 if (checkoutUrl && checkoutUrl.startsWith('http')) {
                     window.location.href = checkoutUrl;
                 } else if (result.token || result.sessionToken) {
                     const token = result.token || result.sessionToken;
-                    window.location.href = 'https://api.sene-pay.com/checkout?session=' + encodeURIComponent(token);
+                    window.location.href = `https://api.sene-pay.com/checkout?session=${encodeURIComponent(token)}`;
                 } else {
                     window.showNotificationDrawer(
-                        "Paiement initié",
-                        "Votre demande de paiement a été envoyée. Vous devriez recevoir une notification sur votre téléphone (" + selectedOperator + ") pour confirmer le paiement de " + Number(investmentData.amount).toLocaleString('fr-FR') + " FCFA.",
+                        'Paiement initié',
+                        `Demande envoyée sur votre téléphone (${selectedOperator}) pour confirmer ${Number(investmentData.amount).toLocaleString('fr-FR')} FCFA.`,
                         false
                     );
                     btn.innerHTML = '<i class="fas fa-check"></i> Demande envoyée';
                 }
             } catch (error) {
-                console.error("Erreur paiement:", error);
-                window.showNotificationDrawer("Erreur", error.message || "Impossible d'initier le paiement. Vérifiez votre connexion et réessayez.", true);
+                window.showNotificationDrawer('Erreur paiement', error.message || 'Impossible d\'initier le paiement SenePay.', true);
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-lock"></i> <span>Payer maintenant</span>';
+                btn.innerHTML = '<i class="fas fa-lock"></i> <span>Payer maintenant via SenePay</span>';
             }
-        }
+        };
 
-        // Logic for handling status returned from SenePay (with active status reconciliation)
         async function checkPaymentStatusAndRedirect(id) {
             document.getElementById('loadingState').style.display = 'block';
             const loadingTextEl = document.getElementById('loadingText');
             if (loadingTextEl) {
-                loadingTextEl.innerText = "Validation de votre paiement sécurisé... Veuillez patienter quelques instants.";
+                loadingTextEl.textContent = 'Validation de votre paiement sécurisé SenePay... Veuillez patienter quelques instants.';
             }
             document.getElementById('paymentContent').style.display = 'none';
             document.getElementById('wrongStatusState').style.display = 'none';
@@ -421,18 +405,14 @@
                         const data = await response.json();
                         if (data.status === 'PAID') break;
                     }
-                    // Also trigger active backend status verification on alternate attempts
                     if (attempts % 2 === 1) {
                         await fetchWithSafety(`/api/payments/check-status/${encodeURIComponent(orderRef)}`, { bypassCache: true }).catch(() => {});
                     }
-                } catch (e) {
-                    console.warn("Erreur lors du polling du statut :", e);
-                }
+                } catch (_) {}
                 attempts++;
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                await new Promise((resolve) => setTimeout(resolve, 2000));
             }
 
-            // Rafraîchir les données locales et rediriger
             const email = localStorage.getItem('transenInvestorEmail');
             const phone = localStorage.getItem('transenInvestorPhone');
             if (email || phone) {
@@ -448,40 +428,56 @@
                             localStorage.setItem('transenInvestor', JSON.stringify(data));
                         }
                     }
-                } catch (e) {
-                    console.error("Erreur de rafraîchissement session investisseur :", e);
-                }
+                } catch (_) {}
             }
             window.location.href = 'dashboard.html';
         }
 
-        // Check for return status from SenePay
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('status') === 'success') {
             const id = urlParams.get('id');
             if (id) {
-                document.addEventListener('DOMContentLoaded', () => {
-                    checkPaymentStatusAndRedirect(id);
-                });
+                document.addEventListener('DOMContentLoaded', () => checkPaymentStatusAndRedirect(id));
             } else {
                 window.location.href = 'dashboard.html';
             }
-        } else if (urlParams.get('status') === 'cancel') {
-            document.addEventListener('DOMContentLoaded', () => {
-                setTimeout(() => {
-                    window.showNotificationDrawer(
-                        "Paiement annulé",
-                        "Votre paiement a été annulé. Vous pouvez réessayer à tout moment depuis cette page.",
-                        true
-                    );
-                }, 500);
-            });
-        }
-
-        // Load investment data on page load only if not validating a successful payment
-        if (urlParams.get('status') !== 'success') {
+        } else {
+            if (urlParams.get('status') === 'cancel') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    setTimeout(() => {
+                        window.showNotificationDrawer(
+                            'Paiement annulé',
+                            'Votre paiement a été annulé. Vous pouvez réessayer à tout moment depuis cette page.',
+                            true
+                        );
+                    }, 450);
+                });
+            }
             loadInvestment();
         }
+
+        // Aurora Telemetry & Super-Admin Emergency Banner
+        fetch(`${API_BASE_URL}/api/system/telemetry`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Transen-Platform': 'investir.transen.org' },
+            body: JSON.stringify({
+                featureKey: 'INVESTOR_SENEPAY_CHECKOUT',
+                platform: 'investir.transen.org',
+                latencyMs: 17,
+                isError: false
+            })
+        })
+            .then((r) => (r.ok ? r.json() : null))
+            .then((data) => {
+                if (data && data.emergencyBanner && String(data.emergencyBanner).trim()) {
+                    const banner = document.createElement('div');
+                    banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(90deg,#9f1239,#e11d48,#b45309);color:#fff;padding:8px 18px;font-size:0.8rem;font-weight:800;text-align:center;';
+                    banner.textContent = 'ALERTE CENTRE DE COMMANDEMENT TRANSEN : ' + String(data.emergencyBanner).trim();
+                    document.body.prepend(banner);
+                }
+            })
+            .catch(() => {});
     </script>
 </body>
+
 </html>

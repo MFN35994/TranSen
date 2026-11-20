@@ -4,19 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#050811">
+    <meta name="theme-color" content="#03100b">
     <meta name="description"
-        content="Portail officiel des investisseurs TranSen S.A.S. Simulez votre participation au capital dès 500 FCFA/action et suivez vos actions en temps réel.">
+        content="Portail officiel des investisseurs TranSen. Découvrez le Business Plan Phase 1 (217,8 M FCFA), nos projections financières 3 ans, notre modèle tri-modal 14 régions et participez au capital dès 500 FCFA ou en ticket institutionnel.">
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="https://investir.transen.org/">
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="TranSen Invest">
-    <meta property="og:title" content="Investir dans TranSen - Devenez Actionnaire">
+    <meta property="og:title" content="Investir dans TranSen — Portail Investisseurs & Data Room">
     <meta property="og:description"
-        content="Participez au capital de la plateforme de mobilité urbaine et interurbaine du Sénégal dès 500 FCFA l'action via Wave, Orange Money et Free Money.">
+        content="Plateforme nationale de mobilité urbaine et interurbaine au Sénégal (14 régions, commission 2 %). Tour Phase 1 : 217,8 M FCFA · Souscription communautaire dès 500 FCFA ou ticket institutionnel.">
     <meta property="og:url" content="https://investir.transen.org/">
     <meta property="og:image" content="https://investir.transen.org/assets/transen-logo.png">
-    <title>Investir dans TranSen - Devenez Actionnaire</title>
+    <title>Investir dans TranSen — Portail Investisseurs & Data Room</title>
     <link rel="icon" href="/favicon.ico" sizes="any">
     <link rel="shortcut icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="48x48" href="/favicon-48x48.png">
@@ -35,11 +35,11 @@
           },
           {
             "@type": "WebPage",
-            "name": "Investir dans TranSen - Devenez Actionnaire",
+            "name": "Investir dans TranSen — Portail Investisseurs & Data Room",
             "url": "https://investir.transen.org/",
             "isPartOf": {
               "@type": "Organization",
-              "name": "TranSen S.A.S.",
+              "name": "TranSen",
               "url": "https://transen.org",
               "logo": {
                 "@type": "ImageObject",
@@ -55,177 +55,944 @@
     <link rel="preconnect" href="https://api.transen.org" crossorigin>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
 
 <body>
-    <!-- Background glow elements -->
-    <div class="glow-container">
+    <!-- Ambient Aurora Background -->
+    <div class="glow-container" aria-hidden="true">
         <div class="glow-orb orb-gold"></div>
-        <div class="glow-orb orb-purple"></div>
+        <div class="glow-orb orb-emerald"></div>
     </div>
 
-    <!-- Main Container -->
     <div class="app-container">
-        <!-- Header -->
+        <!-- Sticky Navigation Header -->
         <header class="header glass">
-            <div class="logo">
-                <img src="assets/transen-logo.png" alt="TranSen Logo"
+            <a href="#top" class="logo">
+                <img src="assets/transen-logo.png" alt="Logo TranSen"
                     onerror="this.onerror=null; this.src='https://transen.org/assets/transen-logo.png';">
-                <span>TranSen Invest</span>
-            </div>
+                <div class="logo-text">
+                    <span class="logo-title">TranSen Invest</span>
+                    <span class="logo-sub">Aurora Investor Room</span>
+                </div>
+            </a>
+
+            <nav class="nav-links" aria-label="Navigation principale">
+                <a href="#these" class="nav-link">Thèse & Marché</a>
+                <a href="#modele" class="nav-link">Modèle 2 %</a>
+                <a href="#finances" class="nav-link">Finances & TRI</a>
+                <a href="#roadmap" class="nav-link">Roadmap</a>
+                <a href="#gouvernance" class="nav-link">Gouvernance</a>
+                <a href="#souscrire" class="nav-link active">Souscrire</a>
+            </nav>
+
             <div class="header-actions">
-                <button class="btn-portfolio" id="openLoginBtn"><i class="fas fa-wallet"></i> Mon Portefeuille</button>
-                <a href="https://transen.org" class="btn-back"><i class="fas fa-arrow-left"></i> Retour au site</a>
+                <span class="api-health-pill" id="apiHealthPill" title="Statut de connexion aux serveurs TranSen">
+                    <span class="pulse-dot"></span>
+                    <span id="apiHealthText">API Connectée</span>
+                </span>
+                <button type="button" class="btn-portfolio" id="openLoginBtn">
+                    <i class="fas fa-wallet"></i>
+                    <span class="port-label">Mon Portefeuille</span>
+                </button>
+                <a href="https://transen.org" class="btn-back" title="Retourner sur transen.org">
+                    <i class="fas fa-arrow-left"></i>
+                    <span class="back-label">transen.org</span>
+                </a>
+                <button type="button" class="btn-mobile-menu" id="mobileMenuBtn" aria-label="Ouvrir le menu">
+                    <i class="fas fa-bars"></i>
+                </button>
             </div>
         </header>
 
-        <!-- Main Content Grid -->
-        <main class="main-grid">
-            <!-- Left Column: Presentation & Simulator -->
-            <section class="info-section">
-                <div class="hero-content">
-                    <span class="badge-gold">Levée de Fonds Privée</span>
-                    <h1>Participez au capital de TranSen</h1>
-                    <p class="subtitle">La première plateforme de mobilité partagée, logistique et transport interurbain
-                        inclusive au Sénégal. Ouvrons le capital à notre communauté pour bâtir ensemble le transport de
-                        demain.</p>
+        <!-- Mobile Drawer -->
+        <nav class="mobile-nav-drawer glass" id="mobileNavDrawer" aria-label="Menu mobile">
+            <a href="#these"><i class="fas fa-compass"></i> Thèse & Marché Sénégal</a>
+            <a href="#modele"><i class="fas fa-scale-balanced"></i> Avantage 2 % & Unit Economics</a>
+            <a href="#finances"><i class="fas fa-chart-line"></i> Projections Financières & TRI</a>
+            <a href="#roadmap"><i class="fas fa-layer-group"></i> Feuille de Route 3 Phases</a>
+            <a href="#gouvernance"><i class="fas fa-shield-halved"></i> Gouvernance, DGTT & Fondateur</a>
+            <a href="#souscrire"><i class="fas fa-coins"></i> Simulateur & Souscription</a>
+            <a href="#faq"><i class="fas fa-circle-question"></i> Questions Fréquentes</a>
+        </nav>
+
+        <!-- ================================================================
+             HERO INSTITUTIONNEL + COMPTEUR LIVE LEVÉE PHASE 1
+             ================================================================ -->
+        <section class="hero-section" id="top">
+            <div class="hero-left">
+                <div class="badge-row">
+                    <span class="badge-gold"><i class="fas fa-gem"></i> Levée Phase 1 · Amorçage 2026</span>
+                    <span class="badge-emerald"><i class="fas fa-microchip"></i> Produit achevé à 99 % · 0 dette</span>
                 </div>
 
-                <!-- Metrics Grid -->
-                <div class="metrics-grid">
-                    <div class="metric-card glass">
-                        <span class="metric-title">Prix de l'action</span>
-                        <span class="metric-value">500 FCFA</span>
+                <h1 class="hero-title">Investissez dans l'infrastructure numérique de la mobilité au Sénégal</h1>
+
+                <p class="hero-subtitle">
+                    <strong>TranSen</strong> unifie le transport <strong>urbain et interurbain</strong> sur les
+                    <strong>14 régions du Sénégal</strong> dans un seul écosystème tri-modal, avec une commission
+                    disruptive de <strong>2 %</strong> (6× à 12× inférieure aux acteurs internationaux) et un modèle
+                    rentable dès le <strong>Mois 10</strong>.
+                </p>
+
+                <div class="hero-cta-row">
+                    <a href="#souscrire" class="btn-gold">
+                        <i class="fas fa-rocket"></i>
+                        <span>Simuler & Souscrire</span>
+                    </a>
+                    <button type="button" class="btn-ghost" id="jumpInstitutionalBtn">
+                        <i class="fas fa-building-columns"></i>
+                        <span>Ticket Institutionnel / Data Room</span>
+                    </button>
+                </div>
+
+                <div class="hero-kpi-strip">
+                    <div class="kpi-mini">
+                        <span class="kpi-mini-label">Tour Phase 1</span>
+                        <span class="kpi-mini-val mono">217,8 M F</span>
+                        <span class="kpi-mini-sub">Resseré : 104,3 M F</span>
                     </div>
-                    <div class="metric-card glass">
-                        <span class="metric-title">Seuil d'entrée</span>
-                        <span class="metric-value">1 Action</span>
+                    <div class="kpi-mini">
+                        <span class="kpi-mini-label">TRI 3 ans (Central)</span>
+                        <span class="kpi-mini-val mono">44,1 %</span>
+                        <span class="kpi-mini-sub">ROI ~3,0× (2,99×)</span>
                     </div>
-                    <div class="metric-card glass">
-                        <span class="metric-title">Mode de souscription</span>
-                        <span class="metric-value">Wave / OM / Free</span>
+                    <div class="kpi-mini">
+                        <span class="kpi-mini-label">LTV / CAC</span>
+                        <span class="kpi-mini-val mono">3,5×</span>
+                        <span class="kpi-mini-sub">Payback 3,4 mois</span>
+                    </div>
+                    <div class="kpi-mini">
+                        <span class="kpi-mini-label">Point Mort</span>
+                        <span class="kpi-mini-val mono">Mois 10</span>
+                        <span class="kpi-mini-sub">Mois 5 (resserré)</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Live Round Telemetry Card -->
+            <aside class="round-card glass">
+                <div class="round-card-head">
+                    <div>
+                        <span class="section-eyebrow" style="margin-bottom:3px;"><i class="fas fa-signal"></i> Levée en cours</span>
+                        <h2>Tour Phase 1 — Intermédiation</h2>
+                    </div>
+                    <span class="round-tag">20–25 % Capital</span>
+                </div>
+
+                <div class="round-target-box">
+                    <div class="round-target-main">
+                        <span class="round-amount mono">217 797 000 FCFA</span>
+                        <span class="round-fx">≈ 332 000 € · ≈ 351 300 $</span>
+                    </div>
+                    <div class="progress-meta">
+                        <span>Engagements enregistrés : <strong id="liveAmountPledged" class="text-gold mono">Synchronisation...</strong></span>
+                        <span id="liveProgressPct" class="mono text-emerald">-- %</span>
+                    </div>
+                    <div class="progress-track" role="progressbar" aria-label="Progression de la levée Phase 1">
+                        <div class="progress-fill" id="liveProgressBar"></div>
+                    </div>
+                    <div class="progress-meta">
+                        <span>Scénario resserré viable : <strong class="mono">104,3 M FCFA</strong></span>
+                        <span>Réserve cash : <strong class="text-emerald mono">41,4 M (19 %)</strong></span>
                     </div>
                 </div>
 
-                <!-- Interactive Calculator -->
+                <div class="round-stats-grid">
+                    <div class="round-stat-item">
+                        <span>Souscripteurs actifs</span>
+                        <strong id="liveInvestorsCount">--</strong>
+                    </div>
+                    <div class="round-stat-item">
+                        <span>Actions réservées (500 F)</span>
+                        <strong id="liveSharesPledged">--</strong>
+                    </div>
+                    <div class="round-stat-item">
+                        <span>Apport Tech Fondateur</span>
+                        <strong class="text-emerald">≈ 20 M FCFA</strong>
+                    </div>
+                    <div class="round-stat-item">
+                        <span>Endettement actuel</span>
+                        <strong class="text-gold">0 FCFA</strong>
+                    </div>
+                </div>
+
+                <div class="round-tracks-summary">
+                    <div class="track-pill">
+                        <i class="fas fa-users"></i>
+                        <span><strong>Voie Communauté :</strong> dès 500 FCFA/action · KYC & Wave / OM / Free Money</span>
+                    </div>
+                    <div class="track-pill">
+                        <i class="fas fa-briefcase"></i>
+                        <span><strong>Voie Institutionnelle :</strong> Business Angels & Fonds (5 M – 217,8 M FCFA) · Data Room</span>
+                    </div>
+                </div>
+            </aside>
+        </section>
+
+        <!-- ================================================================
+             SECTION 1 : THÈSE D'INVESTISSEMENT, MARCHÉ & MODÈLE TRI-MODAL
+             ================================================================ -->
+        <section class="inv-section" id="these">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-globe-africa"></i> 01 · Thèse d'Investissement</span>
+                    <h2 class="section-title">Un marché national de 19,1 M d'habitants prêt pour la bascule numérique</h2>
+                    <p class="section-desc">
+                        Porté par 131 % de pénétration mobile (ARTP), ~11 M d'utilisateurs actifs Wave et un transport
+                        interurbain encore largement informel, TranSen déploie une plateforme propriétaire déjà bâtie à 99 %.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <article class="feature-card glass glass-emerald">
+                    <div class="feature-icon"><i class="fas fa-route"></i></div>
+                    <h3>Architecture Tri-Modale Unique</h3>
+                    <p>
+                        Une seule application réunit <strong>trois modes de commande</strong> jusque-là séparés :
+                        <strong>(1) Compagnie nommée</strong> (bus/cars interurbains), <strong>(2) Chauffeur indépendant nommé</strong>
+                        (fidélisation directe) et <strong>(3) Mode public non indexé</strong> visible par l'ensemble du réseau disponible.
+                    </p>
+                    <div class="pill-list">
+                        <span class="mini-pill">Urbain + Interurbain</span>
+                        <span class="mini-pill">Zero rupture</span>
+                        <span class="mini-pill">Billetterie QR</span>
+                    </div>
+                </article>
+
+                <article class="feature-card glass glass-emerald">
+                    <div class="feature-icon emerald"><i class="fas fa-mobile-screen-button"></i></div>
+                    <h3>Écosystème Complet Achevé à 99 %</h3>
+                    <p>
+                        Développé à 100 % en interne sans dette technique externe : application mobile Android/iOS, portail
+                        voyageurs (<span class="mono">app.transen.org</span>), cockpit B2B compagnies (<span class="mono">compagnie.transen.org</span>),
+                        console Super-Admin (<span class="mono">admin.transen.org</span>) et portefeuille <strong>TransPay</strong>.
+                    </p>
+                    <div class="pill-list">
+                        <span class="mini-pill">4 Plateformes Web</span>
+                        <span class="mini-pill">App Android & iOS</span>
+                        <span class="mini-pill">Backend Java 21</span>
+                    </div>
+                </article>
+
+                <article class="feature-card glass glass-emerald">
+                    <div class="feature-icon cyan"><i class="fas fa-chart-area"></i></div>
+                    <h3>Fondamentaux Macro Sénégal</h3>
+                    <p>
+                        Population de <strong>18,1 M</strong> (RGPH-5 2023) à <strong>~19,1 M</strong> en 2025 (projection <strong>35 M en 2050</strong>, ANSD).
+                        Dakar concentre 22 % des habitants sur 0,28 % du territoire (7 277 hab/km²) avec des flux pendulaires massifs vers les régions.
+                    </p>
+                    <div class="pill-list">
+                        <span class="mini-pill">131 % Mobile (ARTP)</span>
+                        <span class="mini-pill">~11 M Wave actifs</span>
+                        <span class="mini-pill">36,5 % Internet fixe</span>
+                    </div>
+                </article>
+            </div>
+
+            <!-- 6 Zones / 14 Regions Coverage -->
+            <div class="zones-banner glass">
+                <div>
+                    <span class="section-eyebrow" style="margin-bottom:4px;"><i class="fas fa-map-location-dot"></i> Couverture Jour 1</span>
+                    <h3 style="font-size:1.05rem;">14 Régions · 6 Zones Commerciales</h3>
+                    <p style="font-size:0.78rem;color:var(--text-dim);margin-top:4px;">6 commerciaux terrain dédiés dès Phase 1</p>
+                </div>
+                <div class="zones-grid">
+                    <div class="zone-chip"><strong>1. Dakar</strong><span>Dakar · Pikine · Guédiawaye · Rufisque</span></div>
+                    <div class="zone-chip"><strong>2. Ouest</strong><span>Thiès · Diourbel · Louga</span></div>
+                    <div class="zone-chip"><strong>3. Nord</strong><span>Saint-Louis · Matam</span></div>
+                    <div class="zone-chip"><strong>4. Centre</strong><span>Kaolack · Kaffrine · Fatick</span></div>
+                    <div class="zone-chip"><strong>5. Sud</strong><span>Ziguinchor · Sédhiou · Kolda</span></div>
+                    <div class="zone-chip"><strong>6. Est</strong><span>Tambacounda · Kédougou</span></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 2 : AVANTAGE CONCURRENTIEL (2 %) & UNIT ECONOMICS
+             ================================================================ -->
+        <section class="inv-section" id="modele">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-scale-balanced"></i> 02 · Modèle Économique & Avantage Compétitif</span>
+                    <h2 class="section-title">2 % de commission : un levier d'acquisition massif face aux géants à 18–25 %</h2>
+                    <p class="section-desc">
+                        Nos revenus combinent une commission ultra-compétitive de 2 % (compagnies & chauffeurs) et des
+                        abonnements prévisibles supprimant toute commission pour les chauffeurs indépendants actifs.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- Competitive Benchmark -->
+                <div class="benchmark-card glass">
+                    <h3 style="font-size:1.12rem;margin-bottom:4px;"><i class="fas fa-trophy text-gold"></i> Benchmark Commission Plateforme</h3>
+                    <p style="font-size:0.82rem;color:var(--text-dim);">Part prélevée sur le chiffre d'affaires des chauffeurs & opérateurs au Sénégal</p>
+
+                    <div class="benchmark-list">
+                        <div class="bench-row">
+                            <div class="bench-row-head">
+                                <strong class="text-emerald">TranSen (Urbain + Interurbain · 14 régions)</strong>
+                                <strong class="mono text-gold">2,0 %</strong>
+                            </div>
+                            <div class="bench-bar-bg"><div class="bench-bar-fill transen" style="width: 8%;"></div></div>
+                        </div>
+                        <div class="bench-row">
+                            <div class="bench-row-head">
+                                <span>SENGO (urbain, abo 24 000 F/mois)</span>
+                                <span class="mono text-dim">12,0 %</span>
+                            </div>
+                            <div class="bench-bar-bg"><div class="bench-bar-fill" style="width: 48%;"></div></div>
+                        </div>
+                        <div class="bench-row">
+                            <div class="bench-row-head">
+                                <span>Yango Sénégal / Heetch</span>
+                                <span class="mono text-dim">~18,0 %</span>
+                            </div>
+                            <div class="bench-bar-bg"><div class="bench-bar-fill" style="width: 72%;"></div></div>
+                        </div>
+                        <div class="bench-row">
+                            <div class="bench-row-head">
+                                <span>Bolt</span>
+                                <span class="mono text-dim">~22,5 %</span>
+                            </div>
+                            <div class="bench-bar-bg"><div class="bench-bar-fill" style="width: 90%;"></div></div>
+                        </div>
+                        <div class="bench-row">
+                            <div class="bench-row-head">
+                                <span>Uber (référence internationale)</span>
+                                <span class="mono text-dim">25,0 %</span>
+                            </div>
+                            <div class="bench-bar-bg"><div class="bench-bar-fill" style="width: 100%;"></div></div>
+                        </div>
+                    </div>
+
+                    <div class="pricing-box">
+                        <strong class="text-gold"><i class="fas fa-wallet"></i> Deux régimes via TransPay (Wave / OM / Free Money) :</strong><br>
+                        • <strong>Commission 2 % par trajet</strong> (seul régime pour les compagnies de bus).<br>
+                        • <strong>Abonnement chauffeurs indépendants (0 % commission) :</strong> Essai 5 jours gratuit ·
+                        <span class="mono">6 000 FCFA / semaine</span> · <span class="mono">20 000 FCFA / mois</span>.
+                    </div>
+                </div>
+
+                <!-- Unit Economics -->
+                <div class="unit-econ-card glass">
+                    <h3 style="font-size:1.12rem;margin-bottom:4px;"><i class="fas fa-microscope text-cyan"></i> Unit Economics & Cibles Mois 18</h3>
+                    <p style="font-size:0.82rem;color:var(--text-dim);">Économie unitaire validée sur le scénario retenu (Phase 1 — 217,8 M FCFA)</p>
+
+                    <div class="unit-grid">
+                        <div class="unit-box">
+                            <div class="unit-box-label">CAC Moyen Chauffeur</div>
+                            <div class="unit-box-val mono">24 545 F</div>
+                            <div class="unit-box-sub">Acquisition terrain + digital</div>
+                        </div>
+                        <div class="unit-box">
+                            <div class="unit-box-label">Revenu Moyen / Chauffeur</div>
+                            <div class="unit-box-val mono">7 232 F<span style="font-size:0.75rem;color:var(--text-dim);">/mois</span></div>
+                            <div class="unit-box-sub">Mix commission 2 % + abo</div>
+                        </div>
+                        <div class="unit-box highlight">
+                            <div class="unit-box-label">LTV (Horizon 12 mois)</div>
+                            <div class="unit-box-val mono">86 781 F</div>
+                            <div class="unit-box-sub">Ratio LTV / CAC ≈ 3,5×</div>
+                        </div>
+                        <div class="unit-box highlight">
+                            <div class="unit-box-label">Délai de Payback CAC</div>
+                            <div class="unit-box-val mono">3,4 mois</div>
+                            <div class="unit-box-sub">Recouvrement rapide du coût</div>
+                        </div>
+                    </div>
+
+                    <div class="pricing-box" style="background:rgba(34,211,238,0.06);border-color:rgba(34,211,238,0.24);">
+                        <strong class="text-cyan"><i class="fas fa-bullseye"></i> Objectifs Opérationnels à 18 Mois :</strong><br>
+                        <span class="mono">800</span> chauffeurs urbains · <span class="mono">460</span> chauffeurs interurbains ·
+                        <span class="mono">34</span> compagnies (~<span class="mono">181</span> bus actifs) ·
+                        <span class="mono">218</span> chauffeurs abonnés (17,3 %) ➔ <strong>MRR M18 : 24,12 M FCFA (ARR : 289,4 M)</strong>.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 3 : PROJECTIONS FINANCIÈRES, SCÉNARIOS ROI/TRI & BUDGET
+             ================================================================ -->
+        <section class="inv-section" id="finances">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-chart-line"></i> 03 · Modèle Financier & Rentabilité Investisseur</span>
+                    <h2 class="section-title">Projections 3 ans, retours attendus et allocation transparente des fonds</h2>
+                    <p class="section-desc">
+                        Base de calcul : tour Phase 1 de <strong>217,8 M FCFA</strong> pour une part illustrative de
+                        <strong>22,5 %</strong> (fourchette 20–25 % négociée en due diligence). Sélectionnez un scénario :
+                    </p>
+                </div>
+
+                <div class="scenario-tabs" role="tablist" aria-label="Scénarios financiers">
+                    <button type="button" class="scenario-btn" data-scenario="conservateur" role="tab" aria-selected="false">Conservateur</button>
+                    <button type="button" class="scenario-btn active" data-scenario="central" role="tab" aria-selected="true">Central (Référence)</button>
+                    <button type="button" class="scenario-btn" data-scenario="optimiste" role="tab" aria-selected="false">Optimiste</button>
+                </div>
+            </div>
+
+            <!-- Interactive Scenario KPIs -->
+            <div class="scenario-kpi-grid" id="scenarioKpiGrid">
+                <div class="scenario-kpi">
+                    <span>ARR Année 3</span>
+                    <strong class="mono" id="scArrY3">723,6 M F</strong>
+                    <small id="scArrMult">2,5× ARR Mois 18</small>
+                </div>
+                <div class="scenario-kpi">
+                    <span>Multiple Sortie</span>
+                    <strong class="mono" id="scExitMult">4,0× ARR</strong>
+                    <small id="scValuation">Valo : 2,89 Md FCFA</small>
+                </div>
+                <div class="scenario-kpi">
+                    <span>ROI Brut (3 ans)</span>
+                    <strong class="mono text-emerald" id="scRoi">2,99×</strong>
+                    <small id="scRoiNote">~3,0× la mise initiale</small>
+                </div>
+                <div class="scenario-kpi">
+                    <span>TRI Annuel (3 ans)</span>
+                    <strong class="mono text-cyan" id="scTri">44,1 %</strong>
+                    <small id="scTriNote">Rendement annualisé</small>
+                </div>
+                <div class="scenario-kpi">
+                    <span>VAN (Actualisation 30 %)</span>
+                    <strong class="mono" id="scVan">+78,6 M F</strong>
+                    <small id="scVanNote">Création de valeur nette</small>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- P&L 3 Ans -->
+                <div class="glass" style="padding:24px;">
+                    <h3 style="font-size:1.08rem;margin-bottom:4px;"><i class="fas fa-table text-gold"></i> Compte de Résultat Prévisionnel 3 Ans</h3>
+                    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:16px;">Scénario retenu Phase 1 (217,8 M FCFA) · En millions de FCFA · 0 dette bancaire</p>
+
+                    <div class="table-wrap">
+                        <table class="fin-table">
+                            <thead>
+                                <tr>
+                                    <th>Indicateur (M FCFA)</th>
+                                    <th>Année 1</th>
+                                    <th>Année 2</th>
+                                    <th>Année 3</th>
+                                    <th>Cumul 3 ans</th>
+                                </tr>
+                            </thead>
+                            <tbody class="mono">
+                                <tr>
+                                    <td style="font-family:'Inter',sans-serif;font-weight:600;">Chiffre d'affaires (CA)</td>
+                                    <td>73,3</td>
+                                    <td>303,0</td>
+                                    <td class="text-gold">590,9</td>
+                                    <td class="text-gold">967,2</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-family:'Inter',sans-serif;">Résultat Net (RN)</td>
+                                    <td class="text-rose">-49,9</td>
+                                    <td class="text-emerald">+117,2</td>
+                                    <td class="text-emerald">+227,4</td>
+                                    <td class="text-emerald">+294,6</td>
+                                </tr>
+                                <tr>
+                                    <td style="font-family:'Inter',sans-serif;">Marge Nette</td>
+                                    <td class="text-dim">-68 %</td>
+                                    <td class="text-emerald">+39 %</td>
+                                    <td class="text-emerald">+38 %</td>
+                                    <td class="text-emerald">+30 %</td>
+                                </tr>
+                                <tr class="row-total">
+                                    <td style="font-family:'Inter',sans-serif;">Trésorerie de clôture</td>
+                                    <td>167,9</td>
+                                    <td>285,1</td>
+                                    <td class="text-cyan">512,4</td>
+                                    <td class="text-cyan">512,4</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="disclaimer-note">
+                        <strong>Trajectoire 18 mois :</strong> MRR M6 <span class="mono">5,39 M</span> ➔ M12 <span class="mono">13,14 M</span> ➔ M18 <span class="mono">24,12 M FCFA</span>.
+                        CA cumulé 18 mois <span class="mono">189,4 M</span> vs charges <span class="mono">176,4 M</span> (RN +8,58 M, point bas de trésorerie
+                        <span class="mono">160,6 M</span> au Mois 9, toujours largement au-dessus de la réserve de 41,4 M).
+                        <em>Les projections Années 2–3 et multiples de sortie constituent des scénarios illustratifs non garantis.</em>
+                    </div>
+                </div>
+
+                <!-- Phase 1 Budget Allocation -->
+                <div class="glass" style="padding:24px;">
+                    <h3 style="font-size:1.08rem;margin-bottom:4px;"><i class="fas fa-chart-pie text-emerald"></i> Emploi des Fonds Phase 1 (217,8 M FCFA)</h3>
+                    <p style="font-size:0.8rem;color:var(--text-dim);margin-bottom:14px;">100 % dédié à l'exécution nationale, l'agrément DGTT et la sécurité de trésorerie</p>
+
+                    <div class="budget-list">
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Équipe nationale (15 postes)</strong> — PDG, 2 Dev dès M1, 6 commerciaux, ops/SAV</span>
+                                <strong class="mono text-gold">52 % · 112,5 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:52%;background:linear-gradient(90deg,#f5b83d,#fde68a);"></div></div>
+                        </div>
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Trésorerie de sécurité</strong> — Coussin d'exploitation & résilience</span>
+                                <strong class="mono text-emerald">19 % · 41,4 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:19%;background:linear-gradient(90deg,#10b981,#34d399);"></div></div>
+                        </div>
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Marketing & Acquisition</strong> — Lancement 14 régions & activations terrain</span>
+                                <strong class="mono text-cyan">12 % · 27,0 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:12%;background:linear-gradient(90deg,#06b6d4,#22d3ee);"></div></div>
+                        </div>
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Infrastructure Tech & Cloud</strong> — Serveurs, cartographie, SMS/OTP, sécurité</span>
+                                <strong class="mono">8 % · 18,0 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:8%;background:linear-gradient(90deg,#818cf8,#6366f1);"></div></div>
+                        </div>
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Juridique & Agrément DGTT</strong> — Conversion société + caution FDTT 15 M</span>
+                                <strong class="mono">8 % · 16,85 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:8%;background:linear-gradient(90deg,#fb923c,#f59e0b);"></div></div>
+                        </div>
+                        <div>
+                            <div class="budget-item-head">
+                                <span><strong>Finitions & Publication Stores</strong> — Apple Store, Play Store, audits</span>
+                                <strong class="mono">1 % · 2,08 M</strong>
+                            </div>
+                            <div class="budget-bar-bg"><div class="budget-bar-fill" style="width:4%;background:#94a3b8;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 4 : FEUILLE DE ROUTE EN 3 PHASES (INTÉGRATION VERTICALE)
+             ================================================================ -->
+        <section class="inv-section" id="roadmap">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-layer-group"></i> 04 · Stratégie d'Intégration Verticale</span>
+                    <h2 class="section-title">Déploiement discipliné par jalons : logiciel d'abord, actifs ensuite</h2>
+                    <p class="section-desc">
+                        Chaque phase n'est déclenchée qu'après validation des KPI de la phase précédente. La Phase 1
+                        ne porte aucun actif physique lourd et sécurise la rentabilité opérationnelle avant d'investir dans la flotte.
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <article class="phase-card glass active-phase">
+                    <span class="phase-badge now"><i class="fas fa-bolt"></i> Phase 1 · Mois 1–18 (En cours)</span>
+                    <h3>Intermédiation Pure Nationale</h3>
+                    <div class="phase-budget mono text-gold">217,8 M FCFA</div>
+                    <p style="font-size:0.78rem;color:var(--text-dim);">Scénario resserré : 104,3 M FCFA · 0 actif physique</p>
+                    <ul class="phase-list">
+                        <li><i class="fas fa-check-circle"></i><span>Conversion en société (capital ≥ 51 % sénégalais) & dépôt agrément DGTT VTC (15 M FDTT).</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Recrutement de 15 postes dont 2 développeurs dès M1 et 6 commerciaux régionaux.</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Lancement simultané 14 régions, point mort au Mois 10, ARR M18 de 289,4 M FCFA.</span></li>
+                    </ul>
+                </article>
+
+                <article class="phase-card glass glass-emerald">
+                    <span class="phase-badge next"><i class="fas fa-bus"></i> Phase 2 · Années 2–3</span>
+                    <h3>Flotte Propre Hybride</h3>
+                    <div class="phase-budget mono text-emerald">868,7 M FCFA</div>
+                    <p style="font-size:0.78rem;color:var(--text-dim);">Scénario resserré : 543,3 M FCFA · Financement dédié</p>
+                    <ul class="phase-list">
+                        <li><i class="fas fa-check-circle"></i><span>Déploiement de 30 véhicules urbains + 15 véhicules interurbains + 5 bus longue distance.</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Création d'environ 53 emplois de chauffeurs salariés aux standards de qualité TranSen.</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Capture directe de la marge opérateur sur les corridors les plus rentables identifiés en Phase 1.</span></li>
+                    </ul>
+                </article>
+
+                <article class="phase-card glass">
+                    <span class="phase-badge horizon"><i class="fas fa-building"></i> Phase 3 · Année 3+</span>
+                    <h3>Gares Routières Modernes</h3>
+                    <div class="phase-budget mono text-cyan">≈ 3,01 Md FCFA</div>
+                    <p style="font-size:0.78rem;color:var(--text-dim);">Ordre de grandeur (resserré : 980 M) · Total 3 phases ≈ 4,10 Md</p>
+                    <ul class="phase-list">
+                        <li><i class="fas fa-check-circle"></i><span>Première gare routière propriétaire de 10 à 25 quais avec embarquement numérique intégral.</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Hub logistique colis & messagerie interurbaine adossé aux liaisons quotidiennes.</span></li>
+                        <li><i class="fas fa-check-circle"></i><span>Modèle d'infrastructure reproductible dans les pôles régionaux (Thiès, Saint-Louis, Kaolack, Touba).</span></li>
+                    </ul>
+                </article>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 5 : GOUVERNANCE, CONFORMITÉ DGTT & FONDATEUR
+             ================================================================ -->
+        <section class="inv-section" id="gouvernance">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-shield-halved"></i> 05 · Gouvernance, Conformité & Leadership</span>
+                    <h2 class="section-title">Exécution rigoureuse, conformité DGTT et transparence institutionnelle</h2>
+                </div>
+            </div>
+
+            <div class="grid-2">
+                <!-- Founder Profile -->
+                <div class="founder-card glass">
+                    <div class="founder-head">
+                        <div class="founder-avatar">MFN</div>
+                        <div>
+                            <h3 style="font-size:1.12rem;">Mouhamadou Fadilou Ndiaye</h3>
+                            <p style="font-size:0.82rem;color:var(--primary-gold-bright);font-weight:600;">Fondateur & Dirigeant — TranSen</p>
+                        </div>
+                    </div>
+                    <p style="font-size:0.87rem;color:var(--text-secondary);line-height:1.6;">
+                        Économiste quantitatif (Licence Économie appliquée & Master 2 Analyse Économique Quantitative en cours
+                        à l'<strong>UGB Saint-Louis</strong>) et certifié en comptabilité générale/analytique & Sage Saari
+                        (<strong>ITTE Group Consulting</strong>). Ex-Analyste Financier chez <strong>Kopar Express</strong>,
+                        ex-Responsable commercial zone Nord et consultant financier chez <strong>PITEXTILE</strong>.
+                    </p>
+                    <div class="pricing-box" style="margin-top:4px;">
+                        <strong class="text-emerald"><i class="fas fa-code"></i> Capacité d'exécution prouvée :</strong>
+                        a conçu et développé en interne l'intégralité de l'écosystème web & mobile TranSen (valeur de
+                        remplacement estimée à <strong>20 M FCFA</strong>, autofinancé sans aucun passif). Dès le Mois 1,
+                        deux développeurs (Full-Stack & Mobile) rejoignent l'équipe pour industrialiser et supprimer tout risque d'homme-clé.
+                    </div>
+                </div>
+
+                <!-- Governance & Compliance -->
+                <div class="founder-card glass glass-emerald">
+                    <h3 style="font-size:1.1rem;"><i class="fas fa-landmark text-gold"></i> Cadre Juridique & Engagements Post-Investissement</h3>
+                    <p style="font-size:0.84rem;color:var(--text-secondary);">
+                        Actuellement enregistrée en entreprise individuelle (RCCM / NINEA), TranSen procède à sa
+                        <strong>conversion en société (SARL / SUARL ou SA) à capital ≥ 51 % national sénégalais</strong>,
+                        condition réglementaire de l'<strong>agrément DGTT VTC</strong> (Décret n°2024-847 du 28 mars 2024, valable 5 ans).
+                    </p>
+
+                    <ul class="gov-checklist">
+                        <li><i class="fas fa-file-invoice-dollar"></i><span><strong>Reporting mensuel</strong> : états financiers, MRR, cash-burn & KPI opérationnels.</span></li>
+                        <li><i class="fas fa-scale-balanced"></i><span><strong>Bilan trimestriel & audit annuel</strong> réalisé par un cabinet indépendant.</span></li>
+                        <li><i class="fas fa-users-gear"></i><span><strong>Siège observateur / conseil</strong> ouvert aux investisseurs de référence.</span></li>
+                        <li><i class="fas fa-handshake"></i><span><strong>Pacte d'actionnaires</strong> : clauses de préemption, liquidité préférentielle & gouvernance.</span></li>
+                        <li><i class="fas fa-shield-halved"></i><span><strong>Maîtrise des risques</strong> : 19 % de réserve cash + agrément DGTT budgété (15 M FDTT).</span></li>
+                        <li><i class="fas fa-calendar-check"></i><span><strong>Plan 90 jours</strong> : structuration légale (J1–30), équipe & pilotes (J31–60), déploiement (J61–90).</span></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             SECTION 6 : SIMULATEUR AVANCÉ & FORMULAIRE DOUBLE VOIE
+             ================================================================ -->
+        <section class="inv-section" id="souscrire">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-coins"></i> 06 · Simulateur & Passage à l'Action</span>
+                    <h2 class="section-title">Simulez votre participation et réservez votre allocation</h2>
+                    <p class="section-desc">
+                        Choisissez la <strong>Voie Communauté</strong> (souscription ouverte dès 500 FCFA/action via SenePay)
+                        ou la <strong>Voie Institutionnelle</strong> (Fonds d'impact, Business Angels, demande de Data Room complète).
+                    </p>
+                </div>
+            </div>
+
+            <div class="invest-grid">
+                <!-- Left: Interactive Investment & Return Simulator -->
                 <div class="calculator-card glass">
-                    <h3><i class="fas fa-calculator text-gold"></i> Simulateur d'Investissement</h3>
-                    <p class="calc-desc">Calculez le coût de votre participation en temps réel.</p>
+                    <h3 style="font-size:1.22rem;margin-bottom:6px;"><i class="fas fa-calculator text-gold"></i> Simulateur d'Actions & Projection 3 Ans</h3>
+                    <p style="font-size:0.84rem;color:var(--text-dim);">Ajustez votre nombre d'actions ou sélectionnez un palier rapide :</p>
 
-                    <div class="calc-input-group">
-                        <label for="sharesInput">Nombre d'actions souhaité</label>
+                    <div class="ticket-presets" aria-label="Paliers d'investissement rapides">
+                        <button type="button" class="preset-btn" data-shares="20">20 act · 10 000 F</button>
+                        <button type="button" class="preset-btn active" data-shares="100">100 act · 50 000 F</button>
+                        <button type="button" class="preset-btn" data-shares="500">500 act · 250 000 F</button>
+                        <button type="button" class="preset-btn" data-shares="2000">2 000 act · 1 M F</button>
+                        <button type="button" class="preset-btn" data-shares="10000">10 000 act · 5 M F</button>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom:10px;">
+                        <label for="sharesInput"><i class="fas fa-layer-group"></i> Nombre d'actions souhaité (500 FCFA / action)</label>
                         <div class="input-wrapper">
-                            <input type="number" id="sharesInput" min="1" value="100" placeholder="Ex: 100">
+                            <input type="number" id="sharesInput" min="1" step="1" value="100" placeholder="Ex: 100">
                             <span class="unit">actions</span>
                         </div>
                     </div>
 
                     <div class="calc-results">
                         <div class="result-row">
-                            <span>Prix par action :</span>
-                            <strong>500 FCFA</strong>
+                            <span>Prix unitaire de l'action :</span>
+                            <strong class="mono">500 FCFA</strong>
+                        </div>
+                        <div class="result-row">
+                            <span>Part indicative du tour Phase 1 (217,8 M) :</span>
+                            <strong class="mono text-cyan" id="roundSharePct">0,023 %</strong>
                         </div>
                         <div class="result-row total">
                             <span>Montant Total Promis :</span>
-                            <span id="totalAmountText" class="text-gold">50 000 FCFA</span>
+                            <span id="totalAmountText" class="text-gold mono">50 000 FCFA</span>
                         </div>
                     </div>
+
+                    <p style="font-size:0.78rem;color:var(--text-dim);margin-top:16px;font-weight:600;">
+                        <i class="fas fa-chart-line text-gold"></i> Valorisation indicative à horizon 3 ans (scénarios Business Plan) :
+                    </p>
+                    <div class="sim-projection-grid">
+                        <div class="sim-proj-box">
+                            <span>Conservateur (1,61×)</span>
+                            <strong id="simConsVal">80 500 F</strong>
+                            <small>TRI 17,3 %</small>
+                        </div>
+                        <div class="sim-proj-box central">
+                            <span>Central (2,99×)</span>
+                            <strong id="simCentVal">149 500 F</strong>
+                            <small>TRI 44,1 %</small>
+                        </div>
+                        <div class="sim-proj-box">
+                            <span>Optimiste (6,28×)</span>
+                            <strong id="simOptVal">314 000 F</strong>
+                            <small>TRI 84,5 %</small>
+                        </div>
+                    </div>
+
+                    <div class="disclaimer-note">
+                        <i class="fas fa-circle-info text-gold"></i> Simulations calculées sur les multiples illustratifs du Business Plan
+                        (217,8 M FCFA / 22,5 % capital). Tout investissement en capital présente un risque de perte totale ou partielle et d'illiquidité.
+                    </div>
                 </div>
-            </section>
 
-            <!-- Right Column: Registration & KYC Form -->
-            <section class="form-section">
-                <div class="form-card glass">
-                    <h2>Promesse de Souscription</h2>
-                    <p class="form-desc">Réservez vos actions dès aujourd'hui. Phase 1 : Collecte des intentions et
-                        vérification KYC réglementaire.</p>
-
-                    <form id="investmentForm">
-                        <div class="form-group">
-                            <label for="fullName"><i class="fas fa-user"></i> Nom Complet <span
-                                    class="required">*</span></label>
-                            <input type="text" id="fullName" placeholder="Ex: Seydou Ndiaye" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="email"><i class="fas fa-envelope"></i> E-mail <span
-                                    class="required">*</span></label>
-                            <input type="email" id="email" placeholder="Ex: seydou@example.com" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="phone"><i class="fas fa-phone"></i> Téléphone Mobile Money <span
-                                    class="required">*</span></label>
-                            <div class="phone-input-wrapper">
-                                <span class="country-code">+221</span>
-                                <input type="tel" id="phone" placeholder="77 123 45 67" required
-                                    pattern="[0-9\s]{9,15}">
-                            </div>
-                            <small class="help-text">Ce numéro sera utilisé pour l'achat de vos actions via
-                                SenePay.</small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="formSharesCount"><i class="fas fa-coins"></i> Nombre d'actions à réserver <span
-                                    class="required">*</span></label>
-                            <input type="number" id="formSharesCount" min="1" value="100" required>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="kycFile"><i class="fas fa-id-card"></i> Pièce d'identité (CNI / Passeport) <span
-                                    class="required">*</span></label>
-                            <div class="file-upload-box" id="uploadBox">
-                                <i class="fas fa-cloud-upload-alt upload-icon"></i>
-                                <p class="upload-text">Glissez ou cliquez pour ajouter votre pièce d'identité</p>
-                                <span class="file-info" id="fileInfo">Aucun fichier sélectionné (PDF, PNG, JPG max. 10
-                                    Mo)</span>
-                                <input type="file" id="kycFile" accept="image/*,application/pdf" required
-                                    style="display: none;">
-                            </div>
-                        </div>
-
-                        <div class="form-checkbox">
-                            <input type="checkbox" id="termsCheck" required>
-                            <label for="termsCheck">Je confirme mon intention sérieuse de souscrire à ces actions et
-                                accepte que mes données soient vérifiées conformément aux réglementations
-                                financières.</label>
-                        </div>
-
-                        <button type="submit" class="btn-submit" id="submitBtn">
-                            <span>Confirmer ma promesse d'achat</span>
-                            <i class="fas fa-chevron-right"></i>
+                <!-- Right: Dual-Track Form Card -->
+                <div class="form-card glass" id="subscriptionCard">
+                    <div class="track-switcher" role="tablist" aria-label="Mode d'investissement">
+                        <button type="button" class="track-tab active" id="tabCommunity" role="tab" aria-selected="true">
+                            <i class="fas fa-users"></i> Communauté (dès 500 F)
                         </button>
-                    </form>
+                        <button type="button" class="track-tab" id="tabInstitutional" role="tab" aria-selected="false">
+                            <i class="fas fa-building-columns"></i> Institutionnel / Data Room
+                        </button>
+                    </div>
+
+                    <!-- TRACK A: Community / Micro-Shareholder Subscription (POST /api/investments) -->
+                    <div id="communityPanel">
+                        <h2 style="font-size:1.45rem;margin-bottom:6px;">Promesse de Souscription</h2>
+                        <p style="font-size:0.84rem;color:var(--text-dim);margin-bottom:20px;">
+                            Réservez vos actions en 2 minutes. Après vérification KYC réglementaire, vous recevez votre lien de paiement sécurisé SenePay (Wave, Orange Money, Free Money).
+                        </p>
+
+                        <form id="investmentForm" novalidate>
+                            <div class="form-group">
+                                <label for="fullName"><i class="fas fa-user"></i> Nom Complet <span class="required">*</span></label>
+                                <input type="text" id="fullName" placeholder="Ex: Seydou Ndiaye" autocomplete="name" required>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="email"><i class="fas fa-envelope"></i> Adresse E-mail <span class="required">*</span></label>
+                                    <input type="email" id="email" placeholder="seydou@exemple.com" autocomplete="email" required>
+                                </div>
+
+                                <div class="form-group">
+                                    <label for="phone"><i class="fas fa-phone"></i> Téléphone Mobile Money <span class="required">*</span></label>
+                                    <div class="phone-input-wrapper">
+                                        <span class="country-code">+221</span>
+                                        <input type="tel" id="phone" placeholder="77 123 45 67" autocomplete="tel" required>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="formSharesCount"><i class="fas fa-coins"></i> Nombre d'actions à réserver <span class="required">*</span></label>
+                                <input type="number" id="formSharesCount" min="1" step="1" value="100" required>
+                                <small class="help-text">1 action = 500 FCFA · Synchronisé automatiquement avec le simulateur.</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="kycFile"><i class="fas fa-id-card"></i> Pièce d'identité KYC (CNI / Passeport) <span class="required">*</span></label>
+                                <div class="file-upload-box" id="uploadBox" tabindex="0" role="button" aria-label="Téléverser votre pièce d'identité">
+                                    <i class="fas fa-cloud-arrow-up upload-icon"></i>
+                                    <p class="upload-text">Glissez ou cliquez pour ajouter votre pièce d'identité</p>
+                                    <span class="file-info" id="fileInfo">Aucun fichier sélectionné (PDF, PNG, JPG, WEBP · max. 10 Mo)</span>
+                                    <input type="file" id="kycFile" accept=".pdf,image/png,image/jpeg,image/webp" required style="display: none;">
+                                </div>
+                            </div>
+
+                            <div class="form-checkbox">
+                                <input type="checkbox" id="termsCheck" required>
+                                <label for="termsCheck">
+                                    Je confirme mon intention de souscrire à ces actions, j'accepte la vérification KYC de mon dossier
+                                    et j'ai pris connaissance du caractère indicatif des projections financières présentées.
+                                </label>
+                            </div>
+
+                            <button type="submit" class="btn-submit" id="submitBtn">
+                                <span>Confirmer ma promesse d'achat</span>
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- TRACK B: Institutional / Business Angel Data Room Request (POST /api/contact) -->
+                    <div id="institutionalPanel" style="display:none;">
+                        <h2 style="font-size:1.45rem;margin-bottom:6px;">Demande de Data Room & Ticket Institutionnel</h2>
+                        <p style="font-size:0.84rem;color:var(--text-dim);margin-bottom:20px;">
+                            Réservé aux <strong>Fonds d'investissement, Institutions publiques, Family Offices et Business Angels</strong>
+                            (tickets à partir de 5 M FCFA jusqu'au tour complet de 217,8 M FCFA). Recevez le Business Plan complet,
+                            le modèle Excel 3 ans et planifiez un appel direct avec le Fondateur.
+                        </p>
+
+                        <form id="institutionalForm" novalidate>
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="instName"><i class="fas fa-user-tie"></i> Nom & Prénom <span class="required">*</span></label>
+                                    <input type="text" id="instName" placeholder="Ex: Aminata Diop" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="instOrg"><i class="fas fa-building"></i> Fonds / Structure <span class="required">*</span></label>
+                                    <input type="text" id="instOrg" placeholder="Ex: Teranga Ventures / Business Angel" required>
+                                </div>
+                            </div>
+
+                            <div class="form-row-2">
+                                <div class="form-group">
+                                    <label for="instEmail"><i class="fas fa-envelope"></i> E-mail professionnel <span class="required">*</span></label>
+                                    <input type="email" id="instEmail" placeholder="a.diop@fonds.com" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="instPhone"><i class="fas fa-phone"></i> Téléphone / WhatsApp <span class="required">*</span></label>
+                                    <input type="tel" id="instPhone" placeholder="+221 77 000 00 00" required>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="instTicket"><i class="fas fa-sack-dollar"></i> Enveloppe d'investissement envisagée <span class="required">*</span></label>
+                                <select id="instTicket" required>
+                                    <option value="5 M - 25 M FCFA (Business Angel)">5 M – 25 M FCFA (Business Angel)</option>
+                                    <option value="25 M - 104,3 M FCFA (Co-investisseur / Scénario resserré)">25 M – 104,3 M FCFA (Co-investisseur / Scénario resserré)</option>
+                                    <option value="104,3 M - 217,8 M FCFA (Lead Investor Phase 1)">104,3 M – 217,8 M FCFA (Lead Investor Phase 1)</option>
+                                    <option value="Partenariat Stratégique / Financement Phase 2 Flotte">Partenariat Stratégique / Financement Phase 2 Flotte</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="instMessage"><i class="fas fa-message"></i> Questions, calendrier ou documents souhaités</label>
+                                <textarea id="instMessage" rows="3" placeholder="Ex: Souhaite recevoir le modèle financier détaillé et convenir d'un échange avec Mouhamadou Fadilou Ndiaye..."></textarea>
+                            </div>
+
+                            <button type="submit" class="btn-submit" id="instSubmitBtn">
+                                <i class="fas fa-folder-open"></i>
+                                <span>Demander l'accès Data Room & Entretien</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
-            </section>
-        </main>
+            </div>
+        </section>
+
+        <!-- ================================================================
+             FAQ INVESTISSEURS
+             ================================================================ -->
+        <section class="inv-section" id="faq">
+            <div class="section-header">
+                <div>
+                    <span class="section-eyebrow"><i class="fas fa-circle-question"></i> 07 · Questions Fréquentes</span>
+                    <h2 class="section-title">Tout savoir avant de participer au capital de TranSen</h2>
+                </div>
+            </div>
+
+            <div class="faq-grid">
+                <div class="faq-item open">
+                    <button type="button" class="faq-question">
+                        <span>Quel est le statut juridique exact de TranSen ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        TranSen est enregistrée au Sénégal (RCCM / NINEA) et finalise sa <strong>conversion en société (SARL / SUARL ou SA)
+                        à capital ≥ 51 % national sénégalais</strong>, condition obligatoire pour l'obtention de l'agrément DGTT VTC (Décret n°2024-847).
+                        Les souscriptions sont adossées à cette structuration juridique et au pacte d'actionnaires.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question">
+                        <span>Comment se déroule la souscription et le paiement SenePay ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        1) Vous déposez votre promesse et votre pièce d'identité KYC sur cette page.<br>
+                        2) Notre équipe conformité vérifie votre dossier et vous notifie par e-mail.<br>
+                        3) Vous réglez en toute sécurité via <strong>Wave, Orange Money ou Free Money (SenePay)</strong> et accédez à votre
+                        certificat officiel dans <strong>Mon Portefeuille</strong>.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question">
+                        <span>Que se passe-t-il si la levée atteint 104,3 M plutôt que 217,8 M ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        Notre modèle intègre un <strong>scénario resserré entièrement viable à 104,3 M FCFA</strong> qui permet de
+                        déployer l'activité dès le Jour 1, d'atteindre le <strong>point mort dès le Mois 5</strong> et de préserver la
+                        trésorerie sans compromettre l'obtention de l'agrément DGTT.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button type="button" class="faq-question">
+                        <span>Quels rapports reçoivent les investisseurs après entrée au capital ?</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="faq-answer">
+                        Chaque investisseur bénéficie d'une gouvernance transparente : <strong>reporting financier et opérationnel mensuel</strong>
+                        (MRR, chauffeurs actifs, compagnies, trésorerie), <strong>bilan trimestriel</strong>, suivi budgété vs réalisé et
+                        <strong>audit annuel indépendant</strong>.
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Footer -->
         <footer class="footer">
-            <p>&copy; 2026 TranSen. Tous droits réservés. Espace d'investissement sécurisé.</p>
+            <div class="footer-grid">
+                <div>
+                    <strong style="color:#fff;font-family:'Sora',sans-serif;">TranSen — Espace Investisseurs</strong>
+                    <p style="margin-top:4px;">Dakar, Sénégal · Contact Relations Investisseurs : <a href="mailto:contact@transen.org" class="text-gold" style="text-decoration:none;">contact@transen.org</a></p>
+                </div>
+                <div class="footer-links">
+                    <a href="https://transen.org">Site vitrine</a>
+                    <a href="https://app.transen.org">Application Voyageurs</a>
+                    <a href="https://compagnie.transen.org">Espace Compagnies</a>
+                    <a href="#souscrire">Souscrire</a>
+                </div>
+            </div>
+            <div class="footer-legal">
+                &copy; 2026 TranSen. Tous droits réservés. Les informations financières, projections Années 1 à 3, scénarios de valorisation,
+                TRI et VAN publiés sur ce portail sont issus du Business Plan TranSen (Septembre 2026) à titre informatif et ne constituent ni
+                une offre publique de titres financiers ni une garantie de performance future.
+            </div>
         </footer>
     </div>
 
-    <!-- Success Modal -->
-    <div class="modal-overlay" id="successModal">
+    <!-- Success Modal (Community Pledge) -->
+    <div class="modal-overlay" id="successModal" role="dialog" aria-modal="true" aria-labelledby="successModalTitle">
         <div class="modal-card glass">
-            <div class="success-icon">
-                <i class="fas fa-check-double"></i>
-            </div>
-            <h2>Félicitations !</h2>
-            <p>Votre promesse de souscription a été enregistrée avec succès par notre système.</p>
+            <div class="success-icon"><i class="fas fa-check-double"></i></div>
+            <h2 id="successModalTitle">Promesse enregistrée !</h2>
+            <p>Votre dossier de souscription a bien été transmis au pôle Relations Investisseurs TranSen.</p>
 
             <div class="summary-box">
                 <div class="summary-line">
                     <span>Actions réservées :</span>
-                    <strong id="modalShares">0</strong>
+                    <strong id="modalShares" class="mono">0</strong>
                 </div>
                 <div class="summary-line">
-                    <span>Montant estimé :</span>
-                    <strong id="modalAmount" class="text-gold">0 FCFA</strong>
+                    <span>Montant promis :</span>
+                    <strong id="modalAmount" class="text-gold mono">0 FCFA</strong>
                 </div>
                 <div class="summary-line">
                     <span>Statut :</span>
@@ -233,33 +1000,34 @@
                 </div>
             </div>
 
-            <p class="modal-note">Nos équipes vont analyser votre pièce d'identité. Vous recevrez un SMS de confirmation
-                dès validation de votre dossier pour passer au paiement.</p>
+            <p style="font-size:0.82rem;color:var(--text-dim);margin-bottom:16px;">
+                Nos équipes vérifient votre pièce d'identité. Dès approbation, vous recevrez un e-mail avec votre lien de règlement sécurisé SenePay.
+            </p>
 
-            <button class="btn-close" id="closeModalBtn">Fermer</button>
+            <button type="button" class="btn-gold" style="width:100%;" id="openWalletAfterPledgeBtn">
+                <i class="fas fa-wallet"></i> Suivre dans Mon Portefeuille
+            </button>
+            <button type="button" class="btn-close" id="closeModalBtn">Fermer</button>
         </div>
     </div>
 
-    <!-- Login Modal -->
-    <div class="modal-overlay" id="loginModal">
+    <!-- Login Modal (Portfolio Access) -->
+    <div class="modal-overlay" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
         <div class="modal-card glass">
-            <div class="login-icon">
-                <i class="fas fa-wallet"></i>
-            </div>
-            <h2>Espace Portefeuille</h2>
-            <p>Connectez-vous avec les identifiants utilisés lors de votre souscription pour accéder au suivi de votre
-                investissement.</p>
+            <div class="login-icon"><i class="fas fa-wallet"></i></div>
+            <h2 id="loginModalTitle">Espace Portefeuille</h2>
+            <p>Connectez-vous avec l'e-mail ou le numéro utilisé lors de votre souscription pour suivre vos actions et télécharger votre certificat.</p>
 
-            <form id="loginForm">
+            <form id="loginForm" novalidate>
                 <div class="form-group">
-                    <label for="loginEmail"><i class="fas fa-envelope"></i> E-mail</label>
-                    <input type="email" id="loginEmail" placeholder="Ex: seydou@example.com">
+                    <label for="loginEmail"><i class="fas fa-envelope"></i> Adresse E-mail</label>
+                    <input type="email" id="loginEmail" placeholder="Ex: seydou@exemple.com" autocomplete="email">
                 </div>
                 <div class="form-group">
-                    <label for="loginPhone"><i class="fas fa-phone"></i> Téléphone</label>
+                    <label for="loginPhone"><i class="fas fa-phone"></i> Téléphone Mobile Money</label>
                     <div class="phone-input-wrapper">
                         <span class="country-code">+221</span>
-                        <input type="tel" id="loginPhone" placeholder="77 123 45 67">
+                        <input type="tel" id="loginPhone" placeholder="77 123 45 67" autocomplete="tel">
                     </div>
                 </div>
                 <p class="login-hint">Renseignez au moins l'un des deux champs.</p>
@@ -268,7 +1036,7 @@
                     <i class="fas fa-arrow-right"></i>
                 </button>
             </form>
-            <button class="btn-close" id="closeLoginModalBtn">Annuler</button>
+            <button type="button" class="btn-close" id="closeLoginModalBtn">Annuler</button>
         </div>
     </div>
 
