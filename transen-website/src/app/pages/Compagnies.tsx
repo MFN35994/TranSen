@@ -105,7 +105,7 @@ export function Compagnies() {
                 {/* Simulated live telemetry overlay */}
                 <span className="absolute top-4 right-4 flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500/150"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
                 </span>
                 
                 <div className="flex gap-2 items-center mb-6">
@@ -159,42 +159,42 @@ export function Compagnies() {
       <section className="py-20 section-dark">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl mx-auto text-center mb-16">
-            <span className="text-emerald-800 text-xs font-bold uppercase tracking-widest bg-emerald-500/15 px-3 py-1 rounded-full border border-emerald-100">
+            <span className="eyebrow">
               Pourquoi nous rejoindre ?
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold text-white mt-3 leading-tight">
+            <h2 className="text-3xl md:text-4xl font-extrabold font-display text-white mt-4 leading-tight">
               L'outil de commercialisation le plus rentable pour les transporteurs
             </h2>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-amber-400/20 flex items-center justify-center text-amber-700 font-black text-xl mb-6">
+            <div className="p-8 rounded-3xl glass border border-amber-400/25 relative group hover:border-amber-400/50 transition-all duration-300">
+              <div className="w-12 h-12 rounded-2xl bg-amber-400/15 border border-amber-400/35 flex items-center justify-center text-amber-300 font-black font-mono text-xl mb-6">
                 2%
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Taux de commission minimal</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
+              <h3 className="text-xl font-bold text-white mb-3 font-display">Taux de commission minimal</h3>
+              <p className="text-slate-300 text-sm leading-relaxed">
                 Gardez 98% de vos revenus de billetterie. Notre modèle à seulement 2% s'applique équitablement sur toutes les lignes, sans frais cachés ni abonnements coûteux.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-800 mb-6">
+            <div className="p-8 rounded-3xl glass border border-emerald-400/25 relative group hover:border-emerald-400/50 transition-all duration-300">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/15 border border-emerald-400/35 flex items-center justify-center text-emerald-300 mb-6">
                 <Bus className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Jusqu'à 60 Sièges par Bus</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Prenez en charge l'ensemble de votre flotte d'autocars de grande capacité limités réglementairement à 60 fauteuils. Plan complet de réservation de sièges interactif libre.
+              <h3 className="text-xl font-bold text-white mb-3 font-display">Jusqu'à 60 Sièges par Bus</h3>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Prenez en charge l'ensemble de votre flotte d'autocars de grande capacité jusqu'à 60 fauteuils. Plan complet de réservation de sièges interactif et scan QR d'embarquement.
               </p>
             </div>
 
-            <div className="p-8 rounded-3xl bg-white/[0.04] border border-white/10 relative group hover:shadow-xl transition-all duration-300">
-              <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-800 mb-6">
+            <div className="p-8 rounded-3xl glass border border-cyan-400/25 relative group hover:border-cyan-400/50 transition-all duration-300">
+              <div className="w-12 h-12 rounded-2xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-cyan-300 mb-6">
                 <Database className="w-6 h-6" />
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Souveraineté des données</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">
-                Accédez à l'intégralité du fichier passagers, des historiques de trajets et de vos flux financiers pour une transparence totale de votre comptabilité.
+              <h3 className="text-xl font-bold text-white mb-3 font-display">Souveraineté des données</h3>
+              <p className="text-slate-300 text-sm leading-relaxed">
+                Accédez à l'intégralité du fichier passagers (CRM), des manifestes imprimables, du P&L analytique et de vos flux financiers en temps réel.
               </p>
             </div>
           </div>
@@ -303,12 +303,12 @@ export function Compagnies() {
 
           <div className="space-y-6">
             {FREQUENT_QUESTIONS.map((faq) => (
-              <div key={faq.q} className="p-6 rounded-2xl bg-white/[0.04] border border-slate-100 hover:border-emerald-600/30 transition-all">
+              <div key={faq.q} className="p-6 rounded-2xl glass border border-white/10 hover:border-emerald-400/40 transition-all">
                 <h4 className="font-bold text-white text-base flex gap-2 items-start">
-                  <HelpCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <HelpCircle className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                   <span>{faq.q}</span>
                 </h4>
-                <p className="text-slate-400 text-sm mt-3.5 leading-relaxed pl-7">
+                <p className="text-slate-300 text-sm mt-3.5 leading-relaxed pl-7">
                   {faq.a}
                 </p>
               </div>

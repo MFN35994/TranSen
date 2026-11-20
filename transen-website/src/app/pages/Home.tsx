@@ -292,9 +292,9 @@ export function Home() {
                   transition={{ duration: 0.75, delay: 0.32, ease: [0.16, 1, 0.3, 1] }}
                   className="flex flex-wrap gap-3.5 mb-10"
                 >
-                  <Link to="/contact" className="btn-gold text-sm sm:text-base">
+                  <Link to="/contact#telecharger" className="btn-gold text-sm sm:text-base">
                     <Download className="w-4 h-4" />
-                    <span>Télécharger l'App Android</span>
+                    <span>Télécharger l'App</span>
                   </Link>
                   <Link to="/chauffeurs" className="btn-ghost text-sm sm:text-base">
                     <UserPlus className="w-4 h-4 text-cyan-300" />
@@ -683,13 +683,13 @@ export function Home() {
                       Réservez votre siège de bus, appelez un chauffeur Allô Dakar ou suivez votre colis Yobanté en direct avec votre billet QR Code hors-ligne.
                     </p>
                     <div className="flex flex-wrap gap-4">
-                      <Link to="/contact" className="btn-gold">
+                      <Link to="/contact#telecharger" className="btn-gold">
                         <Download className="w-5 h-5" />
                         <div className="text-left">
                           <div className="text-[10px] font-mono uppercase tracking-wider opacity-80">
-                            Téléchargement Direct
+                            Web App & APK Android
                           </div>
-                          <div className="text-sm font-extrabold">Obtenir l'APK Android</div>
+                          <div className="text-sm font-extrabold">Accéder à l'Application</div>
                         </div>
                       </Link>
                       <Link to="/compagnies" className="btn-ghost">

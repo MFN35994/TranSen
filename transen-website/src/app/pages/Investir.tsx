@@ -1,624 +1,451 @@
-import { useState } from "react";
-import { motion, AnimatePresence } from "motion/react";
+import { useState, useEffect } from "react";
+import { motion } from "motion/react";
 import {
-  TrendingUp, Shield, Award, Users, ArrowRight,
-  TrendingDown, CheckCircle2, FileText, Send, Landmark, DollarSign, PieChart, Sparkles, Link as LinkIcon
+  TrendingUp, ShieldCheck, Landmark, Sparkles, ExternalLink,
+  CheckCircle2, Send, BarChart3, Layers, Building2, Users, Mail, ArrowRight
 } from "lucide-react";
 import { toast } from "sonner";
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
-} from "recharts";
-import { submitInvestmentFormData } from "../services/api";
+  getPublicInvestmentStats,
+  sendContactMessage,
+  type PublicFundraisingStats
+} from "../services/api";
+import { SpotlightCard, Reveal } from "../components/fx";
+
+const PHASE1_TARGET = 217797000;
+const PHASE1_TIGHT = 104327000;
+
+const SCENARIOS = {
+  conservateur: { label: "Conservateur", mult: 1.61, tri: "17,3 %", arrY3: "521,0 M F", exit: "3× ARR" },
+  central: { label: "Central (Réf.)", mult: 2.99, tri: "44,1 %", arrY3: "723,6 M F", exit: "4× ARR" },
+  optimiste: { label: "Optimiste", mult: 6.28, tri: "84,5 %", arrY3: "1 013,0 M F", exit: "6× ARR" },
+} as const;
 
 export function Investir() {
-  const [activeTab, setActiveTab] = useState<"promise" | "portfolio">("promise");
+  const [stats, setStats] = useState<PublicFundraisingStats | null>(null);
+  const [scenario, setScenario] = useState<keyof typeof SCENARIOS>("central");
+  const [shares, setShares] = useState<number>(200);
 
-  // Form states
-  const [investorType, setInvestorType] = useState("Angel");
-  const [amount, setAmount] = useState<number>(5000000); // 5 Million FCFA default (10,000 shares)
-  const [investorName, setInvestorName] = useState("");
-  const [investorEmail, setInvestorEmail] = useState("");
-  const [investorPhone, setInvestorPhone] = useState("");
-  const [hasSubmitted, setHasSubmitted] = useState(false);
+  // Institutional Data Room quick request
+  const [instName, setInstName] = useState("");
+  const [instOrg, setInstOrg] = useState("");
+  const [instEmail, setInstEmail] = useState("");
+  const [instPhone, setInstPhone] = useState("");
+  const [instTicket, setInstTicket] = useState("5 M – 25 M FCFA (Business Angel)");
+  const [instMessage, setInstMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Simulated validated portfolio state matching 200,000,000 FCFA valuation
-  const [submittedPromises, setSubmittedPromises] = useState<Array<{
-    id: string;
-    date: string;
-    amount: number;
-    type: string;
-    equity: number;
-    status: "Validé" | "En attente";
-  }>>([
-    { id: "TX-9021", date: "15/06/2026", amount: 15000000, type: "Capital Risque (VC)", equity: 7.5, status: "Validé" },
-    { id: "TX-4028", date: "Actuelle", amount: 2000000, type: "Business Angel", equity: 1.0, status: "En attente" }
-  ]);
+  useEffect(() => {
+    getPublicInvestmentStats()
+      .then((data) => setStats(data))
+      .catch(() => {});
+  }, []);
 
-  // Handle promise submission
-  const handleSubmitPromise = async (e: React.FormEvent) => {
+  const amountFcfa = shares * 500;
+  const activeSc = SCENARIOS[scenario];
+  const livePledged = stats?.totalAmountPledged ?? 0;
+  const livePct = Math.min(100, (livePledged / PHASE1_TARGET) * 100);
+
+  const handleInstitutionalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!investorName || !investorEmail || !investorPhone) {
-      toast.error("Veuillez remplir votre nom, votre adresse email et votre numéro de téléphone.");
+    if (!instName.trim() || !instEmail.trim() || !instPhone.trim()) {
+      toast.error("Veuillez renseigner votre nom, votre e-mail et votre téléphone.");
       return;
     }
-
     setIsSubmitting(true);
     try {
-      const sharesCount = Math.round(amount / 500);
-
-      const formData = new FormData();
-      formData.append("fullName", investorName);
-      formData.append("email", investorEmail);
-      formData.append("phone", investorPhone);
-      formData.append("sharesCount", sharesCount.toString());
-
-      console.log("[Investment] Submitting via FormData to production backend:", {
-        fullName: investorName,
-        email: investorEmail,
-        phone: investorPhone,
-        sharesCount: sharesCount
+      await sendContactMessage({
+        nom: instOrg.trim() ? `${instName.trim()} (${instOrg.trim()})` : instName.trim(),
+        email: instEmail.trim(),
+        telephone: instPhone.trim(),
+        sujet: "INVESTISSEUR_INSTITUTIONNEL",
+        message: `[DATA ROOM PHASE 1 — ${instTicket}] ${instMessage.trim() || "Demande d'accès au Business Plan complet et au modèle financier 3 ans."}`,
       });
-
-      const response = await submitInvestmentFormData(formData);
-      console.log("[Investment] Success response from server:", response);
-
-      const calculatedEquity = Math.round((amount / 200000000) * 100 * 100) / 100;
-
-      const newPromise = {
-        id: response.investment?.id ? response.investment.id.substring(0, 8) : `TX-${Math.floor(1000 + Math.random() * 9000)}`,
-        date: "Aujourd'hui",
-        amount: amount,
-        type: investorType === "Angel" ? "Business Angel" : investorType === "VC" ? "Capital Risque (VC)" : "Institutionnel / Privé",
-        equity: calculatedEquity || 0.01,
-        status: "En attente" as const
-      };
-
-      setSubmittedPromises([newPromise, ...submittedPromises.filter(p => p.id !== "TX-4028")]);
-      setHasSubmitted(true);
-      toast.success("✨ Votre promesse d'investissement a été soumise avec succès ! Elle sera validée par notre conseil d'administration.");
-    } catch (error: any) {
-      console.error(error);
-      toast.error(`Erreur lors de la soumission : ${error.message || "Erreur serveur"}`);
+      toast.success("Demande Data Room transmise ! Mouhamadou Fadilou Ndiaye vous répondra sous 24h ouvrées.");
+      setInstName("");
+      setInstOrg("");
+      setInstEmail("");
+      setInstPhone("");
+      setInstMessage("");
+    } catch (err: any) {
+      toast.error(err?.message || "Erreur lors de l'envoi de votre demande.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Calculations for live promise form
-  const computedEquity = Math.round((amount / 200000000) * 100 * 100) / 100; // Exactly 200,000,000 FCFA valuation
-  const estimatedAnnualInterests = Math.round(amount * 0.12); // Simulated high yield 12% from the 2% commission Pool
-
-  // Chart data for simulated premium portfolio growth over 5 years (2026-2030)
-  const growthData = [
-    { year: "2026", rendement: Math.round(amount * 0.05), capitalValue: amount },
-    { year: "2027", rendement: Math.round(amount * 0.12), capitalValue: Math.round(amount * 1.15) },
-    { year: "2028", rendement: Math.round(amount * 0.18), capitalValue: Math.round(amount * 1.35) },
-    { year: "2029", rendement: Math.round(amount * 0.24), capitalValue: Math.round(amount * 1.65) },
-    { year: "2030", rendement: Math.round(amount * 0.32), capitalValue: Math.round(amount * 2.10) },
-  ];
-
   return (
     <div className="bg-[#03100b] min-h-screen text-slate-100">
-      {/* ── Rich Investor Header ─────────────────────────────────────────── */}
-      <section className="relative overflow-hidden py-24 text-white"
-        style={{ background: "radial-gradient(circle at 20% 15%, #073826 0%, #03150e 55%, #020908 100%)" }}
-      >
-        {/* Decorative Grid Accent */}
-        <div className="absolute inset-0 bg-grid-white opacity-5 pointer-events-none" />
-        <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-amber-400 opacity-10 blur-3xl pointer-events-none animate-pulse" />
-
+      {/* ── Hero Institutionnel Aurora ───────────────────────────────────── */}
+      <section className="relative overflow-hidden py-20 lg:py-24 aurora-bg noise border-b border-emerald-500/20">
+        <div className="grid-fade absolute inset-0 opacity-60 pointer-events-none" />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-1.5 px-4.5 py-1.5 rounded-full bg-amber-400/20 text-amber-300 text-xs font-bold uppercase tracking-wider mb-6 border border-amber-300/30">
-              <Sparkles className="w-4.5 h-4.5 text-amber-300" />
-              Ouverture de Capital · TranSen 2026
-            </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold tracking-tight mb-6">
-              Devenez actionnaire de la <br />
-              <span className="bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-200 bg-clip-text text-transparent">
-                révolution de la mobilité
+          <div className="grid lg:grid-cols-12 gap-10 items-center">
+            <div className="lg:col-span-7">
+              <span className="eyebrow eyebrow-gold mb-6">
+                Levée Phase 1 · Amorçage 2026 · 0 Dette
               </span>
-            </h1>
-            <p className="text-lg text-white/80 leading-relaxed mb-8">
-              En introduisant le modèle unique au monde de <strong className="text-amber-300">seulement 2% de commission</strong> sur tous les trajets urbains et interurbains du Sénégal, TranSen capte un volume de transactions historique. Attirez la croissance à nos côtés.
-            </p>
-
-            {/* Quick platform anchors requested by USER */}
-            <div className="bg-emerald-950/70 backdrop-blur border border-emerald-800/80 rounded-2xl p-4.5 mt-8">
-              <p className="text-amber-400 text-xs uppercase tracking-widest font-bold mb-3 flex items-center gap-1.5">
-                <LinkIcon className="w-3.5 h-3.5" />
-                Nos Plateformes Écosystème Déployées :
+              <h1 className="text-4xl sm:text-5xl xl:text-6xl font-extrabold font-display tracking-tight text-white mb-6 leading-[1.08]">
+                Investissez dans la{" "}
+                <span className="text-gradient-gold">mobilité nationale du Sénégal</span>
+              </h1>
+              <p className="text-base sm:text-lg text-slate-300 leading-relaxed mb-8 max-w-2xl">
+                Plateforme tri-modale (urbain + interurbain sur <strong className="text-white">14 régions</strong>)
+                achevée à <strong className="text-emerald-300">99 %</strong>, commission disruptive de{" "}
+                <strong className="text-amber-300">2 %</strong> (6× à 12× inférieure au marché) et rentabilité
+                opérationnelle visée dès le <strong className="text-cyan-300">Mois 10</strong>.
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <a 
-                  href="https://app.transen.org" 
-                  target="_blank" 
+
+              <div className="flex flex-wrap gap-3.5 mb-8">
+                <a
+                  href="https://investir.transen.org"
+                  target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-xs font-semibold group text-white"
+                  className="btn-gold text-sm sm:text-base"
                 >
-                  <span>App Passagers</span>
-                  <span className="text-[10px] text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded group-hover:scale-105 transition-transform font-mono">app.transen.org</span>
+                  <Sparkles className="w-4 h-4" />
+                  <span>Ouvrir le Portail Investisseur Complet</span>
+                  <ExternalLink className="w-4 h-4" />
                 </a>
-                <a 
-                  href="https://compagnie.transen.org" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-xs font-semibold group text-white"
+                <a
+                  href="mailto:fadiloundiaye2004@gmail.com?subject=Relations%20Investisseurs%20TranSen%20Phase%201"
+                  className="btn-ghost text-sm"
                 >
-                  <span>Portail Compagnies</span>
-                  <span className="text-[10px] text-amber-300 bg-amber-400/10 px-2 py-0.5 rounded group-hover:scale-105 transition-transform font-mono">compagnie.transen.org</span>
+                  <Mail className="w-4 h-4 text-amber-300" />
+                  <span>fadiloundiaye2004@gmail.com</span>
                 </a>
-                <a 
-                  href="https://investir.transen.org" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors border border-white/10 text-xs font-semibold group text-white font-bold"
-                >
-                  <span>Investisseurs</span>
-                  <span className="text-[10px] text-yellow-400 bg-yellow-400/15 px-2 py-0.5 rounded font-mono">investir.transen.org</span>
-                </a>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { k: "Tour Phase 1", v: "217,8 M F", s: "Resserré : 104,3 M" },
+                  { k: "TRI 3 ans", v: "44,1 %", s: "ROI Central 2,99×" },
+                  { k: "LTV / CAC", v: "3,5×", s: "Payback 3,4 mois" },
+                  { k: "Point Mort", v: "Mois 10", s: "Mois 5 (resserré)" },
+                ].map((m) => (
+                  <div key={m.k} className="glass rounded-2xl p-3.5 border border-emerald-400/20">
+                    <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">{m.k}</div>
+                    <div className="text-lg sm:text-xl font-extrabold font-display text-amber-300 mt-1">{m.v}</div>
+                    <div className="text-[11px] text-emerald-300 mt-0.5">{m.s}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Round Card */}
+            <div className="lg:col-span-5">
+              <div className="gradient-border rounded-3xl">
+                <div className="glass-strong rounded-3xl p-6 sm:p-7 space-y-5">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <span className="text-[11px] font-mono uppercase tracking-widest text-emerald-300 font-bold">
+                        Télémétrie Levée Live
+                      </span>
+                      <h2 className="text-xl font-extrabold text-white font-display mt-0.5">
+                        Phase 1 — Intermédiation
+                      </h2>
+                    </div>
+                    <span className="px-2.5 py-1 rounded-full text-[11px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-400/30">
+                      20–25 % Capital
+                    </span>
+                  </div>
+
+                  <div className="bg-black/30 border border-white/10 rounded-2xl p-4 space-y-2.5">
+                    <div className="flex justify-between items-baseline flex-wrap gap-1">
+                      <span className="text-2xl font-extrabold font-mono text-gradient-gold">217 797 000 FCFA</span>
+                      <span className="text-xs font-mono text-slate-400">≈ 332 000 €</span>
+                    </div>
+                    <div className="flex justify-between text-xs text-slate-300 font-mono">
+                      <span>Engagé : <strong className="text-amber-300">{livePledged.toLocaleString("fr-FR")} F</strong></span>
+                      <span className="text-emerald-300">{livePledged > 0 ? `${livePct.toFixed(2)} %` : "Ouvert"}</span>
+                    </div>
+                    <div className="w-full h-2.5 rounded-full bg-white/10 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-400 via-emerald-400 to-cyan-400 transition-all duration-700"
+                        style={{ width: `${Math.max(livePct, 3)}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-slate-400 font-mono">
+                      <span>Seuil resserré : {PHASE1_TIGHT.toLocaleString("fr-FR")} F</span>
+                      <span>Réserve cash : 19 %</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                      <span className="text-slate-400 block">Souscripteurs actifs</span>
+                      <strong className="text-white font-mono text-base">{stats ? stats.totalInvestors : "Ouvert"}</strong>
+                    </div>
+                    <div className="p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                      <span className="text-slate-400 block">Action communauté</span>
+                      <strong className="text-amber-300 font-mono text-base">500 FCFA</strong>
+                    </div>
+                  </div>
+
+                  <a
+                    href="https://investir.transen.org/#souscrire"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn-emerald w-full text-sm"
+                  >
+                    <span>Souscrire dès 500 FCFA (Wave / OM / Free)</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Crucial commission highlighting ───────────────────────────────── */}
-      <section className="py-12 section-alt">
+      {/* ── Projections 3 ans + Simulateur Interactif ────────────────────── */}
+      <section className="py-20 section-alt">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 items-center">
-            <div className="flex gap-4 items-start col-span-2">
-              <div className="w-14 h-14 rounded-2xl bg-amber-400/15 border border-amber-400/40 flex items-center justify-center shrink-0">
-                <Landmark className="w-7 h-7 text-emerald-700 font-extrabold" />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold tracking-wider text-amber-600 uppercase bg-amber-100/60 px-2.5 py-0.5 rounded">
-                  OFFRE AGRESSIVE UNIQUE AU MONDE
-                </span>
-                <h3 className="text-2xl font-bold text-white mt-1">
-                  2% de Commission Fixe sur l'Urbain & l'Interurbain
+          <div className="flex flex-wrap justify-between items-end gap-4 mb-10">
+            <div>
+              <span className="eyebrow mb-3">Business Plan Septembre 2026</span>
+              <h2 className="text-3xl sm:text-4xl font-extrabold font-display text-white">
+                Trajectoire 3 ans & <span className="text-gradient-aurora">Simulation de retour</span>
+              </h2>
+            </div>
+            <div className="inline-flex p-1 rounded-full bg-black/40 border border-white/10 gap-1">
+              {(Object.keys(SCENARIOS) as Array<keyof typeof SCENARIOS>).map((k) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setScenario(k)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all cursor-pointer ${
+                    scenario === k
+                      ? "bg-gradient-to-r from-amber-300 to-amber-400 text-slate-950 shadow-md"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {SCENARIOS[k].label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="grid lg:grid-cols-12 gap-8 items-start">
+            {/* Left: P&L Table & 3-Phase Roadmap */}
+            <div className="lg:col-span-7 space-y-6">
+              <SpotlightCard className="p-6 sm:p-7">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2 mb-4 font-display">
+                  <BarChart3 className="w-5 h-5 text-amber-300" />
+                  Compte de Résultat Prévisionnel 3 Ans (M FCFA · 0 Dette)
                 </h3>
-                <p className="text-slate-400 text-sm mt-1.5 leading-relaxed">
-                  Contrairement aux géants du transport prélevant 20% à 25%, TranSen ne prélève que <strong className="text-emerald-700">2%</strong>. Ce taux ultra-bas favorise une adoption exhaustive et instantanée par 100% des chauffeurs et compagnies au Sénégal, créant un monopole d'adoption.
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm font-mono">
+                    <thead>
+                      <tr className="border-b border-white/10 text-amber-300 text-xs uppercase">
+                        <th className="py-3 text-left font-sans">Indicateur</th>
+                        <th className="py-3 text-right">Année 1</th>
+                        <th className="py-3 text-right">Année 2</th>
+                        <th className="py-3 text-right">Année 3</th>
+                        <th className="py-3 text-right">Cumul 3 ans</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      <tr>
+                        <td className="py-3 font-sans font-semibold text-white">Chiffre d'affaires</td>
+                        <td className="py-3 text-right">73,3</td>
+                        <td className="py-3 text-right">303,0</td>
+                        <td className="py-3 text-right text-amber-300 font-bold">590,9</td>
+                        <td className="py-3 text-right text-amber-300 font-bold">967,2</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-sans text-slate-300">Résultat Net</td>
+                        <td className="py-3 text-right text-rose-400">-49,9</td>
+                        <td className="py-3 text-right text-emerald-300">+117,2</td>
+                        <td className="py-3 text-right text-emerald-300">+227,4</td>
+                        <td className="py-3 text-right text-emerald-300 font-bold">+294,6</td>
+                      </tr>
+                      <tr>
+                        <td className="py-3 font-sans text-slate-300">Marge Nette</td>
+                        <td className="py-3 text-right text-slate-400">-68 %</td>
+                        <td className="py-3 text-right text-emerald-300">+39 %</td>
+                        <td className="py-3 text-right text-emerald-300">+38 %</td>
+                        <td className="py-3 text-right text-emerald-300">+30 %</td>
+                      </tr>
+                      <tr className="bg-emerald-500/10 font-bold">
+                        <td className="py-3 font-sans text-white pl-2 rounded-l-lg">Trésorerie clôture</td>
+                        <td className="py-3 text-right">167,9</td>
+                        <td className="py-3 text-right">285,1</td>
+                        <td className="py-3 text-right text-cyan-300">512,4</td>
+                        <td className="py-3 text-right text-cyan-300 pr-2 rounded-r-lg">512,4</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </SpotlightCard>
+
+              <div className="grid sm:grid-cols-3 gap-4">
+                {[
+                  { p: "Phase 1 · M1–18", t: "Intermédiation Pure", b: "217,8 M F", d: "14 régions, 15 postes, agrément DGTT (15 M FDTT), 0 actif physique." },
+                  { p: "Phase 2 · A2–A3", t: "Flotte Propre", b: "868,7 M F", d: "30 urbains + 15 interurbains + 5 bus & ~53 chauffeurs salariés." },
+                  { p: "Phase 3 · A3+", t: "Gares Propres", b: "≈ 3,01 Md F", d: "Gare moderne 10–25 quais, billetterie intégrée & hub colis." },
+                ].map((ph) => (
+                  <div key={ph.p} className="glass rounded-2xl p-5 border border-white/10">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-300 font-bold">{ph.p}</span>
+                    <h4 className="text-base font-bold text-white font-display mt-1">{ph.t}</h4>
+                    <div className="text-lg font-extrabold font-mono text-amber-300 my-1.5">{ph.b}</div>
+                    <p className="text-xs text-slate-400 leading-relaxed">{ph.d}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right: Simulator + Institutional Data Room Form */}
+            <div className="lg:col-span-5 space-y-6">
+              <SpotlightCard className="p-6 border border-amber-400/30">
+                <h3 className="text-base font-bold text-amber-300 font-display flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-5 h-5" />
+                  Simulateur Indicatif ({activeSc.label})
+                </h3>
+                <div className="flex justify-between text-xs font-mono text-slate-300 mb-2">
+                  <span>{shares.toLocaleString("fr-FR")} actions × 500 FCFA</span>
+                  <strong className="text-white">{amountFcfa.toLocaleString("fr-FR")} FCFA</strong>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={20000}
+                  step={10}
+                  value={shares}
+                  onChange={(e) => setShares(Number(e.target.value))}
+                  className="w-full h-2 bg-white/10 rounded-lg accent-amber-400 cursor-pointer mb-4"
+                />
+                <div className="grid grid-cols-3 gap-2.5 text-center font-mono">
+                  <div className="p-3 rounded-xl bg-black/30 border border-white/10">
+                    <span className="text-[10px] text-slate-400 block">Multiple 3 ans</span>
+                    <strong className="text-amber-300 text-base">{activeSc.mult}×</strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-black/30 border border-white/10">
+                    <span className="text-[10px] text-slate-400 block">TRI Annuel</span>
+                    <strong className="text-cyan-300 text-base">{activeSc.tri}</strong>
+                  </div>
+                  <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30">
+                    <span className="text-[10px] text-emerald-200 block">Valeur est. A3</span>
+                    <strong className="text-white text-sm">{Math.round(amountFcfa * activeSc.mult).toLocaleString("fr-FR")} F</strong>
+                  </div>
+                </div>
+                <p className="text-[11px] text-slate-400 mt-3 leading-relaxed">
+                  Projections illustratives non garanties issues du Business Plan (ARR A3 : {activeSc.arrY3}, multiple de sortie : {activeSc.exit}).
+                </p>
+              </SpotlightCard>
+
+              <form onSubmit={handleInstitutionalSubmit} className="glass-strong rounded-3xl p-6 space-y-4">
+                <div>
+                  <span className="text-[11px] font-mono uppercase tracking-widest text-cyan-300 font-bold">
+                    Fonds · Business Angels · Partenaires
+                  </span>
+                  <h3 className="text-lg font-extrabold text-white font-display mt-1">
+                    Demander l'accès Data Room Complète
+                  </h3>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Nom complet *"
+                    value={instName}
+                    onChange={(e) => setInstName(e.target.value)}
+                    className="field-dark text-sm"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Fonds / Structure"
+                    value={instOrg}
+                    onChange={(e) => setInstOrg(e.target.value)}
+                    className="field-dark text-sm"
+                  />
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <input
+                    type="email"
+                    required
+                    placeholder="E-mail professionnel *"
+                    value={instEmail}
+                    onChange={(e) => setInstEmail(e.target.value)}
+                    className="field-dark text-sm"
+                  />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Téléphone / WhatsApp *"
+                    value={instPhone}
+                    onChange={(e) => setInstPhone(e.target.value)}
+                    className="field-dark text-sm"
+                  />
+                </div>
+                <select
+                  value={instTicket}
+                  onChange={(e) => setInstTicket(e.target.value)}
+                  className="field-dark text-sm"
+                >
+                  <option value="5 M – 25 M FCFA (Business Angel)">5 M – 25 M FCFA (Business Angel)</option>
+                  <option value="25 M – 104,3 M FCFA (Co-investisseur)">25 M – 104,3 M FCFA (Co-investisseur)</option>
+                  <option value="104,3 M – 217,8 M FCFA (Lead Investor Phase 1)">104,3 M – 217,8 M FCFA (Lead Investor Phase 1)</option>
+                </select>
+                <textarea
+                  rows={3}
+                  placeholder="Questions ou documents souhaités (BP PDF, modèle Excel 3 ans, rendez-vous Fondateur)..."
+                  value={instMessage}
+                  onChange={(e) => setInstMessage(e.target.value)}
+                  className="field-dark text-sm"
+                />
+                <button type="submit" disabled={isSubmitting} className="btn-gold w-full text-sm cursor-pointer disabled:opacity-60">
+                  <Send className="w-4 h-4" />
+                  <span>{isSubmitting ? "Envoi en cours..." : "Demander la Data Room"}</span>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Gouvernance & Cadre Juridique DGTT ───────────────────────────── */}
+      <section className="py-16 section-dark border-t border-white/10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid md:grid-cols-3 gap-6">
+            <Reveal>
+              <div className="glass rounded-2xl p-6 h-full">
+                <ShieldCheck className="w-7 h-7 text-emerald-300 mb-3" />
+                <h4 className="text-base font-bold text-white font-display mb-2">Conformité DGTT & Capital ≥ 51 % SN</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Structuration en société (SARL/SUARL ou SA) à capital ≥ 51 % national sénégalais pour l'obtention de
+                  l'agrément DGTT VTC (Décret n°2024-847, caution 15 M FCFA au FDTT).
                 </p>
               </div>
-            </div>
-
-            <div className="bg-emerald-900/5 rounded-2xl p-6 border border-emerald-900/10 text-center">
-              <div className="text-xs text-slate-400 uppercase tracking-wider font-semibold">Taux de Commission TranSen</div>
-              <div className="text-5xl font-black text-emerald-800 my-2 animate-bounce">2.0%</div>
-              <div className="text-xs text-emerald-700 font-bold">Uniquement, sur tout le Sénégal</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Main Tab Interface ────────────────────────────────────────────── */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Tab buttons */}
-          <div className="flex justify-center mb-10">
-            <div className="bg-[#071a12]/90 backdrop-blur-xl border rounded-2xl p-1.5 flex gap-2 shadow-sm">
-              <button
-                onClick={() => { setActiveTab("promise"); setHasSubmitted(false); }}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
-                  activeTab === "promise"
-                    ? "bg-emerald-800 text-white shadow-lg"
-                    : "text-slate-300 hover:text-emerald-300 hover:bg-white/[0.06]"
-                }`}
-              >
-                <DollarSign className="w-4.5 h-4.5" />
-                1. Promesses d'Investissement ({submittedPromises.filter(p => p.status === "En attente").length} Actives)
-              </button>
-              <button
-                onClick={() => setActiveTab("portfolio")}
-                className={`flex items-center gap-2 px-6 py-3 rounded-xl text-xs md:text-sm font-semibold transition-all ${
-                  activeTab === "portfolio"
-                    ? "bg-emerald-800 text-white shadow-lg"
-                    : "text-slate-300 hover:text-emerald-300 hover:bg-white/[0.06]"
-                }`}
-              >
-                <PieChart className="w-4.5 h-4.5" />
-                2. Simulateur de Portefeuille Validé (v2026)
-              </button>
-            </div>
-          </div>
-
-          <AnimatePresence mode="wait">
-            {/* ── TAB 1: SUBMIT PROMISE ─────────────────────────────────────── */}
-            {activeTab === "promise" && (
-              <motion.div
-                key="promise-tab"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="grid lg:grid-cols-12 gap-8 items-start"
-              >
-                {/* Left Side: Submission space form */}
-                <div className="lg:col-span-7 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-xl">
-                  {hasSubmitted ? (
-                    <motion.div 
-                      initial={{ scale: 0.95, opacity: 0 }} 
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="text-center py-12"
-                    >
-                      <div className="w-18 h-18 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6 text-emerald-600">
-                        <CheckCircle2 className="w-10 h-10" />
-                      </div>
-                      <h2 className="text-3xl font-extrabold text-white mb-3">Merci pour votre promesse !</h2>
-                      <p className="text-slate-400 max-w-md mx-auto mb-8">
-                        Votre intention d'acquérir <strong className="text-emerald-700">{(amount / 500).toLocaleString("fr-FR")} actions</strong> (à 500 FCFA l'action) pour un total de <strong className="text-emerald-700">{amount.toLocaleString("fr-FR")} FCFA</strong> a été enregistrée à notre registre décentralisé. Retrouvez cette promesse listée sous statut <span className="text-amber-600 font-bold font-mono bg-amber-50 px-2 py-0.5 rounded">En attente</span> sur l'onglet Portefeuille !
-                      </p>
-                      <div className="flex justify-center gap-3">
-                        <button
-                          onClick={() => setHasSubmitted(false)}
-                          className="px-6 py-3 rounded-xl bg-white/[0.06] text-slate-200 text-sm font-semibold hover:bg-white/10 transition-colors"
-                        >
-                          En soumettre une autre
-                        </button>
-                        <button
-                          onClick={() => setActiveTab("portfolio")}
-                          className="px-6 py-3 rounded-xl bg-emerald-800 text-white text-sm font-semibold hover:bg-emerald-900 transition-all shadow-md flex items-center gap-2"
-                        >
-                          Consulter mon Portefeuille <ArrowRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  ) : (
-                    <form onSubmit={handleSubmitPromise} className="space-y-6">
-                      <div>
-                        <h2 className="text-2xl font-bold text-white mb-1">
-                          Soumettre une promesse d'investissement
-                        </h2>
-                        <p className="text-sm text-gray-400">
-                          Tous les dépôts d'intentions sont d'abord instruits pour s'assurer de l'alignement KYC de nos contributeurs.
-                        </p>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Nom Complet ou Entité</label>
-                          <input
-                            type="text"
-                            required
-                            placeholder="Ex: West Africa Capital / Dr. Diallo"
-                            value={investorName}
-                            onChange={(e) => setInvestorName(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Adresse Email</label>
-                          <input
-                            type="email"
-                            required
-                            placeholder="investisseur@example.com"
-                            value={investorEmail}
-                            onChange={(e) => setInvestorEmail(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
-                          />
-                        </div>
-                      </div>
-
-                      <div className="grid md:grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Téléphone (avec indicatif)</label>
-                          <input
-                            type="tel"
-                            placeholder="+221 77..."
-                            value={investorPhone}
-                            onChange={(e) => setInvestorPhone(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none transition-all placeholder:text-gray-300"
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">Type de Profil Financier</label>
-                          <select
-                            value={investorType}
-                            onChange={(e) => setInvestorType(e.target.value)}
-                            className="w-full px-4 py-3 rounded-xl border border-white/15 focus:border-emerald-600 focus:outline-none bg-[#071a12]/90 backdrop-blur-xl transition-all"
-                          >
-                            <option value="Angel">Business Angel Privé</option>
-                            <option value="VC">Société de Capital Risque (VC)</option>
-                            <option value="Compagnie">Compagnie de Transport Partenaire</option>
-                            <option value="Institutionnel">Fonds d'investissement Institutionnel</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Interactive Amount Picker */}
-                      <div className="space-y-4 pt-4 border-t border-white/10">
-                        <div className="flex justify-between items-center">
-                          <label className="text-xs uppercase tracking-wider font-bold text-slate-400">
-                            Montant de la Promesse (FCFA)
-                          </label>
-                          <span className="text-xl font-black text-emerald-800">
-                            {amount.toLocaleString("fr-FR")} FCFA
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="100000"
-                          max="50000000"
-                          step="100000"
-                          value={amount}
-                          onChange={(e) => setAmount(Number(e.target.value))}
-                          className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-700"
-                        />
-                        <div className="flex justify-between text-[10px] text-gray-400 font-mono">
-                          <span>100 000 FCFA Min</span>
-                          <span>25 000 000 FCFA</span>
-                          <span>50 000 000 FCFA Max</span>
-                        </div>
-                      </div>
-
-                      <div className="bg-emerald-500/15 rounded-2xl p-5 border border-emerald-100 flex items-start gap-3">
-                        <input type="checkbox" required className="mt-1 accent-emerald-700 cursor-pointer" />
-                        <p className="text-xs text-slate-300 leading-relaxed font-medium">
-                          Je confirme solennellement que ce montant de promesse n'est pas assorti de conditions suspensives d'origine criminelle et que s'il est validé d'une offre d'achat de parts, je recevrai le Term-Sheet officiel de TranSen en 2026. *
-                        </p>
-                      </div>
-
-                      <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className={`w-full py-4.5 rounded-2xl bg-gradient-to-r from-emerald-800 to-emerald-700 text-white font-bold text-sm tracking-wide transition-all hover:shadow-xl hover:shadow-emerald-900/10 hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-2 ${
-                          isSubmitting ? "opacity-75 cursor-not-allowed" : ""
-                        }`}
-                      >
-                        {isSubmitting ? (
-                          <>
-                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                            Traitement en cours...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4" />
-                            Soumettre ma promesse d'investissement
-                          </>
-                        )}
-                      </button>
-                    </form>
-                  )}
-                </div>
-
-                {/* Right Side: Actionable dynamic returns calculations based on 2% commission model */}
-                <div className="lg:col-span-5 space-y-6">
-                  <div className="bg-emerald-950 text-white rounded-3xl p-8 border border-emerald-800 shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-400 opacity-5 blur-2xl pointer-events-none" />
-                    
-                    <h3 className="text-md font-bold text-amber-400 mb-6 uppercase tracking-widest flex items-center gap-1">
-                      <Sparkles className="w-4.5 h-4.5" />
-                      Simulateur Équité & Dividendes
-                    </h3>
-
-                    <div className="space-y-6">
-                      <div>
-                        <div className="text-white/60 text-xs uppercase font-mono tracking-wider">Parts de Capital Transen Projetées</div>
-                        <div className="text-4xl font-extrabold text-white mt-1">
-                          {computedEquity}% <span className="text-xs text-amber-300 font-normal">estimé</span>
-                        </div>
-                        <div className="text-xs text-white/70 mt-3 pt-2.5 border-t border-emerald-800/60 flex flex-col gap-1.5 font-mono">
-                          <div className="flex justify-between"><span className="text-white/50">Valorisation de l'App :</span> <span className="font-bold text-amber-300">200 000 000 FCFA</span></div>
-                          <div className="flex justify-between"><span className="text-white/50">Prix de l'action :</span> <span className="font-bold text-amber-300">500 FCFA</span></div>
-                          <div className="flex justify-between"><span className="text-white/50">Actions acquises :</span> <span className="font-bold text-white">{(amount / 500).toLocaleString("fr-FR")} actions</span></div>
-                        </div>
-                      </div>
-
-                      <div className="border-t border-emerald-800/80 pt-5">
-                        <div className="text-white/60 text-xs uppercase font-mono tracking-wider">Quote-part des Commissions Annuelles Estimée</div>
-                        <div className="text-3xl font-bold mt-1 text-emerald-300">
-                          +{estimatedAnnualInterests.toLocaleString("fr-FR")} FCFA <span className="text-xs text-white/70 font-normal">/ an</span>
-                        </div>
-                        <div className="text-xs text-white/50 mt-1">Hypothèse prudente de retour sur dividendes (12% l'an) générée sur le pool de transactions TranSen 2% commission.</div>
-                      </div>
-
-                      <div className="border-t border-emerald-800/80 pt-5 space-y-3">
-                        <div className="flex gap-2.5 text-xs text-white/80">
-                          <CheckCircle2 className="w-4.5 h-4.5 shrink-0 text-amber-400" />
-                          <span>Droit d'accès exclusif aux bilans comptables de TranSen.</span>
-                        </div>
-                        <div className="flex gap-2.5 text-xs text-white/80">
-                          <CheckCircle2 className="w-4.5 h-4.5 shrink-0 text-amber-400" />
-                          <span>Liquidité assurée secondaire annuelle dès 2027.</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-md">
-                    <h4 className="font-bold text-white text-sm mb-3">Statut Global de Financement 2026</h4>
-                    <div className="space-y-3">
-                      <div>
-                        <div className="flex justify-between text-xs font-semibold text-slate-400 mb-1">
-                          <span>Financement ciblé (25% du Capital)</span>
-                          <span>50 000 000 FCFA</span>
-                        </div>
-                        <div className="w-full h-2.5 bg-white/[0.06] rounded-full overflow-hidden">
-                          <div className="h-full bg-emerald-600 rounded-full" style={{ width: "67%" }}></div>
-                        </div>
-                        <p className="text-[11px] text-emerald-800 mt-1 font-medium font-mono text-right">67% d'intentions confirmées (33 500 000 FCFA)</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* ── TAB 2: PORTFOLIO & HISTORIC INVESTMENT ────────────────────── */}
-            {activeTab === "portfolio" && (
-              <motion.div
-                key="portfolio-tab"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-                className="space-y-8"
-              >
-                {/* Simulated dashboard banners */}
-                <div className="grid md:grid-cols-4 gap-4">
-                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Total de vos Promesses</span>
-                      <div className="text-2xl font-black text-white mt-1">
-                        {submittedPromises.reduce((acc, p) => acc + p.amount, 0).toLocaleString("fr-FR")} FCFA
-                      </div>
-                    </div>
-                    <span className="text-emerald-700 font-bold text-xs mt-3 bg-emerald-500/15 px-2.5 py-1 rounded self-start">
-                      {submittedPromises.length} Promesses enregistrées
-                    </span>
-                  </div>
-
-                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Dont Montant validé</span>
-                      <div className="text-2xl font-black text-emerald-800 mt-1">
-                        {(15000000).toLocaleString("fr-FR")} FCFA
-                      </div>
-                    </div>
-                    <span className="text-amber-700 font-bold text-xs mt-3 bg-amber-50 px-2.5 py-1 rounded self-start">
-                      Séquence d'appel de fonds activée
-                    </span>
-                  </div>
-
-                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Valorisation Estimée de vos parts</span>
-                      <div className="text-2xl font-black text-white mt-1">
-                        - FCFA
-                      </div>
-                    </div>
-                    <span className="text-gray-400 font-semibold text-xs mt-3">
-                      En attente de cotation de capital
-                    </span>
-                  </div>
-
-                  <div className="bg-[#071a12]/90 backdrop-blur-xl rounded-2xl p-6 border border-white/10 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <span className="text-gray-400 uppercase text-[10px] font-bold tracking-wider">Dividendes trimestriels projetés</span>
-                      <div className="text-2xl font-black text-emerald-800 mt-1">
-                        +{(submittedPromises.reduce((acc, p) => acc + p.amount, 0) * 0.03).toLocaleString("fr-FR")} FCFA
-                      </div>
-                    </div>
-                    <span className="text-emerald-700 font-bold text-xs mt-3">
-                      Paiement automatique via SenePay
-                    </span>
-                  </div>
-                </div>
-
-                {/* Grid chart + list view */}
-                <div className="grid lg:grid-cols-12 gap-8 items-start">
-                  {/* Left: Interactive growth chart */}
-                  <div className="lg:col-span-8 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-6 md:p-8 border border-white/10 shadow-md">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
-                      <div>
-                        <h3 className="text-lg font-bold text-white">Projection de Croissance Financière</h3>
-                        <p className="text-xs text-gray-400">Simulation de rendements sur 5 ans basés sur votre allocation de promesses actuelles</p>
-                      </div>
-                      <div className="bg-emerald-500/15 text-emerald-700 font-mono text-xs px-3 py-1 rounded-lg border border-emerald-100 font-semibold">
-                        Modèle 2% Urbain & Interurbain
-                      </div>
-                    </div>
-
-                    <div className="h-72 w-full mt-4">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart
-                          data={growthData}
-                          margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                        >
-                          <defs>
-                            <linearGradient id="colorRendement" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/>
-                              <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                          <XAxis dataKey="year" stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} />
-                          <YAxis stroke="#9ca3af" fontSize={11} tickLine={false} axisLine={false} tickFormatter={(val) => `${(val / 1000000).toFixed(0)}M`} />
-                          <Tooltip 
-                            formatter={(value: any) => [`${Number(value).toLocaleString("fr-FR")} FCFA`, "Rendement annuel Simulé"]}
-                            contentStyle={{ backgroundColor: "#111827", borderRadius: "12px", border: "none", color: "#fff" }}
-                            labelStyle={{ color: "#fbbf24", fontWeight: "bold" }}
-                          />
-                          <Area type="monotone" dataKey="rendement" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorRendement)" />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
-
-                  {/* Right: Submitted promises status tracker */}
-                  <div className="lg:col-span-4 bg-[#071a12]/90 backdrop-blur-xl rounded-3xl p-6 border border-white/10 shadow-md space-y-4">
-                    <h3 className="font-bold text-white text-md">Registre de vos promesses</h3>
-                    <div className="space-y-3">
-                      {submittedPromises.map((p) => (
-                        <div key={p.id} className="p-4 rounded-xl bg-white/[0.04] border border-white/10/80 flex flex-col gap-2">
-                          <div className="flex justify-between items-center">
-                            <span className="text-[10px] font-mono text-gray-400 font-bold">{p.id}</span>
-                            <span className={`text-[10px] font-semibold px-2.5 py-0.5 rounded-full ${
-                              p.status === "Validé" 
-                                ? "bg-emerald-100 text-emerald-800" 
-                                : "bg-amber-100 text-amber-800 animate-pulse"
-                            }`}>
-                              {p.status}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="text-sm font-bold text-white">
-                              {p.amount.toLocaleString("fr-FR")} FCFA
-                            </div>
-                            <div className="text-[11px] text-slate-400 mt-0.5">
-                              {p.type} · parts d'équité estimées : {p.equity}%
-                            </div>
-                          </div>
-                          <div className="text-[9px] text-gray-400 text-right mt-1">
-                            Date: {p.date}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </section>
-
-      {/* ── FAQ block or security notice for investors ───────────────────── */}
-      <section className="py-20 bg-gray-900 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto text-center mb-14">
-            <h2 className="text-3xl font-extrabold mb-4">Questions Fréquentes des Investisseurs</h2>
-            <p className="text-gray-400 text-sm">Ce que vous devez savoir avant de soumettre vos intentions.</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-            <div className="space-y-2">
-              <h4 className="font-bold text-amber-300">Quelle est la structure légale de TranSen en 2026 ?</h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                TranSen est structuré en Société Anonyme (S.A.) de droit sénégalais au capital social réajusté en 2026. L'investissement direct confère des actions ordinaires ouvrant droit à dividende et vote.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-bold text-amber-300">Comment fonctionne le reversement des dividendes ?</h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Le prélèvement de 2% de commission sur l'écosystème urbain et interurbain est centralisé en temps réel sur SenePay et redistribué trimestriellement au prorata des parts détenues.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-bold text-amber-300">Les promesses d'investissement sont-elles contraignantes ?</h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Non, une promesse d'investissement n'engage légalement le signataire qu'à la signature finale du Term-Sheet après la période de validation KYC et de revue des comptes.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <h4 className="font-bold text-amber-300">Pourquoi limiter le nombre de places par transporteur à 60 ?</h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Nous optimisons le transport interurbain par autocars de grande capacité limités à 60 chaises afin d'assurer de hauts standards de confort, d'assurance et de sécurité réglementés.
-              </p>
-            </div>
+            </Reveal>
+            <Reveal delay={0.08}>
+              <div className="glass rounded-2xl p-6 h-full">
+                <Landmark className="w-7 h-7 text-amber-300 mb-3" />
+                <h4 className="text-base font-bold text-white font-display mb-2">Gouvernance & Audit Indépendant</h4>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  Reporting mensuel (MRR, cash, KPI opérationnels), bilan trimestriel, suivi budgété vs réalisé,
+                  audit annuel indépendant et siège observateur/conseil.
+                </p>
+              </div>
+            </Reveal>
+            <Reveal delay={0.16}>
+              <div className="glass rounded-2xl p-6 h-full">
+                <Users className="w-7 h-7 text-cyan-300 mb-3" />
+                <h4 className="text-base font-bold text-white font-display mb-2">Portail Dédié investir.transen.org</h4>
+                <p className="text-xs text-slate-300 leading-relaxed mb-3">
+                  Retrouvez l'intégralité du dossier investisseur, le suivi KYC et votre certificat nominatif sur notre portail dédié.
+                </p>
+                <a
+                  href="https://investir.transen.org"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-amber-300 hover:text-amber-200"
+                >
+                  <span>Accéder à investir.transen.org</span>
+                  <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </Reveal>
           </div>
         </div>
       </section>

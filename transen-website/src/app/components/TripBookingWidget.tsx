@@ -118,7 +118,7 @@ function CityPicker({
                       onChange(city);
                       setOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2.5 text-slate-200 hover:bg-emerald-500/150/15 hover:text-emerald-300 transition-colors text-sm cursor-pointer"
+                    className="w-full text-left px-4 py-2.5 text-slate-200 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors text-sm cursor-pointer"
                   >
                     {city}
                   </button>
@@ -152,10 +152,10 @@ function SeatBtn({
       title={occupied ? "Occupé" : `Siège ${n}`}
       className={`w-9 h-9 rounded-lg text-xs transition-all border-2 ${
         occupied
-          ? "bg-blue-50 border-slate-700 text-blue-300 cursor-not-allowed"
+          ? "bg-slate-800/80 border-slate-700 text-slate-500 cursor-not-allowed"
           : selected
           ? "border-[var(--brand-gold)] bg-[var(--brand-gold)] text-slate-950 font-bold"
-          : "bg-emerald-500/15 border-green-300 text-emerald-300 hover:border-green-500 hover:bg-emerald-500/25 cursor-pointer"
+          : "bg-emerald-500/15 border-emerald-400/50 text-emerald-300 hover:border-emerald-400 hover:bg-emerald-500/25 cursor-pointer"
       }`}
     >
       {n}
@@ -339,7 +339,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
         passagerPhone: passengerPhone.trim(),
         siegeNumero: selected.join(", "),
         prixTTC: priceNum,
-        statutReglement: routingType === "specific" ? "Réglé" : "En attente",
+        statutReglement: "En attente",
         modePaiement: routingType === "specific" ? "Wave" : "Espèces (Gare)",
       });
 
@@ -355,9 +355,11 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
           if (checkoutUrl) {
             toast.success("Redirection vers SenePay pour finaliser le paiement...");
             window.open(checkoutUrl, "_blank", "noopener,noreferrer");
+          } else {
+            toast.info("Billet pré-réservé ! Finalisez le règlement SenePay avec votre code d'embarquement.");
           }
         } catch {
-          // Billet créé en attente : le passager obtient son billet avec code d'embarquement
+          toast.info("Billet enregistré en attente : le lien SenePay sera envoyé par SMS ou réglable en gare.");
         }
       }
 
@@ -408,7 +410,7 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
             <ArrowRight className="w-3 h-3 text-gray-400" />
             <span className="font-semibold text-slate-200">{trip.arr}</span>
             <span className="text-gray-300">·</span>
-            <span className="bg-emerald-500/15 text-emerald-700 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-100">
+            <span className="bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 rounded text-[10px] font-mono border border-emerald-400/30">
               {trip.vehicle}
             </span>
             {trip.relayPoint && (
@@ -524,24 +526,24 @@ function BusCard({ trip, wantedSeats, onBookingSuccess }: BusCardProps) {
                       onClick={() => setRoutingType("specific")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "specific"
-                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-950 font-semibold"
-                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/20"
+                          ? "bg-emerald-500/20 border-emerald-400 text-emerald-200 font-semibold"
+                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/25"
                       }`}
                     >
                       <span>Demande Spécifique</span>
-                      <span className="text-[9px] leading-tight font-normal">Paiement d'avance via SenePay. 98% à la compagnie.</span>
+                      <span className="text-[10px] leading-tight font-normal text-slate-300">Paiement SenePay. 98% à la compagnie.</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setRoutingType("public")}
                       className={`p-2.5 text-xs rounded-xl border text-left flex flex-col gap-0.5 transition-all cursor-pointer ${
                         routingType === "public"
-                          ? "bg-emerald-500/15 border-emerald-500 text-emerald-950 font-semibold"
-                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/20"
+                          ? "bg-amber-400/15 border-amber-400 text-amber-200 font-semibold"
+                          : "bg-[#071a12]/90 backdrop-blur-xl border-white/15 text-slate-400 hover:border-white/25"
                       }`}
                     >
                       <span>Demande Publique</span>
-                      <span className="text-[9px] leading-tight font-normal">Envoi global. Paiement obligatoire espèces à bord.</span>
+                      <span className="text-[10px] leading-tight font-normal text-slate-300">Diffusion réseau. Règlement espèces à bord.</span>
                     </button>
                   </div>
 
@@ -635,6 +637,7 @@ export function TripBookingWidget() {
   });
   const [trackedTrip, setTrackedTrip] = useState<any | null>(null);
   const [cancelling, setCancelling] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
 
   // Estimation tarif VTC via Spring Boot (/api/vtc/calculate-price)
   useEffect(() => {
@@ -684,13 +687,16 @@ export function TripBookingWidget() {
 
   const handleCancelTrip = async () => {
     if (!activeAlloDakarTripId || cancelling) return;
-    if (!window.confirm("Êtes-vous sûr de vouloir annuler votre demande de trajet ? Cette action est irréversible.")) {
+    if (!confirmCancel) {
+      setConfirmCancel(true);
+      toast.info("Cliquez à nouveau sur « Confirmer l'annulation » pour valider.");
       return;
     }
     setCancelling(true);
     try {
       await cancelAlloDakarTrip(activeAlloDakarTripId);
       toast.success("Votre demande de trajet a été annulée.");
+      setConfirmCancel(false);
       setTrackedTrip((prev: any) => (prev ? { ...prev, status: "CANCELLED" } : null));
       localStorage.removeItem("transen_active_trip_id");
       setTimeout(() => {
@@ -894,7 +900,7 @@ export function TripBookingWidget() {
                   {trackedTrip.driverPhone && (
                     <a
                       href={`tel:${trackedTrip.driverPhone}`}
-                      className="bg-emerald-600 hover:bg-emerald-500/150/150 text-white px-3 py-2 rounded-xl text-xs font-bold"
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-2 rounded-xl text-xs font-bold"
                     >
                       📞 {trackedTrip.driverPhone}
                     </a>
@@ -907,9 +913,15 @@ export function TripBookingWidget() {
                   type="button"
                   onClick={handleCancelTrip}
                   disabled={cancelling}
-                  className="w-full py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl transition text-xs font-bold cursor-pointer disabled:opacity-50"
+                  className={`w-full py-3 rounded-xl transition text-xs font-bold cursor-pointer disabled:opacity-50 ${
+                    confirmCancel ? "bg-rose-600 hover:bg-rose-500 text-white ring-2 ring-rose-300/60" : "bg-rose-600/85 hover:bg-rose-600 text-white"
+                  }`}
                 >
-                  {cancelling ? "Annulation en cours..." : "🚫 Annuler ma demande"}
+                  {cancelling
+                    ? "Annulation en cours..."
+                    : confirmCancel
+                    ? "Confirmer définitivement l'annulation"
+                    : "Annuler ma demande"}
                 </button>
               )}
             </div>
@@ -996,7 +1008,7 @@ export function TripBookingWidget() {
                       className="w-full bg-white/10 border border-white/20 text-white rounded-xl pl-9 pr-4 py-3 text-sm [color-scheme:dark] appearance-none"
                     >
                       {[1, 2, 3, 4].map((n) => (
-                        <option key={n} value={n}>
+                        <option key={n} value={n} className="bg-[#071a12] text-white">
                           {n} place{n > 1 ? "s" : ""}
                         </option>
                       ))}
@@ -1041,7 +1053,7 @@ export function TripBookingWidget() {
                     className="w-full bg-white/10 border border-white/20 text-white rounded-xl px-4 py-3 text-sm [color-scheme:dark]"
                   >
                     {YOBANTE_PACKAGES.map((p) => (
-                      <option key={p.id} value={p.id}>
+                      <option key={p.id} value={p.id} className="bg-[#071a12] text-white">
                         {p.label} — {p.price.toLocaleString("fr-FR")} F
                       </option>
                     ))}
@@ -1228,21 +1240,21 @@ export function TripBookingWidget() {
                   </div>
                   <div>
                     <span className="text-gray-400 block text-[9px] uppercase">Code Embarquement</span>
-                    <span className="text-emerald-700 font-black block text-sm">{activeTicket.qrcode}</span>
+                    <span className="text-emerald-300 font-black block text-sm">{activeTicket.qrcode}</span>
                   </div>
                 </div>
 
-                <div className="my-4 p-3.5 bg-white/[0.04] rounded-2xl border border-white/15/60 flex items-center justify-between">
+                <div className="my-4 p-3.5 bg-white/[0.04] rounded-2xl border border-white/15 flex items-center justify-between">
                   <div>
                     <span className="text-slate-400 font-mono text-[10px] block">Statut règlement :</span>
-                    <span className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${activeTicket.routingType === "specific" ? "text-emerald-600" : "text-amber-600"}`}>
-                      <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+                    <span className={`text-[11px] font-bold flex items-center gap-1 mt-0.5 ${activeTicket.routingType === "specific" ? "text-emerald-300" : "text-amber-300"}`}>
+                      <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0" />
                       {activeTicket.routingType === "specific" ? "SenePay (Wave/OM)" : "Espèces à bord"}
                     </span>
                   </div>
                   <div className="text-right">
                     <span className="text-gray-400 text-[9px] block uppercase font-mono">Total</span>
-                    <span className="text-lg font-extrabold text-emerald-800 font-mono">{activeTicket.totalCost.toLocaleString("fr-FR")} FCFA</span>
+                    <span className="text-lg font-extrabold text-amber-300 font-mono">{activeTicket.totalCost.toLocaleString("fr-FR")} FCFA</span>
                   </div>
                 </div>
               </div>
@@ -1251,14 +1263,14 @@ export function TripBookingWidget() {
                 <button
                   type="button"
                   onClick={() => window.print()}
-                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500/150/150 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
                 >
-                  🖨️ Imprimer / Sauver (PDF)
+                  Imprimer / Sauver (PDF)
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTicket(null)}
-                  className="px-4 py-3 bg-white/10 hover:bg-gray-300 text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
+                  className="px-4 py-3 bg-white/10 hover:bg-white/20 text-slate-200 text-xs font-bold rounded-xl transition cursor-pointer"
                 >
                   Fermer
                 </button>

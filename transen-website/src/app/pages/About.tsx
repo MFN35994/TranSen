@@ -22,10 +22,10 @@ export function About() {
   ];
 
   const milestones = [
-    { year: "2026", title: "Lancement Officiel de TranSen", description: "Déploiement de notre solution digitale innovante au Sénégal avec un taux de commission unique de 2% pour soutenir activement l'écosystème local." },
-    { year: "2027", title: "Maillage National Complet", description: "Intégration d'un réseau unifié de bus, minibus et taxis interurbains couvrant l'intégralité des 14 régions du pays." },
-    { year: "2028", title: "Bornes aux Gares Routières", description: "Installation de guichets interactifs et de bornes TranSen connectées dans les gares majeures pour assister tous les voyageurs." },
-    { year: "2029", title: "Mobilité Verte & Sous-Région", description: "Engagement d'optimisation éco-responsable des trajets de transport et ouverture de corridors connectés vers la sous-région (Gambie, Mali, Mauritanie)." },
+    { year: "Phase 1", title: "Intermédiation Pure Nationale (M1–M18)", description: "Déploiement simultané sur les 14 régions du Sénégal (urbain + interurbain tri-modal), commission unique de 2 %, agrément DGTT VTC et portefeuille TransPay." },
+    { year: "Phase 2", title: "Flotte Propre Hybride (Années 2–3)", description: "Déploiement progressif de 30 véhicules urbains, 15 véhicules interurbains et 5 bus longue distance opérés aux standards de qualité TranSen." },
+    { year: "Phase 3", title: "Gares Routières Modernes (Année 3+)", description: "Construction de notre première gare routière moderne (10 à 25 quais) avec embarquement numérique intégral et hub logistique colis Yobanté." },
+    { year: "Horizon", title: "Mobilité Verte & Sous-Région", description: "Optimisation éco-responsable des corridors et interconnexion progressive vers les axes ouest-africains (Gambie, Mali, Mauritanie)." },
   ];
 
   const coverageRegions = [

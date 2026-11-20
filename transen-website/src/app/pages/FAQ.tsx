@@ -93,7 +93,7 @@ export function FAQ() {
       questions: [
         {
           question: "Comment contacter le support client ?",
-          answer: "Vous pouvez nous joindre par téléphone (+221 78 138 64 05), WhatsApp, email (contact@allodakar.com) ou directement via l'application. Notre équipe est disponible 24/7.",
+          answer: "Vous pouvez nous joindre par téléphone (+221 78 138 64 05), WhatsApp, email (contact@transen.org) ou directement via l'application. Notre équipe est disponible 24/7.",
         },
         {
           question: "Combien de temps faut-il pour recevoir une réponse ?",
@@ -192,9 +192,8 @@ export function FAQ() {
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <a
-                href="mailto:contact@allodakar.com"
-                className="px-8 py-4 rounded-full transition-all hover:shadow-xl inline-block"
-                style={{ backgroundColor: "var(--brand-gold)", color: "var(--brand-green)" }}
+                href="mailto:contact@transen.org"
+                className="btn-gold text-sm sm:text-base"
               >
                 Envoyer un email
               </a>
@@ -202,9 +201,9 @@ export function FAQ() {
                 href="https://wa.me/221781386405"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-8 py-4 rounded-full bg-white/10 backdrop-blur-sm border-2 border-white text-white transition-all hover:bg-emerald-400 hover:text-slate-950 inline-block"
+                className="btn-ghost text-sm sm:text-base"
               >
-                WhatsApp
+                WhatsApp 24/7
               </a>
             </div>
           </motion.div>

@@ -180,7 +180,7 @@ export function Services() {
                 style={
                   activeService === tab.id
                     ? { backgroundColor: tab.color, borderColor: tab.color }
-                    : { borderColor: "#e5e7eb" }
+                    : { borderColor: "rgba(255,255,255,0.14)" }
                 }
               >
                 <tab.Icon className="w-5 h-5" />
@@ -271,7 +271,7 @@ export function Services() {
                             {s.step}
                           </div>
                         </div>
-                        <h4 className="text-sm mb-2" style={{ color: "#1a1a1a" }}>{s.title}</h4>
+                        <h4 className="text-sm font-bold text-white mb-2">{s.title}</h4>
                         <p className="text-xs text-slate-400 leading-relaxed">{s.desc}</p>
                       </div>
                     ))}
@@ -501,15 +501,14 @@ export function Services() {
             <p className="text-white/70 mb-8">Téléchargez l'application et réservez votre premier trajet dès aujourd'hui.</p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Link
-                to="/contact"
-                className="flex items-center gap-2 px-8 py-4 rounded-2xl transition-all hover:shadow-xl"
-                style={{ backgroundColor: "var(--brand-gold)", color: "#111" }}
+                to="/contact#telecharger"
+                className="btn-gold text-sm sm:text-base"
               >
                 Télécharger l'App <ArrowRight className="w-5 h-5" />
               </Link>
               <Link
                 to="/tarifs"
-                className="flex items-center gap-2 px-8 py-4 rounded-2xl border-2 border-white text-white hover:bg-white/10 transition-all"
+                className="btn-ghost text-sm sm:text-base"
               >
                 Voir les tarifs <ArrowRight className="w-5 h-5" />
               </Link>

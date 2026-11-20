@@ -11,6 +11,7 @@ export function Chauffeurs() {
   const [formData, setFormData] = useState({
     nom: "",
     prenom: "",
+    email: "",
     telephone: "",
     region: "",
     typeVehicule: "",
@@ -23,21 +24,26 @@ export function Chauffeurs() {
     e.preventDefault();
     setIsSubmitting(true);
     try {
-      // Map form fields to the API payload schema
+      const safeHandle = `${formData.prenom}.${formData.nom}`
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9.]/g, "");
       await registerChauffeur({
-        nom: formData.nom,
-        prenom: formData.prenom,
-        email: `${formData.prenom.toLowerCase()}.${formData.nom.toLowerCase()}@transen.partner`, // derived for schema fallback
-        telephone: formData.telephone,
+        nom: formData.nom.trim(),
+        prenom: formData.prenom.trim(),
+        email: formData.email.trim() || `${safeHandle || "chauffeur"}@transen.org`,
+        telephone: formData.telephone.trim(),
         region: formData.region,
-        permisType: formData.numeroCNI, // maps to license/ID/CNI in payload
+        permisType: formData.numeroCNI.trim(),
         vehiculeType: formData.typeVehicule,
-        description: `Expérience: ${formData.experience}`,
+        description: `Expérience: ${formData.experience} ans`,
       });
-      toast.success("Candidature envoyée avec succès ! Nous vous contacterons bientôt.");
+      toast.success("Candidature envoyée avec succès ! Notre équipe vous contactera sous 48h.");
       setFormData({
         nom: "",
         prenom: "",
+        email: "",
         telephone: "",
         region: "",
         typeVehicule: "",
@@ -289,20 +295,32 @@ export function Chauffeurs() {
                     />
                   </div>
                   <div>
-                    <Label htmlFor="region">Région d'opération *</Label>
-                    <select
-                      id="region"
-                      required
-                      value={formData.region}
-                      onChange={(e) => setFormData({ ...formData, region: e.target.value })}
-                      className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-[#071a12]/90 backdrop-blur-xl text-sm"
-                    >
-                      <option value="">Sélectionnez une région</option>
-                      {regions.map((region) => (
-                        <option key={region} value={region}>{region}</option>
-                      ))}
-                    </select>
+                    <Label htmlFor="driverEmail">Adresse Email (optionnel)</Label>
+                    <Input
+                      id="driverEmail"
+                      type="email"
+                      placeholder="mamadou.sow@exemple.com"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      className="mt-2"
+                    />
                   </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="region">Région d'opération *</Label>
+                  <select
+                    id="region"
+                    required
+                    value={formData.region}
+                    onChange={(e) => setFormData({ ...formData, region: e.target.value })}
+                    className="mt-2 field-dark text-sm"
+                  >
+                    <option value="">Sélectionnez une région</option>
+                    {regions.map((region) => (
+                      <option key={region} value={region}>{region}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
@@ -312,7 +330,7 @@ export function Chauffeurs() {
                     required
                     value={formData.typeVehicule}
                     onChange={(e) => setFormData({ ...formData, typeVehicule: e.target.value })}
-                    className="mt-2 w-full px-3 py-2.5 rounded-lg border bg-[#071a12]/90 backdrop-blur-xl text-sm"
+                    className="mt-2 field-dark text-sm"
                   >
                     <option value="">Sélectionnez un type</option>
                     {vehicleTypes.map((type) => (
@@ -352,8 +370,7 @@ export function Chauffeurs() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-6 rounded-2xl text-white font-extrabold uppercase text-sm tracking-wider transition-all hover:shadow-xl disabled:opacity-50 cursor-pointer"
-                  style={{ backgroundColor: "var(--brand-gold)" }}
+                  className="btn-gold w-full py-6 rounded-2xl font-extrabold uppercase text-sm tracking-wider cursor-pointer disabled:opacity-50"
                 >
                   {isSubmitting ? "Envoi de la candidature..." : "Soumettre mon dossier"}
                 </Button>
@@ -366,8 +383,8 @@ export function Chauffeurs() {
 
             {/* Interactive Live Holographic Card Preview Column */}
             <div className="lg:col-span-5 lg:sticky lg:top-24 space-y-6">
-              <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/150/10 rounded-full blur-2xl pointer-events-none" />
+              <div className="glass-strong rounded-3xl p-6 shadow-xl text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/15 rounded-full blur-2xl pointer-events-none" />
                 <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
 
                 <div className="flex items-center justify-between mb-4">
@@ -378,7 +395,7 @@ export function Chauffeurs() {
                 {/* The Holographic ID Card */}
                 <motion.div
                   layout
-                  className="relative bg-gradient-to-br from-slate-950 via-slate-900 to-zinc-900 rounded-2xl overflow-hidden border border-white/10 p-5 shadow-2xl min-h-[250px] flex flex-col justify-between"
+                  className="relative bg-gradient-to-br from-[#03100b] via-[#071a12] to-[#04140e] rounded-2xl overflow-hidden border border-emerald-400/25 p-5 shadow-2xl min-h-[250px] flex flex-col justify-between"
                   style={{
                     boxShadow: "0 20px 40px -15px rgba(0,0,0,0.7), inset 0 1px 1px rgba(255,255,255,0.1)"
                   }}
@@ -387,10 +404,10 @@ export function Chauffeurs() {
                   <div className="absolute inset-x-0 top-0 h-full bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[sheen_6s_ease-in-out_infinite] pointer-events-none" />
 
                   {/* Red/Yellow/Green Senegal stripe tag on right corner */}
-                  <div className="absolute top-0 right-0 w-16 h-1 border-t-4 border-r-4 border-emerald-500 flex">
-                    <div className="w-1/3 h-1 bg-emerald-500/150" />
-                    <div className="w-1/3 h-1 bg-yellow-500" />
-                    <div className="w-1/3 h-1 bg-red-500" />
+                  <div className="absolute top-0 right-0 w-16 h-1.5 flex">
+                    <div className="w-1/3 h-full bg-emerald-500" />
+                    <div className="w-1/3 h-full bg-yellow-400" />
+                    <div className="w-1/3 h-full bg-red-500" />
                   </div>
 
                   {/* Header */}
@@ -420,8 +437,8 @@ export function Chauffeurs() {
                       <div>
                         <span className="text-[8px] text-zinc-500 uppercase block leading-none">Nom complet</span>
                         <span className="text-white font-bold block truncate text-sm">
-                          {formData.prenom || formData.nom 
-                            ? `${formData.prenom} ${formData.nom}`.trim() 
+                          {formData.prenom || formData.nom
+                            ? `${formData.prenom} ${formData.nom}`.trim()
                             : "Mamadou Sow"
                           }
                         </span>
@@ -461,7 +478,7 @@ export function Chauffeurs() {
                 </motion.div>
 
                 {/* Additional contextual instructions */}
-                <div className="mt-4 p-4 bg-slate-950 rounded-2xl border border-slate-850 space-y-2">
+                <div className="mt-4 p-4 bg-[#03100b] rounded-2xl border border-emerald-400/20 space-y-2">
                   <div className="flex items-center gap-2 text-xs">
                     <Shield className="w-4 h-4 text-emerald-400" />
                     <span className="font-bold text-zinc-100">Intégration Authentifiée KYC</span>

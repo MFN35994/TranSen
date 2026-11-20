@@ -103,12 +103,16 @@ export function Footer() {
                 <a href="mailto:contact@transen.org" className="hover:text-white transition-colors truncate">contact@transen.org</a>
               </li>
               <li className="flex items-start gap-2.5">
+                <Mail className="w-4 h-4 mt-0.5 text-amber-400 flex-shrink-0" />
+                <a href="mailto:fadiloundiaye2004@gmail.com" className="hover:text-amber-300 transition-colors truncate" title="Relations Investisseurs">fadiloundiaye2004@gmail.com</a>
+              </li>
+              <li className="flex items-start gap-2.5">
                 <Phone className="w-4 h-4 mt-0.5 text-cyan-400 flex-shrink-0" />
                 <a href="tel:+221781386405" className="hover:text-white transition-colors">+221 78 138 64 05</a>
               </li>
               <li className="flex items-start gap-2.5">
-                <MapPin className="w-4 h-4 mt-0.5 text-amber-400 flex-shrink-0" />
-                <span>Dakar, Sénégal</span>
+                <MapPin className="w-4 h-4 mt-0.5 text-emerald-400 flex-shrink-0" />
+                <span>Dakar & Louga, Sénégal</span>
               </li>
             </ul>
           </div>
@@ -116,7 +120,7 @@ export function Footer() {
 
         {/* Bottom Bar */}
         <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-slate-400">
-          <p className="text-slate-300">© 2026 TranSen S.A.S. Tous droits réservés.</p>
+          <p className="text-slate-300">© 2026 TranSen. Tous droits réservés. Plateforme de mobilité nationale (14 régions).</p>
           <div className="flex gap-6">
             <Link to="/mentions-legales" className="hover:text-emerald-400 transition-colors">Mentions Légales</Link>
             <Link to="/confidentialite" className="hover:text-emerald-400 transition-colors">Confidentialité</Link>

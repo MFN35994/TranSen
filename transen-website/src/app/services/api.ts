@@ -295,6 +295,21 @@ export interface InvestisseurPayload {
   calculatedEquity: number;
 }
 
+export interface PublicFundraisingStats {
+  totalInvestors: number;
+  totalSharesPledged: number;
+  totalAmountPledged: number;
+  totalAmountApproved: number;
+  totalAmountPaid: number;
+  actionPriceFcfa: number;
+  phase1TargetFcfa: number;
+  phase1TightTargetFcfa: number;
+}
+
+export async function getPublicInvestmentStats(): Promise<PublicFundraisingStats> {
+  return request<PublicFundraisingStats>("/api/investments/public-stats", { method: "GET" }, true);
+}
+
 export async function submitInvestmentFormData(formData: FormData): Promise<{ message: string; investment: any }> {
   const email = String(formData.get("email") || "");
   const phone = String(formData.get("phone") || "");

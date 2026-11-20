@@ -213,7 +213,7 @@ export function Tarifs() {
                   <div className="flex flex-col justify-end gap-2">
                     <button
                       onClick={handleSearch}
-                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm text-white transition-all hover:shadow-lg"
+                      className="flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-extrabold text-slate-950 transition-all hover:shadow-lg cursor-pointer"
                       style={{ backgroundColor: "var(--brand-gold)" }}
                     >
                       <Search className="w-4 h-4" />
@@ -316,10 +316,10 @@ export function Tarifs() {
                               <PriceDisplay min={route.priceMin} max={route.priceMax} />
                             </td>
                             <td className="px-5 py-4">
-                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full ${
+                              <span className={`inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-full border ${
                                 route.type === "bus"
-                                  ? "bg-emerald-500/15 text-emerald-300"
-                                  : "bg-blue-50 text-blue-700"
+                                  ? "bg-emerald-500/15 text-emerald-300 border-emerald-400/30"
+                                  : "bg-cyan-500/15 text-cyan-300 border-cyan-400/30"
                               }`}>
                                 {route.type === "bus" ? <Bus className="w-3 h-3" /> : <Car className="w-3 h-3" />}
                                 {route.type === "bus" ? "Compagnie" : "VTC"}
@@ -437,83 +437,87 @@ export function Tarifs() {
           </FadeUp>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Prérecommandation Check Card */}
+            {/* Abonnement Chauffeurs Card */}
             <FadeUp delay={0.1}>
-              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
+              <div className="glass rounded-3xl p-6 border border-emerald-400/25 flex flex-col justify-between h-full">
                 <div>
-                  <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center text-emerald-300 mb-4 font-bold text-sm">✓</div>
-                  <h3 className="text-lg font-bold text-white mb-2">Le "Check" Système Chauffeur</h3>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-400/35 flex items-center justify-center text-emerald-300 mb-4 font-bold text-sm">0%</div>
+                  <h3 className="text-lg font-bold text-white mb-2">Abonnements Chauffeurs</h3>
                   <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                    Avant de pouvoir accepter toute course interurbaine, le backend Spring Boot exécute une double vérification stricte :
+                    Supprimez totalement la commission de 2 % grâce à nos forfaits flexibles via TransPay :
                   </p>
                   <ul className="space-y-2.5 text-xs text-slate-300">
-                    <li className="flex gap-2">
-                      <span className="text-emerald-500 font-bold shrink-0">1.</span>
-                      <span><strong>Abonnement Actif :</strong> Si le chauffeur a souscrit un forfait pro, il accepte la course immédiatement sans frais.</span>
+                    <li className="flex justify-between gap-2 pb-1.5 border-b border-white/10">
+                      <span>Essai découverte (5 jours)</span>
+                      <strong className="text-emerald-300 font-mono">0 FCFA</strong>
                     </li>
-                    <li className="flex gap-2">
-                      <span className="text-amber-500 font-bold shrink-0">2.</span>
-                      <span><strong>Fallback TransPay :</strong> Sans abonnement, son portefeuille TransPay est vérifié. La course est validée si le solde couvre la commission de 2%.</span>
+                    <li className="flex justify-between gap-2 pb-1.5 border-b border-white/10">
+                      <span>Forfait Hebdomadaire</span>
+                      <strong className="text-amber-300 font-mono">6 000 FCFA</strong>
+                    </li>
+                    <li className="flex justify-between gap-2">
+                      <span>Forfait Mensuel Illimité</span>
+                      <strong className="text-amber-300 font-mono">20 000 FCFA</strong>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
-                  <span>Vérification Spring Boot</span>
-                  <span className="text-emerald-500 font-bold">Actif</span>
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                  <span>Commission sous abo</span>
+                  <span className="text-emerald-300 font-bold">0 % · Illimité</span>
                 </div>
               </div>
             </FadeUp>
 
             {/* Chauffeurs Indépendants Card */}
             <FadeUp delay={0.2}>
-              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
+              <div className="glass rounded-3xl p-6 border border-cyan-400/25 flex flex-col justify-between h-full">
                 <div>
-                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 mb-4 font-bold text-sm">🚕</div>
-                  <h3 className="text-lg font-bold text-white mb-2">Chauffeurs Allô Dakar</h3>
+                  <div className="w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/35 flex items-center justify-center text-cyan-300 mb-4 font-bold text-xs font-mono">VTC</div>
+                  <h3 className="text-lg font-bold text-white mb-2">Chauffeurs Indépendants</h3>
                   <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                    Dédiée aux chauffeurs de véhicules de 4 places maximum (plafond de covoiturage strict à 4 passagers) :
+                    Dédiée aux chauffeurs urbains & interurbains (plafond 4 passagers en mode Allô Dakar) :
                   </p>
                   <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex gap-2">
-                      <span className="text-emerald-500 shrink-0">✔</span>
-                      <span>Paiement systématique en <strong>espèces</strong> par le passager à l'embarquement.</span>
+                      <span className="text-emerald-400 shrink-0">✓</span>
+                      <span>Règlement direct par le passager (espèces ou Mobile Money Wave / OM / Free).</span>
                     </li>
                     <li className="flex gap-2">
-                      <span className="text-emerald-500 shrink-0">✔</span>
-                      <span>Commission standard de <strong>2%</strong> prélevée directement sur le compte TransPay, sauf sous abonnement illimité.</span>
+                      <span className="text-emerald-400 shrink-0">✓</span>
+                      <span>Sans abonnement, seule une commission de <strong className="text-amber-300">2 %</strong> est prélevée sur le portefeuille TransPay.</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
-                  <span>Capacité max</span>
-                  <span className="text-slate-200 font-semibold">4 passagers</span>
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                  <span>Modèle sans abo</span>
+                  <span className="text-cyan-300 font-semibold">2 % / course</span>
                 </div>
               </div>
             </FadeUp>
 
             {/* Compagnies Card */}
             <FadeUp delay={0.3}>
-              <div className="bg-white/[0.04] rounded-3xl p-6 border border-white/10 flex flex-col justify-between h-full">
+              <div className="glass rounded-3xl p-6 border border-amber-400/25 flex flex-col justify-between h-full">
                 <div>
-                  <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-800 mb-4 font-bold text-lg">🏢</div>
+                  <div className="w-10 h-10 rounded-xl bg-amber-400/15 border border-amber-400/35 flex items-center justify-center text-amber-300 mb-4 font-bold text-xs font-mono">B2B</div>
                   <h3 className="text-lg font-bold text-white mb-2">Compagnies Partenaires</h3>
                   <p className="text-xs text-slate-400 leading-relaxed mb-4">
-                    Pour les flottes de bus et minibus (capacités dynamiques allant jusqu'à 60 places par bus) gérées via <code className="bg-gray-150 p-0.5 rounded font-mono">compagnie.transen.org</code> :
+                    Pour les flottes de bus et minibus (jusqu'à 60 places) gérées via <code className="bg-white/10 text-emerald-300 px-1.5 py-0.5 rounded font-mono">compagnie.transen.org</code> :
                   </p>
                   <ul className="space-y-2.5 text-xs text-slate-300">
                     <li className="flex gap-2">
-                      <span className="text-emerald-500 shrink-0">✔</span>
-                      <span><strong>Demande Spécifique:</strong> Le client paye par SenePay (OM, Wave, Free). 98% crédités sur le dashboard compagnie, 2% retenus par TranSen.</span>
+                      <span className="text-emerald-400 shrink-0">✓</span>
+                      <span><strong className="text-white">Demande Spécifique :</strong> Paiement SenePay (Wave/OM/Free). <strong className="text-emerald-300">98 %</strong> crédités compagnie, 2 % TranSen.</span>
                     </li>
                     <li className="flex gap-2">
-                      <span className="text-amber-500 shrink-0">⚠</span>
-                      <span><strong>Demande Publique (Immédiat):</strong> Paiement obligatoire en espèces pour sécuriser physiquement la course.</span>
+                      <span className="text-amber-300 shrink-0">✓</span>
+                      <span><strong className="text-white">Mode Public :</strong> Diffusion simultanée sur le réseau pour remplir chaque siège disponible.</span>
                     </li>
                   </ul>
                 </div>
-                <div className="mt-5 pt-4 border-t border-white/15/60 flex items-center justify-between text-[11px] text-gray-400 font-mono">
+                <div className="mt-5 pt-4 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400 font-mono">
                   <span>Capacité bus</span>
-                  <span className="text-slate-200 font-semibold">10 à 60 places</span>
+                  <span className="text-amber-300 font-semibold">10 à 60 places</span>
                 </div>
               </div>
             </FadeUp>
@@ -531,8 +535,7 @@ export function Tarifs() {
               href="https://wa.me/221781386405"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-2xl text-white transition-all hover:shadow-xl"
-              style={{ backgroundColor: "var(--brand-gold)" }}
+              className="btn-gold text-sm sm:text-base"
             >
               Contactez-nous sur WhatsApp
             </a>
