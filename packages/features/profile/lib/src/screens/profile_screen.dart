@@ -25,10 +25,13 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final auth = ref.watch(authProvider);
     final userId = auth?.userId ?? '';
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Mon Profil'),
-        backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
       ),
       body: userId.isEmpty 
@@ -112,63 +115,38 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                     _buildInfoCard(context, 'Points Fidélité', '$points pts', Icons.stars_rounded),
                     
                     if (auth?.role == 'driver' && !isVerified) ...[
-                      const SizedBox(height: 30),
-                      Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.amber.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                        ),
+                      const SizedBox(height: 24),
+                      AuroraGlassCard(
+                        accentColor: TranSenColors.auroraGold,
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.warning_amber_rounded, color: TranSenColors.primaryGreen),
+                                Icon(Icons.verified_user_outlined, color: TranSenColors.auroraGold),
                                 SizedBox(width: 10),
-                                Text("Compte non vérifié", style: TextStyle(fontWeight: FontWeight.bold, color: TranSenColors.primaryGreen)),
+                                Text(
+                                  "Vérification Chauffeur KYC",
+                                  style: TextStyle(fontWeight: FontWeight.w800, color: TranSenColors.auroraGold),
+                                ),
                               ],
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 8),
                             Text(
-                              "Le module de vérification des documents (CNI, Permis) est en cours de construction. Vous pourrez bientôt télécharger vos documents directement dans l'application.",
-                              style: TextStyle(fontSize: 13, color: Theme.of(context).brightness == Brightness.light ? Colors.black87 : Colors.white70),
-                            ),
-                            const SizedBox(height: 15),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text("Fonctionnalité en cours de développement..."),
-                                    backgroundColor: TranSenColors.primaryGreen,
-                                  ),
-                                );
-                              },
-                              icon: const Icon(Icons.construction),
-                              label: const Text("VÉRIFICATION BIENTÔT DISPONIBLE"),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: TranSenColors.primaryGreen,
-                                foregroundColor: Colors.white,
-                                elevation: 0,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                              ),
+                              "Votre profil chauffeur est actif. Pour obtenir le badge vérifié TranSen, présentez votre permis et CNI à votre compagnie ou via l'assistance TranSen.",
+                              style: TextStyle(fontSize: 13, color: TranSenColors.secondaryText(isDark), height: 1.4),
                             ),
                           ],
                         ),
                       ),
                     ],
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 30),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: AuroraGradientButton(
+                        label: 'MODIFIER MON PROFIL',
+                        icon: Icons.edit_rounded,
                         onPressed: () => _showEditProfileDialog(context, ref, userId, name, phone),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: auth?.role == 'driver' ? Colors.black87 : TranSenColors.primaryGreen,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
-                        ),
-                        child: const Text('MODIFIER LE PROFIL', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),
                     ),
                   ],
@@ -273,35 +251,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Widget _buildInfoCard(BuildContext context, String label, String value, IconData icon, {Widget? trailing}) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 15),
+    return AuroraGlassCard(
+      margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.grey[900] : Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+      borderRadius: 18,
       child: Row(
         children: [
-          Icon(icon, color: Colors.grey),
-          const SizedBox(width: 15),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: TranSenColors.auroraEmerald.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: TranSenColors.auroraEmeraldLight, size: 20),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: TextStyle(color: isDark ? Colors.grey[400] : Colors.grey[600], fontSize: 12)),
+                Text(label, style: TextStyle(color: TranSenColors.secondaryText(isDark), fontSize: 12)),
+                const SizedBox(height: 2),
                 Text(
-                  value, 
+                  value,
                   style: TextStyle(
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 16,
-                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15.5,
+                    color: TranSenColors.primaryText(isDark),
                   ),
                 ),
               ],
@@ -362,7 +338,9 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           );
         }
 
-        final url = await ref.read(userRepositoryProvider).uploadAvatar(pickedFile.path);
+        final bytes = await pickedFile.readAsBytes();
+        final fileName = pickedFile.name.isNotEmpty ? pickedFile.name : 'avatar.jpg';
+        final url = await ref.read(userRepositoryProvider).uploadAvatarBytes(bytes, fileName);
 
         if (context.mounted) {
           ScaffoldMessenger.of(context).clearSnackBars();

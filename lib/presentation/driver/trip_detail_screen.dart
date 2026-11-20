@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:transen_core/transen_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:transen_trips/transen_trips.dart';
@@ -451,7 +452,18 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(30),
-                child: MapWidget(
+                child: kIsWeb
+                    ? AuroraWebMapRadar(
+                        title: 'Course Chauffeur',
+                        subtitle: '${widget.trip.departure} → ${widget.trip.destination}',
+                        latitude: _myPosition?.latitude ??
+                            (ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677)).latitude,
+                        longitude: _myPosition?.longitude ??
+                            (ItineraryOptimizer.getRegionCoordinates(widget.trip.departure) ?? const LatLng(14.7167, -17.4677)).longitude,
+                        departureLabel: widget.trip.departure,
+                        destinationLabel: widget.trip.destination,
+                      )
+                    : MapWidget(
                   viewport: CameraViewportState(
                     center: Point(
                       coordinates: Position(

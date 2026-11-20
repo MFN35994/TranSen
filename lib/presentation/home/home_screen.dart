@@ -58,8 +58,12 @@ final activeDriversStreamProvider = StreamProvider<List<PointAnnotationOptions>>
         if (DateTime.now().difference(lastUpdated).inMinutes > 10) continue;
       }
       
+      final lng = (data['lng'] as num?)?.toDouble();
+      final lat = (data['lat'] as num?)?.toDouble();
+      if (lng == null || lat == null) continue;
+
       annotations.add(PointAnnotationOptions(
-        geometry: Point(coordinates: Position(data['lng'], data['lat'])),
+        geometry: Point(coordinates: Position(lng, lat)),
         image: iconBytes,
         iconSize: 1.0,
       ));
@@ -301,14 +305,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final data = response.data;
         
         if (_mapController != null) {
+          try {
+            await _mapController!.style.removeStyleLayer("isochrone-layer");
+            await _mapController!.style.removeStyleSource("isochrone-source");
+          } catch (_) {}
+
           final source = GeoJsonSource(id: "isochrone-source", data: jsonEncode(data));
           await _mapController!.style.addSource(source);
-          
+
           final layer = FillLayer(
             id: "isochrone-layer",
             sourceId: "isochrone-source",
-            fillColor: Colors.blue.withOpacity(0.15).value,
-            fillOutlineColor: Colors.blue.value,
+            fillColor: TranSenColors.auroraEmerald.withValues(alpha: 0.16).toARGB32(),
+            fillOutlineColor: TranSenColors.auroraCyan.toARGB32(),
           );
           await _mapController!.style.addLayer(layer);
         }
@@ -392,7 +401,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[100],
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       drawer: const ProfileDrawer(),
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
@@ -405,39 +414,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         },
         child: Stack(
           children: [
-          // 1. DYNAMIC BACKGROUND OR MAP
+          // 1. DYNAMIC BACKGROUND OR MAP (Web-Safe Radar + Native Mapbox Mobile)
           if (_journeyState == HomeJourneyState.selectVtcDestination)
             AnimatedContainer(
               duration: const Duration(milliseconds: 500),
               curve: Curves.fastOutSlowIn,
               height: mainHeight,
-              child: MapWidget(
-                cameraOptions: _initialPosition,
-                onMapCreated: (MapboxMap mapboxMap) async {
-                  _mapController = mapboxMap;
-                  _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
-                  
-                  if (driverMarkers.isNotEmpty) {
-                    for (var annotation in driverMarkers) {
-                      _annotationManager!.create(annotation);
-                    }
-                  }
+              child: kIsWeb
+                  ? AuroraWebMapRadar(
+                      title: 'Allô Dakar · Radar VTC',
+                      subtitle: 'Sélectionnez votre destination ci-dessous pour calculer le tarif exact',
+                      latitude: _userLat ?? 14.7167,
+                      longitude: _userLng ?? -17.4677,
+                      activeDriversCount: driverMarkers.length,
+                    )
+                  : MapWidget(
+                      cameraOptions: _initialPosition,
+                      onMapCreated: (MapboxMap mapboxMap) async {
+                        _mapController = mapboxMap;
+                        _annotationManager = await mapboxMap.annotations.createPointAnnotationManager();
 
-                  try {
-                    geo.Position position = await geo.Geolocator.getCurrentPosition();
-                    _mapController?.setCamera(
-                      CameraOptions(
-                        center: Point(coordinates: Position(position.longitude, position.latitude)),
-                        zoom: 13.0,
-                      ),
-                    );
-                    _userLng = position.longitude;
-                    _userLat = position.latitude;
-                    _loadIsochrones(position.longitude, position.latitude);
-                    _loadMatrix(position.longitude, position.latitude, driverMarkers);
-                  } catch (_) {}
-                },
-              ),
+                        if (driverMarkers.isNotEmpty) {
+                          for (var annotation in driverMarkers) {
+                            _annotationManager!.create(annotation);
+                          }
+                        }
+
+                        try {
+                          geo.Position position = await geo.Geolocator.getCurrentPosition();
+                          _mapController?.setCamera(
+                            CameraOptions(
+                              center: Point(coordinates: Position(position.longitude, position.latitude)),
+                              zoom: 13.0,
+                            ),
+                          );
+                          _userLng = position.longitude;
+                          _userLat = position.latitude;
+                          _loadIsochrones(position.longitude, position.latitude);
+                          _loadMatrix(position.longitude, position.latitude, driverMarkers);
+                        } catch (_) {}
+                      },
+                    ),
             )
           else
             Positioned.fill(
@@ -447,8 +464,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: isDark
-                        ? [const Color(0xFF0D1B15), const Color(0xFF070B19)]
-                        : [const Color(0xFFE4E9EC), const Color(0xFFD5DBDE)], // "blanc sombre" slate gradient for glassmorphism
+                        ? const [Color(0xFF03100B), Color(0xFF061B13), Color(0xFF020C08)]
+                        : const [Color(0xFFF2FAF6), Color(0xFFE5F4EC)],
                   ),
                 ),
                 child: AnimatedBackgroundWaves(
@@ -535,19 +552,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-          // 4. FLOATING BACK BUTTON ON MAP (Step 3 Vtc)
+          // 4. FLOATING BACK BUTTON ON MAP (Step 3 Vtc) — Protégé par SafeArea
           if (_journeyState == HomeJourneyState.selectVtcDestination)
             Positioned(
-              top: 16,
-              left: 16,
-              child: FloatingActionButton(
-                mini: true,
-                backgroundColor: Colors.white,
-                foregroundColor: TranSenColors.primaryGreen,
-                onPressed: () {
-                  _setJourneyState(HomeJourneyState.selectTravelType);
-                },
-                child: const Icon(Icons.arrow_back),
+              top: 0,
+              left: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 12, left: 14),
+                  child: FloatingActionButton(
+                    mini: true,
+                    backgroundColor: TranSenColors.glassSurface,
+                    foregroundColor: TranSenColors.auroraEmeraldLight,
+                    shape: CircleBorder(
+                      side: BorderSide(color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.45)),
+                    ),
+                    onPressed: () {
+                      _setJourneyState(HomeJourneyState.selectTravelType);
+                    },
+                    child: const Icon(Icons.arrow_back_rounded),
+                  ),
+                ),
               ),
             ),
         ],
@@ -644,18 +669,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget _buildBottomNavBar(bool isDark) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF14181D) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface.withValues(alpha: 0.96) : Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+            color: isDark
+                ? TranSenColors.auroraEmerald.withValues(alpha: 0.10)
+                : Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            offset: const Offset(0, -6),
           ),
         ],
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white10 : Colors.grey.shade200,
-            width: 0.8,
+            color: isDark ? TranSenColors.glassBorder : TranSenColors.lightBorder,
+            width: 1.0,
           ),
         ),
       ),
@@ -2008,7 +2035,11 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
                       _buildDetailRow("Heure", "${widget.trip.createdAt.hour}:${widget.trip.createdAt.minute.toString().padLeft(2,'0')}", null),
                       _buildDetailRow("Départ", widget.trip.departure, null),
                       _buildDetailRow("Destination", widget.trip.destination, null),
-                      _buildDetailRow("ID Trans.", "TR-${widget.trip.id.substring(0, 8).toUpperCase()}", null),
+                      _buildDetailRow(
+                        "ID Trans.",
+                        "TR-${(widget.trip.id.length >= 8 ? widget.trip.id.substring(0, 8) : widget.trip.id).toUpperCase()}",
+                        null,
+                      ),
                       
                       const SizedBox(height: 30),
                       const Text("Merci d'avoir choisi TranSen !", style: TextStyle(fontStyle: FontStyle.italic, color: Colors.grey, fontSize: 11)),

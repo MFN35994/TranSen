@@ -8,7 +8,7 @@ class WalletTransaction {
   final String description;
   final double amount;
   final DateTime date;
-  final String type; 
+  final String type;
   final String status;
   final String? reference;
 
@@ -41,41 +41,44 @@ class WalletNotifier extends AsyncNotifier<WalletState> {
     if (auth == null || auth.userId.isEmpty) {
       return WalletState();
     }
-    
+
     try {
       final apiClient = ApiClient();
       final response = await apiClient.dio.get('/api/payments/wallet/me');
-      
-      if (response.statusCode == 200) {
-        final data = response.data;
-        final double balance = (data['balance'] ?? 0).toDouble();
-        final List txnsRaw = data['transactions'] ?? [];
-        
+
+      if (response.statusCode == 200 && response.data is Map) {
+        final data = response.data as Map;
+        final double balance = ((data['balance'] as num?) ?? 0).toDouble();
+        final List txnsRaw = (data['transactions'] as List?) ?? [];
+
         final List<WalletTransaction> transactions = txnsRaw.map((t) {
+          final map = t is Map ? t : const {};
+          final rawDate = map['date']?.toString();
           return WalletTransaction(
-            id: t['id'] ?? '',
-            description: t['description'] ?? '',
-            amount: (t['amount'] ?? 0).toDouble(),
-            date: t['date'] != null ? DateTime.parse(t['date']) : DateTime.now(),
-            type: t['type'] ?? '',
-            status: t['status'] ?? 'completed',
-            reference: t['reference'],
+            id: map['id']?.toString() ?? '',
+            description: map['description']?.toString() ?? '',
+            amount: ((map['amount'] as num?) ?? 0).toDouble(),
+            date: rawDate != null ? (DateTime.tryParse(rawDate) ?? DateTime.now()) : DateTime.now(),
+            type: map['type']?.toString() ?? '',
+            status: map['status']?.toString() ?? 'completed',
+            reference: map['reference']?.toString(),
           );
         }).toList();
-        
+
         return WalletState(balance: balance, transactions: transactions);
       }
     } catch (e) {
       debugPrint("Erreur chargement wallet: $e");
     }
-    return WalletState();
+    return state.value ?? WalletState();
   }
 
   Future<void> refresh() async {
-    state = const AsyncLoading();
+    if (!state.hasValue) {
+      state = const AsyncLoading();
+    }
     state = await AsyncValue.guard(() => _fetchWallet());
   }
 }
 
 final walletProvider = AsyncNotifierProvider<WalletNotifier, WalletState>(WalletNotifier.new);
-

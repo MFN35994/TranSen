@@ -1,7 +1,6 @@
-
-
 import 'dart:convert';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiClient {
@@ -19,7 +18,21 @@ class ApiClient {
   static const int _doubleClickCooldownMs = 1500;
 
   String _computeMutationKey(RequestOptions options) {
-    final bodyStr = options.data != null ? jsonEncode(options.data) : '';
+    String bodyStr = '';
+    final data = options.data;
+    if (data != null) {
+      if (data is FormData) {
+        final fieldNames = data.fields.map((e) => '${e.key}=${e.value}').join('&');
+        final fileNames = data.files.map((e) => '${e.key}:${e.value.filename}').join(',');
+        bodyStr = 'FormData:$fieldNames|$fileNames';
+      } else {
+        try {
+          bodyStr = jsonEncode(data);
+        } catch (_) {
+          bodyStr = data.toString();
+        }
+      }
+    }
     final queryStr = options.queryParameters.isNotEmpty ? options.queryParameters.toString() : '';
     return '${options.method}:${options.path}:$queryStr:${bodyStr.hashCode}';
   }
@@ -33,6 +46,7 @@ class ApiClient {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'X-Transen-Platform': kIsWeb ? 'app.transen.org' : 'mobile_app',
         },
       ),
     );
@@ -44,7 +58,9 @@ class ApiClient {
           final method = options.method.toUpperCase();
           final isMutation = method == 'POST' || method == 'PUT' || method == 'DELETE' || method == 'PATCH';
 
-          if (isMutation && !options.path.contains('/api/ai/')) {
+          if (isMutation &&
+              !options.path.contains('/api/ai/') &&
+              !options.path.contains('/api/system/telemetry')) {
             final mutationKey = _computeMutationKey(options);
             final now = DateTime.now().millisecondsSinceEpoch;
             final lastSent = _recentMutationTimestamps[mutationKey];
@@ -68,7 +84,7 @@ class ApiClient {
 
           final prefs = await SharedPreferences.getInstance();
           final token = prefs.getString('jwt_token');
-          if (token != null) {
+          if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
@@ -89,5 +105,33 @@ class ApiClient {
         },
       ),
     );
+  }
+
+  /// Envoie une télémétrie non-bloquante au centre de commandement TranSen et renvoie
+  /// la bannière d'urgence globale si active.
+  Future<Map<String, dynamic>?> sendTelemetry(
+    String featureKey, {
+    int latencyMs = 24,
+    bool isError = false,
+    String? logMessage,
+  }) async {
+    try {
+      final response = await dio.post(
+        '/api/system/telemetry',
+        data: {
+          'featureKey': featureKey,
+          'platform': kIsWeb ? 'app.transen.org (Web App)' : 'Mobile App (Android / iOS)',
+          'latencyMs': latencyMs,
+          'isError': isError,
+          if (logMessage != null) 'logMessage': logMessage,
+        },
+      );
+      if (response.statusCode == 200 && response.data is Map<String, dynamic>) {
+        return response.data as Map<String, dynamic>;
+      }
+    } catch (e) {
+      debugPrint('Telemetry silent warning: $e');
+    }
+    return null;
   }
 }

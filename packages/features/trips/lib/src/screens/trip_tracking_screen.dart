@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -793,6 +794,19 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
               ),
             );
           }
+        }
+
+        if (kIsWeb) {
+          final fallbackPos = ItineraryOptimizer.getRegionCoordinates(trip.departure) ??
+              const LatLng(14.7167, -17.4677);
+          return AuroraWebMapRadar(
+            title: 'Suivi GPS · ${trip.departure} → ${trip.destination}',
+            subtitle: 'Statut en direct : ${trip.status.toUpperCase()}',
+            latitude: _snappedDriverPosition?.lat ?? _myPosition?.lat ?? fallbackPos.latitude,
+            longitude: _snappedDriverPosition?.lng ?? _myPosition?.lng ?? fallbackPos.longitude,
+            departureLabel: trip.departure,
+            destinationLabel: trip.destination,
+          );
         }
 
         return MapWidget(

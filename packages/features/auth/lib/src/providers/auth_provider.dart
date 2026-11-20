@@ -293,7 +293,26 @@ class AuthNotifier extends Notifier<AuthState?> {
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      state = state!.copyWith(role: 'driver', isLoading: false);
+      // Synchronisation REST Spring Boot + SharedPreferences
+      try {
+        await ApiClient().dio.put('/api/users/me', data: {
+          'fullName': name,
+          'phone': cleanPhone,
+          'role': 'driver',
+        });
+      } catch (restErr) {
+        debugPrint("Warning: signUpDriver REST /api/users/me sync failed: $restErr");
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('user_role', 'driver');
+
+      state = state!.copyWith(
+        role: 'driver',
+        name: name,
+        phone: cleanPhone,
+        isLoading: false,
+      );
 
       // ── Activation automatique de l'essai gratuit 5 jours ──
       // Écriture directe en Firestore pour éviter la dépendance circulaire
@@ -353,11 +372,12 @@ class AuthNotifier extends Notifier<AuthState?> {
   }
 
   Future<void> logout() async {
+    await NotificationService().reset();
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('jwt_token');
     await prefs.remove('user_id');
     await prefs.remove('user_role');
-    
+
     await _repository.signOut();
     state = null;
   }

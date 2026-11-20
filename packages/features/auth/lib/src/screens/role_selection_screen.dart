@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:transen_core/transen_core.dart';
@@ -19,9 +18,9 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(message),
-      backgroundColor: Colors.redAccent,
+      backgroundColor: TranSenColors.auroraRose,
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ));
   }
 
@@ -32,18 +31,23 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
     final isLoading = (authState?.isLoading ?? false) || _localLoading;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : TranSenColors.primaryGreen,
+      backgroundColor: TranSenColors.scaffoldBg(isDarkMode),
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(
+            Icons.arrow_back_rounded,
+            color: TranSenColors.primaryText(isDarkMode),
+          ),
           onPressed: () async {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (ctx) => AlertDialog(
-                title: const Text("Retourner en arrière"),
-                content: const Text("Voulez-vous vous déconnecter pour retourner à l'écran de connexion ?"),
+                title: const Text("Retourner à la connexion"),
+                content: const Text(
+                    "Voulez-vous vous déconnecter pour retourner à l'écran de connexion ?"),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, false),
@@ -51,7 +55,8 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                   ),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text("Oui, se déconnecter", style: TextStyle(color: Colors.red)),
+                    child: const Text("Oui, se déconnecter",
+                        style: TextStyle(color: TranSenColors.auroraRose)),
                   ),
                 ],
               ),
@@ -70,46 +75,69 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
         ),
       ),
       body: PremiumBackground(
-        blobColors: isDarkMode 
-          ? [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)]
-          : [Colors.white.withValues(alpha: 0.2), Colors.greenAccent.withValues(alpha: 0.2)],
         child: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24.0),
             child: isLoading
                 ? const Center(
-                    child: CircularProgressIndicator(color: Colors.white),
+                    child: CircularProgressIndicator(color: TranSenColors.auroraEmeraldLight),
                   )
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Hero(
-                        tag: 'auth_icon',
-                        child: Icon(Icons.account_circle, 
-                          size: 80, 
-                          color: isDarkMode ? TranSenColors.primaryGreen : Colors.white),
+                      const Spacer(),
+                      Center(
+                        child: Hero(
+                          tag: 'auth_icon',
+                          child: Container(
+                            width: 88,
+                            height: 88,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(28),
+                              gradient: TranSenColors.auroraPrimaryGradient,
+                              boxShadow: [
+                                BoxShadow(
+                                  color: TranSenColors.auroraEmerald.withValues(alpha: 0.35),
+                                  blurRadius: 28,
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.verified_user_rounded,
+                              size: 44,
+                              color: Color(0xFF022C22),
+                            ),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 24),
                       Text(
-                        'Finalisez votre profil',
+                        'Choisissez votre espace',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
+                        style: TextStyle(
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          color: TranSenColors.primaryText(isDarkMode),
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
-                        'Comment souhaitez-vous utiliser TranSen ?',
+                        'Comment souhaitez-vous utiliser TranSen Aurora ?',
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 16, color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.8)),
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          color: TranSenColors.secondaryText(isDarkMode),
+                        ),
                       ),
-                      const SizedBox(height: 50),
-                      
+                      const SizedBox(height: 36),
                       _buildRoleCard(
                         context,
-                        title: 'Je suis Client',
-                        subtitle: 'Commander des courses et colis',
-                        icon: Icons.person_pin,
-                        color: TranSenColors.primaryGreen,
+                        title: 'Je suis Passager / Client',
+                        subtitle: 'VTC Allô Dakar, bus interurbains, covoiturage & colis Yobanté',
+                        badge: 'CLIENT',
+                        icon: Icons.person_pin_circle_rounded,
+                        color: TranSenColors.auroraEmeraldLight,
                         onTap: () async {
                           await HapticFeedback.mediumImpact();
                           setState(() => _localLoading = true);
@@ -127,25 +155,23 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                           }
                         },
                       ),
-                      
-                      const SizedBox(height: 20),
-                      
+                      const SizedBox(height: 18),
                       _buildRoleCard(
                         context,
-                        title: 'Je suis Chauffeur',
-                        subtitle: 'Accepter des courses et gagner de l argent',
-                        icon: Icons.local_taxi,
-                        color: Colors.black87,
+                        title: 'Je suis Chauffeur Partenaire',
+                        subtitle: 'Recevoir des courses, gérer vos trajets & encaisser vos gains',
+                        badge: 'CHAUFFEUR · 5 JOURS OFFERTS',
+                        icon: Icons.local_taxi_rounded,
+                        color: TranSenColors.auroraGold,
                         onTap: () async {
                           await HapticFeedback.mediumImpact();
+                          if (ref.read(authProvider) == null) {
+                            _showError("Veuillez d'abord vous connecter par téléphone.");
+                            return;
+                          }
                           setState(() => _localLoading = true);
                           try {
-                            final notifier = ref.read(authProvider.notifier);
-                            if (ref.read(authProvider) == null) {
-                              await notifier.signInAsAnonymousClient();
-                            } else {
-                              await notifier.setUserRole('driver');
-                            }
+                            await ref.read(authProvider.notifier).setUserRole('driver');
                           } catch (e) {
                             _showError("Erreur de définition du rôle : ${e.toString()}");
                           } finally {
@@ -154,16 +180,12 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
                         },
                       ),
                       const Spacer(),
-                      Text(
-                        'v1.0.0+1',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white24 : Colors.white54,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
+                      Center(
+                        child: AppVersionWidget(
+                          color: TranSenColors.secondaryText(isDarkMode).withValues(alpha: 0.6),
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 14),
                     ],
                   ),
           ),
@@ -172,72 +194,70 @@ class _RoleSelectionScreenState extends ConsumerState<RoleSelectionScreen> {
     );
   }
 
-  Widget _buildRoleCard(BuildContext context, {
+  Widget _buildRoleCard(
+    BuildContext context, {
     required String title,
     required String subtitle,
+    required String badge,
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
   }) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.all(20),
+    return AuroraGlassCard(
+      onTap: onTap,
+      accentColor: color,
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
             decoration: BoxDecoration(
-              color: isDarkMode 
-                ? Colors.white.withValues(alpha: 0.05) 
-                : Colors.white.withValues(alpha: 0.85),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDarkMode 
-                  ? Colors.white.withValues(alpha: 0.1) 
-                  : Colors.white.withValues(alpha: 0.3)
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 15,
-                  offset: const Offset(0, 5),
-                )
-              ],
+              color: color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: color.withValues(alpha: 0.4)),
             ),
-            child: Row(
+            child: Icon(icon, color: color, size: 28),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                CircleAvatar(
-                  backgroundColor: isDarkMode ? color.withValues(alpha: 0.1) : TranSenColors.primaryGreen.withValues(alpha: 0.1),
-                  child: Icon(icon, color: isDarkMode ? color : TranSenColors.primaryGreen),
-                ),
-                const SizedBox(width: 15),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title, 
-                        style: TextStyle(
-                          fontSize: 18, 
-                          fontWeight: FontWeight.bold, 
-                          color: isDarkMode ? Colors.white : TranSenColors.primaryGreen
-                        )
-                      ),
-                      Text(subtitle, 
-                        style: TextStyle(
-                          fontSize: 13, 
-                          color: isDarkMode ? Colors.white70 : TranSenColors.primaryGreen.withValues(alpha: 0.7)
-                        )
-                      ),
-                    ],
+                Text(
+                  badge,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                    color: color,
                   ),
                 ),
-                Icon(Icons.arrow_forward_ios, size: 16, color: isDarkMode ? Colors.white30 : TranSenColors.primaryGreen),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w700,
+                    color: TranSenColors.primaryText(isDarkMode),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    height: 1.35,
+                    color: TranSenColors.secondaryText(isDarkMode),
+                  ),
+                ),
               ],
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color),
+        ],
       ),
     );
   }

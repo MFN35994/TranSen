@@ -41,14 +41,18 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0F0F) : Colors.grey[50],
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
-        title: const Text('TransPay Wallet', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
+        title: const Text('TransPay Wallet', style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
         elevation: 0,
         actions: [
-          IconButton(icon: const Icon(Icons.sync), onPressed: () => _handleSync()),
+          IconButton(
+            icon: const Icon(Icons.sync_rounded),
+            tooltip: 'Actualiser le solde',
+            onPressed: () => _handleSync(),
+          ),
         ],
       ),
       body: walletAsync.when(
@@ -56,26 +60,34 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           children: [
             Column(
               children: [
-                // Balance Card
+                // Balance Card Signature TranSen Aurora
                 Container(
                   margin: const EdgeInsets.all(20),
-                  padding: const EdgeInsets.all(25),
+                  padding: const EdgeInsets.all(24),
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: isDark 
-                          ? [const Color(0xFF1E1E1E), const Color(0xFF121212)] 
-                          : [TranSenColors.primaryGreen, TranSenColors.darkGreen],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    gradient: isDark
+                        ? const LinearGradient(
+                            colors: [Color(0xFF0C3526), Color(0xFF061B13), Color(0xFF04100C)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          )
+                        : const LinearGradient(
+                            colors: [Color(0xFF064E3B), Color(0xFF0B7A54)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
                     borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.4),
+                      width: 1.3,
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.2),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      )
+                        color: TranSenColors.auroraEmerald.withValues(alpha: isDark ? 0.22 : 0.26),
+                        blurRadius: 26,
+                        offset: const Offset(0, 10),
+                      ),
                     ],
                   ),
                   child: Column(
@@ -84,20 +96,33 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('SOLDE DISPONIBLE', 
-                            style: TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                          Icon(Icons.account_balance_wallet, color: Colors.white.withValues(alpha: 0.3), size: 24),
+                          const AuroraStatusPill(
+                            label: 'SOLDE DISPONIBLE · TRANSPAY',
+                            color: TranSenColors.auroraGoldBright,
+                          ),
+                          Icon(
+                            Icons.account_balance_wallet_rounded,
+                            color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.55),
+                            size: 24,
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
-                      Text('${walletState.balance.toInt()} FCFA', 
-                        style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 16),
+                      Text(
+                        '${walletState.balance.toInt()} FCFA',
+                        style: const TextStyle(
+                          color: TranSenColors.auroraTextPrimary,
+                          fontSize: 36,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
                       const SizedBox(height: 20),
                       Row(
                         children: [
-                          _buildQuickAction(Icons.add, "Déposer", () => _showRechargeDialog(context)),
+                          _buildQuickAction(Icons.add_rounded, "Déposer", () => _showRechargeDialog(context)),
                           const SizedBox(width: 12),
-                          _buildQuickAction(Icons.arrow_upward, "Retirer", () => _showWithdrawDialog(context, walletState.balance)),
+                          _buildQuickAction(Icons.arrow_upward_rounded, "Retirer", () => _showWithdrawDialog(context, walletState.balance)),
                         ],
                       )
                     ],

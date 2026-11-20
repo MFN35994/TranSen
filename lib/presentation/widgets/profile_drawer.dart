@@ -24,8 +24,9 @@ class ProfileDrawer extends ConsumerWidget {
     // Sécurité : on s'assure que le rôle est bien détecté, sinon défaut à 'client'
     final role = auth?.role ?? 'client';
     
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Drawer(
-      backgroundColor: Theme.of(context).brightness == Brightness.light ? Colors.white : const Color(0xFF1A1A1A),
+      backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.lightSurface,
       child: Column(
         children: [
           // En-tête Profil
@@ -189,87 +190,132 @@ class ProfileDrawer extends ConsumerWidget {
 
     return userFuture.when(
       data: (userData) {
-        String name = userData?['name'] ?? '';
+        String name = (userData?['fullName'] ?? userData?['name'] ?? '').toString().trim();
         if (name.isEmpty && userData?['firstName'] != null) {
-          name = "${userData!['firstName']} ${userData['lastName'] ?? ''}";
+          name = "${userData!['firstName']} ${userData['lastName'] ?? ''}".trim();
         }
         if (name.isEmpty) {
           name = role == 'driver' ? 'Chauffeur TranSen' : 'Client TranSen';
         }
-        
-        final String email = userData?['email'] ?? 'Utilisateur';
+
+        final String? avatarUrl = userData?['avatarUrl'] as String?;
+        final String phoneStr = (userData?['phone'] ?? '').toString();
+        final String email = (userData?['email'] ?? '').toString().trim();
+        final int points = (userData?['loyaltyPoints'] as num?)?.toInt() ?? 0;
 
         return Container(
           width: double.infinity,
-          padding: const EdgeInsets.only(top: 60, bottom: 30, left: 25, right: 25),
+          padding: const EdgeInsets.only(top: 58, bottom: 26, left: 22, right: 22),
           decoration: BoxDecoration(
-            color: role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+            gradient: role == 'driver'
+                ? const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF0A291E), Color(0xFF04140E)],
+                  )
+                : const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF064E3B), Color(0xFF0B6E4F), Color(0xFF042F24)],
+                  ),
             borderRadius: const BorderRadius.only(
-              bottomLeft: Radius.circular(40),
+              bottomLeft: Radius.circular(36),
+              bottomRight: Radius.circular(18),
+            ),
+            border: Border(
+              bottom: BorderSide(
+                color: (role == 'driver'
+                        ? TranSenColors.auroraGold
+                        : TranSenColors.auroraEmeraldLight)
+                    .withValues(alpha: 0.4),
+              ),
             ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                padding: const EdgeInsets.all(3),
-                decoration: const BoxDecoration(
-                  color: Colors.white24,
-                  shape: BoxShape.circle,
-                ),
-                child: const CircleAvatar(
-                  radius: 35,
-                  backgroundColor: Colors.white,
-                  child: Icon(Icons.person, size: 40, color: Colors.grey),
-                ),
-              ),
-              const SizedBox(height: 15),
               Row(
                 children: [
-                  Text(
-                    name,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    padding: const EdgeInsets.all(2.5),
+                    decoration: BoxDecoration(
+                      gradient: role == 'driver'
+                          ? TranSenColors.auroraGoldGradient
+                          : TranSenColors.auroraPrimaryGradient,
+                      shape: BoxShape.circle,
+                    ),
+                    child: CircleAvatar(
+                      radius: 32,
+                      backgroundColor: TranSenColors.obsidianBg,
+                      backgroundImage: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl != null && avatarUrl.isNotEmpty
+                          ? null
+                          : const Icon(Icons.person_rounded,
+                              size: 36, color: TranSenColors.auroraEmeraldLight),
+                    ),
+                  ),
+                  const Spacer(),
+                  AuroraStatusPill(
+                    label: role == 'driver' ? 'CHAUFFEUR' : '$points PTS',
+                    color: role == 'driver'
+                        ? TranSenColors.auroraGoldBright
+                        : TranSenColors.auroraCyan,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: TranSenColors.auroraTextPrimary,
+                        fontSize: 19,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   if (userData?['isVerified'] == true) ...[
-                    const SizedBox(width: 8),
-                    const Icon(Icons.verified, color: Colors.blue, size: 20),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.verified_rounded, color: TranSenColors.auroraCyan, size: 19),
                   ],
                 ],
               ),
-              const SizedBox(height: 10),
-              // Email
-              Row(
-                children: [
-                   const Icon(Icons.email_outlined, color: Colors.white70, size: 14),
-                   const SizedBox(width: 8),
-                   Expanded(
-                     child: Text(
-                        email,
-                        style: const TextStyle(color: Colors.white70, fontSize: 13),
-                        overflow: TextOverflow.ellipsis,
-                     ),
-                   ),
-                ],
-              ),
-              const SizedBox(height: 5),
-              // Téléphone
-              if (userData?['phone'] != null)
+              const SizedBox(height: 6),
+              if (phoneStr.isNotEmpty)
                 Row(
                   children: [
-                    const Icon(Icons.phone_outlined, color: Colors.white70, size: 14),
+                    const Icon(Icons.phone_outlined, color: TranSenColors.auroraEmeraldLight, size: 14),
                     const SizedBox(width: 8),
                     Text(
-                      userData!['phone'],
-                      style: const TextStyle(color: Colors.white70, fontSize: 13),
+                      phoneStr,
+                      style: const TextStyle(color: TranSenColors.auroraTextSecondary, fontSize: 13),
                     ),
                   ],
                 ),
-              const SizedBox(height: 15),
-              // Sécurité sur le Wallet pour éviter le crash au premier lancement
+              if (email.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(Icons.email_outlined, color: Colors.white60, size: 14),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        email,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12.5),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 14),
+              // Pillule TransPay Wallet
               Consumer(
                 builder: (context, ref, child) {
                   try {
@@ -280,23 +326,26 @@ class ProfileDrawer extends ConsumerWidget {
                         Navigator.push(context, MaterialPageRoute(builder: (_) => const WalletScreen()));
                       },
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white24),
+                          color: TranSenColors.obsidianBg.withValues(alpha: 0.48),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: TranSenColors.auroraGold.withValues(alpha: 0.42),
+                          ),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(Icons.account_balance_wallet, color: Colors.white, size: 16),
+                            const Icon(Icons.account_balance_wallet_rounded,
+                                color: TranSenColors.auroraGoldBright, size: 16),
                             const SizedBox(width: 8),
                             Text(
                               "${wallet.value?.balance.toInt() ?? 0} FCFA",
                               style: const TextStyle(
-                                color: Colors.white,
+                                color: TranSenColors.auroraGoldBright,
                                 fontSize: 14,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(width: 6),

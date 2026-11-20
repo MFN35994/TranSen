@@ -154,12 +154,16 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         _isAutoFull = false; // Reset auto-full
       });
       _locationTimer?.cancel();
-      // Supprimer le marqueur actif
-      await FirebaseFirestore.instanceFor(
-              app: Firebase.app(), databaseId: 'transen')
-          .collection('active_drivers')
-          .doc(driverId)
-          .delete();
+      // Supprimer le marqueur actif de façon sécurisée
+      try {
+        await FirebaseFirestore.instanceFor(
+                app: Firebase.app(), databaseId: 'transen')
+            .collection('active_drivers')
+            .doc(driverId)
+            .delete();
+      } catch (e) {
+        debugPrint("Erreur suppression marqueur actif: $e");
+      }
     }
   }
 
@@ -267,11 +271,13 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     final profileAsync = ref.watch(driverProfileProvider);
-    final driverName = profileAsync.value?['name'] ?? auth?.name ?? 'Chauffeur TranSen';
-    final isCompanyDriver = profileAsync.value?.containsKey('companyId') ?? false;
+    final driverName = profileAsync.value?['name'] ?? profileAsync.value?['fullName'] ?? auth?.name ?? 'Chauffeur TranSen';
+    final rawCompanyId = profileAsync.value?['companyId']?.toString().trim() ?? '';
+    final isCompanyDriver = rawCompanyId.isNotEmpty;
 
     return Scaffold(
       key: _scaffoldKey,
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       drawer: const ProfileDrawer(),
       body: GestureDetector(
         onHorizontalDragUpdate: (details) {
@@ -281,14 +287,14 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
         },
         child: Stack(
           children: [
-            // Premium Slate Background
+            // Signature TranSen Aurora Background
             Positioned.fill(
               child: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: isDark
-                        ? [const Color(0xFF0F172A), const Color(0xFF1E293B)]
-                        : [const Color(0xFFF8FAFC), const Color(0xFFF1F5F9)],
+                        ? const [Color(0xFF03100B), Color(0xFF061B13), Color(0xFF020C08)]
+                        : const [Color(0xFFF2FAF6), Color(0xFFE5F4EC)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),

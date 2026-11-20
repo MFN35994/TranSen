@@ -65,23 +65,12 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
   late AnimationController _pulseController;
   Timer? _carouselTimer;
   Timer? _soundwaveTimer;
-  Timer? _typewriterTimer;
 
   int _currentPageIndex = 0;
   bool _isSpeaking = false;      // True if TTS is reading
   bool _isPlayingAudio = false;  // True if MP3 is streaming
-
-  // Slogan rotation state
-  int _currentSloganIndex = 0;
-  final List<String> _slogans = [
-    "Où allons-nous aujourd'hui ?",
-    "Voyagez en toute sécurité et confort.",
-    "Faites-vous livrer vos colis en un clin d'œil.",
-    "Le transport sénégalais réinventé pour vous.",
-  ];
-  String _displayedSlogan = "";
-  int _charIndex = 0;
-  bool _isDeleting = false;
+  Color? _lastReportedGlowColor;
+  int _lastCarouselCount = -1;
 
   // Soundwave animation heights
   final List<double> _soundwaveHeights = [6.0, 6.0, 6.0, 6.0, 6.0];
@@ -99,7 +88,6 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
     )..repeat(reverse: true);
     _initTts();
     _initAudioPlayer();
-    _startTypewriter();
   }
 
   void _initTts() {
@@ -170,68 +158,23 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
     });
   }
 
-  void _startTypewriter() {
-    _displayedSlogan = "";
-    _charIndex = 0;
-    _isDeleting = false;
-    _typewriterTimer?.cancel();
-    
-    _typewriterTimer = Timer.periodic(const Duration(milliseconds: 70), (timer) {
-      if (!mounted) return;
-      
-      final currentFullSlogan = _slogans[_currentSloganIndex];
-      
-      setState(() {
-        if (!_isDeleting) {
-          if (_charIndex < currentFullSlogan.length) {
-            _displayedSlogan += currentFullSlogan[_charIndex];
-            _charIndex++;
-          } else {
-            _isDeleting = true;
-            _typewriterTimer?.cancel();
-            Future.delayed(const Duration(seconds: 3), () {
-              if (mounted) _resumeTypewriter();
-            });
-          }
-        } else {
-          if (_displayedSlogan.isNotEmpty) {
-            _displayedSlogan = _displayedSlogan.substring(0, _displayedSlogan.length - 1);
-          } else {
-            _isDeleting = false;
-            _currentSloganIndex = (_currentSloganIndex + 1) % _slogans.length;
-            _charIndex = 0;
-          }
-        }
-      });
-    });
-  }
-
-  void _resumeTypewriter() {
-    if (!mounted) return;
-    _typewriterTimer = Timer.periodic(const Duration(milliseconds: 45), (timer) {
-      if (!mounted) return;
-      setState(() {
-        if (_displayedSlogan.isNotEmpty) {
-          _displayedSlogan = _displayedSlogan.substring(0, _displayedSlogan.length - 1);
-        } else {
-          _isDeleting = false;
-          _currentSloganIndex = (_currentSloganIndex + 1) % _slogans.length;
-          _charIndex = 0;
-          _typewriterTimer?.cancel();
-          _startTypewriter();
-        }
-      });
-    });
-  }
-
   void _startCarouselAutoPlay() {
+    if (_activeAnnouncements.length <= 1) {
+      _carouselTimer?.cancel();
+      _lastCarouselCount = _activeAnnouncements.length;
+      return;
+    }
+    if (_carouselTimer != null && _carouselTimer!.isActive && _lastCarouselCount == _activeAnnouncements.length) {
+      return;
+    }
+    _lastCarouselCount = _activeAnnouncements.length;
     _carouselTimer?.cancel();
-    if (_activeAnnouncements.isEmpty) return;
-    
+
     _carouselTimer = Timer.periodic(const Duration(seconds: 8), (timer) {
       if (!mounted) return;
       if (_isSpeaking || _isPlayingAudio) return; // Don't slide while audio is playing
-      
+      if (!_pageController.hasClients || _activeAnnouncements.isEmpty) return;
+
       final nextIndex = (_currentPageIndex + 1) % _activeAnnouncements.length;
       _pageController.animateToPage(
         nextIndex,
@@ -322,7 +265,6 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
     _audioPlayerCompleteSubscription?.cancel();
     _carouselTimer?.cancel();
     _soundwaveTimer?.cancel();
-    _typewriterTimer?.cancel();
     super.dispose();
   }
 
@@ -555,20 +497,23 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
 
         final activeGlowColor = _activeAnnouncements.isNotEmpty
             ? _activeAnnouncements[_currentPageIndex].gradientColors.first
-            : const Color(0xFFF39C12);
+            : TranSenColors.auroraEmerald;
 
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            widget.onColorChanged?.call(activeGlowColor);
-          }
-        });
+        if (_lastReportedGlowColor != activeGlowColor) {
+          _lastReportedGlowColor = activeGlowColor;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              widget.onColorChanged?.call(activeGlowColor);
+            }
+          });
+        }
 
         return TweenAnimationBuilder<Color?>(
           duration: const Duration(milliseconds: 1000),
           curve: Curves.easeInOut,
           tween: ColorTween(end: activeGlowColor),
           builder: (context, glowColor, child) {
-            final currentColor = glowColor ?? const Color(0xFFF39C12);
+            final currentColor = glowColor ?? TranSenColors.auroraEmerald;
             return AnimatedBuilder(
               animation: _pulseController,
               builder: (context, child) {
@@ -579,11 +524,15 @@ class _SmartMediaHubCardState extends ConsumerState<SmartMediaHubCard> with Tick
                 return Container(
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0x3D000000) : Colors.white.withValues(alpha: 0.65),
+                    color: isDark
+                        ? TranSenColors.glassSurface.withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.86),
                     borderRadius: BorderRadius.circular(24),
                     border: Border.all(
-                      color: isDark ? Colors.white.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.6),
-                      width: 1.5,
+                      color: isDark
+                          ? currentColor.withValues(alpha: 0.32)
+                          : TranSenColors.lightBorder,
+                      width: 1.3,
                     ),
                     boxShadow: [
                       // Shifting glowing neon aura

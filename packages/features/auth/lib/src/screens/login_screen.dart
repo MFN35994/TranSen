@@ -182,20 +182,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : TranSenColors.primaryGreen,
+      backgroundColor: TranSenColors.scaffoldBg(isDarkMode),
       extendBodyBehindAppBar: true,
       appBar: (currentStep != AuthStep.phone)
           ? AppBar(
               backgroundColor: Colors.transparent,
               elevation: 0,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white),
+                icon: Icon(Icons.arrow_back_rounded, color: TranSenColors.primaryText(isDarkMode)),
                 onPressed: () async {
                   if (currentStep == AuthStep.otp) {
-                    // Retour à l'étape téléphone
                     setState(() => _step = AuthStep.phone);
                   } else if (currentStep == AuthStep.identity) {
-                    // Retour complet : déconnexion
                     final confirm = await showDialog<bool>(
                       context: context,
                       builder: (ctx) => AlertDialog(
@@ -208,7 +206,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           TextButton(
                             onPressed: () => Navigator.pop(ctx, true),
-                            child: const Text("Oui", style: TextStyle(color: Colors.red)),
+                            child: const Text("Oui", style: TextStyle(color: TranSenColors.auroraRose)),
                           ),
                         ],
                       ),
@@ -224,29 +222,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 },
               ),
               title: Text(
-                currentStep == AuthStep.otp ? "Vérification" : "Identité",
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+                currentStep == AuthStep.otp ? "Vérification OTP" : "Votre identité",
+                style: TextStyle(color: TranSenColors.primaryText(isDarkMode), fontSize: 17, fontWeight: FontWeight.w700),
               ),
               centerTitle: true,
             )
           : null,
       body: PremiumBackground(
-        blobColors: isDarkMode 
-          ? [Colors.blue.withValues(alpha: 0.1), Colors.purple.withValues(alpha: 0.1)]
-          : [Colors.white.withValues(alpha: 0.2), Colors.greenAccent.withValues(alpha: 0.1)],
         child: SingleChildScrollView(
           child: Column(
             children: [
             _buildHeader(isDarkMode),
-            const SizedBox(height: 30),
+            const SizedBox(height: 28),
             AnimatedSize(
               duration: const Duration(milliseconds: 300),
               curve: Curves.easeInOut,
               child: _buildPhoneForm(isDarkMode, isLoading, currentStep),
             ),
-            const SizedBox(height: 40),
-            const AppVersionWidget(color: Colors.white54),
-            const SizedBox(height: 20),
+            const SizedBox(height: 36),
+            AppVersionWidget(color: TranSenColors.secondaryText(isDarkMode).withValues(alpha: 0.65)),
+            const SizedBox(height: 22),
           ],
         ),
       ),
@@ -257,40 +252,95 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Widget _buildHeader(bool isDarkMode) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.only(top: 70, bottom: 30),
+      padding: const EdgeInsets.only(top: 66, bottom: 32, left: 24, right: 24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isDarkMode ? [const Color(0xFF1A1A1A), const Color(0xFF121212)] : [Colors.white, Colors.grey.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        gradient: isDarkMode
+            ? const LinearGradient(
+                colors: [Color(0xFF0A291E), Color(0xFF04140E)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              )
+            : const LinearGradient(
+                colors: [Color(0xFF064E3B), Color(0xFF0B6E4F)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(44),
+          bottomRight: Radius.circular(44),
         ),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(80)),
+        border: Border(
+          bottom: BorderSide(
+            color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
+        ),
         boxShadow: [
           BoxShadow(
-              color: Colors.black26, blurRadius: 20, offset: Offset(0, 10))
+            color: TranSenColors.auroraEmerald.withValues(alpha: isDarkMode ? 0.18 : 0.22),
+            blurRadius: 32,
+            offset: const Offset(0, 12),
+          ),
         ],
       ),
       child: Column(
         children: [
           Hero(
             tag: 'auth_icon',
-            child: Image.asset('assets/images/logo.png',
-                height: 150,
-                errorBuilder: (c, e, s) => Icon(Icons.directions_car,
-                    size: 120, color: isDarkMode ? Colors.white : TranSenColors.primaryGreen)),
+            child: Container(
+              width: 108,
+              height: 108,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF041710).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(
+                  color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.45),
+                  width: 1.4,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: TranSenColors.auroraEmerald.withValues(alpha: 0.32),
+                    blurRadius: 28,
+                  ),
+                ],
+              ),
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
+                errorBuilder: (c, e, s) => const Icon(
+                  Icons.directions_car_filled_rounded,
+                  size: 62,
+                  color: TranSenColors.auroraEmeraldLight,
+                ),
+              ),
+            ),
           ),
-          const SizedBox(height: 15),
-          Text("Bienvenue sur TranSen",
-              style: TextStyle(
-                  color: isDarkMode ? Colors.white : TranSenColors.primaryGreen,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold)),
-          Text("LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
-              style: TextStyle(
-                  color: isDarkMode ? Colors.white70 : TranSenColors.primaryGreen.withValues(alpha: 0.7),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 2)),
+          const SizedBox(height: 18),
+          const AuroraStatusPill(
+            label: 'TRANSEN AURORA · CONNEXION SÉCURISÉE',
+            color: TranSenColors.auroraGoldBright,
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            "Bienvenue sur TranSen",
+            style: TextStyle(
+              color: TranSenColors.auroraTextPrimary,
+              fontSize: 25,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            "LE TRANSPORT 5 ÉTOILES AU SÉNÉGAL",
+            style: TextStyle(
+              color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.9),
+              fontSize: 10.5,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 2.2,
+            ),
+          ),
         ],
       ),
     );
@@ -492,12 +542,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               const SizedBox(height: 15),
 
               if (isLoading)
-                const CircularProgressIndicator(color: Colors.white)
+                const CircularProgressIndicator(color: TranSenColors.auroraEmeraldLight)
               else
                 SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: isLoading ? null : () async {
+                  child: AuroraGradientButton(
+                    label: step == AuthStep.otp
+                        ? "VÉRIFIER LE CODE"
+                        : (step == AuthStep.identity ? "FINALISER MON COMPTE" : "CONTINUER"),
+                    icon: step == AuthStep.otp
+                        ? Icons.verified_rounded
+                        : Icons.arrow_forward_rounded,
+                    gold: step == AuthStep.identity,
+                    onPressed: () async {
                       await HapticFeedback.lightImpact();
                       if (step == AuthStep.phone) {
                         _sendOtp();
@@ -507,38 +564,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         _signInWithOtp();
                       }
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isDarkMode ? Colors.white : Colors.white,
-                      foregroundColor: isDarkMode ? Colors.black : TranSenColors.primaryGreen,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15)),
-                      elevation: 5,
-                    ),
-                    child: Text(
-                        step == AuthStep.otp 
-                            ? "VÉRIFIER LE CODE" 
-                            : (step == AuthStep.identity ? "FINALISER" : "CONTINUER"),
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
 
               // Mention légale pour la CONNEXION (Step Téléphone)
               if (step == AuthStep.phone) ...
                 [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 14),
                   Text.rich(
                       TextSpan(
                         text: "En continuant, vous acceptez nos ",
                         style: TextStyle(
                           fontSize: 12,
-                          color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9),
+                          color: TranSenColors.secondaryText(isDarkMode),
                         ),
                         children: [
                           TextSpan(
                             text: "CGU",
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: TranSenColors.auroraEmeraldLight,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                             ),
@@ -555,12 +599,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           TextSpan(
                             text: " et notre ",
-                            style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9)),
+                            style: TextStyle(color: TranSenColors.secondaryText(isDarkMode)),
                           ),
                           TextSpan(
                             text: "Politique de Confidentialité",
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: TranSenColors.auroraEmeraldLight,
                               fontWeight: FontWeight.bold,
                               decoration: TextDecoration.underline,
                             ),
@@ -577,7 +621,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           ),
                           TextSpan(
                             text: ".",
-                            style: TextStyle(color: isDarkMode ? Colors.white70 : Colors.white.withValues(alpha: 0.9)),
+                            style: TextStyle(color: TranSenColors.secondaryText(isDarkMode)),
                           ),
                         ],
                       ),
@@ -607,20 +651,27 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       textCapitalization: textCapitalization,
       inputFormatters: inputFormatters,
       autofillHints: autofillHints,
-      style: TextStyle(color: isDarkMode ? Colors.white : TranSenColors.primaryGreen),
+      style: TextStyle(
+        color: TranSenColors.primaryText(isDarkMode),
+        fontWeight: FontWeight.w600,
+      ),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: isDarkMode ? Colors.white70 : Colors.grey.shade600),
-        prefixIcon: Icon(icon, color: TranSenColors.primaryGreen),
+        labelStyle: TextStyle(color: TranSenColors.secondaryText(isDarkMode)),
+        prefixIcon: Icon(icon, color: TranSenColors.auroraEmeraldLight),
         filled: true,
         fillColor: isDarkMode
-            ? Colors.white.withValues(alpha: 0.05)
+            ? TranSenColors.glassSurface.withValues(alpha: 0.9)
             : Colors.white,
-        border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(15),
-            borderSide: BorderSide.none),
-        contentPadding:
-            const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: TranSenColors.borderColor(isDarkMode)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: TranSenColors.auroraEmeraldLight, width: 1.6),
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
       ),
     );
   }

@@ -9,11 +9,12 @@ class ThemeNotifier extends Notifier<ThemeMode> {
   ThemeMode build() {
     if (_prefs != null) {
       final themeIndex = _prefs!.getInt('theme_mode');
-      if (themeIndex != null) {
+      if (themeIndex != null && themeIndex >= 0 && themeIndex < ThemeMode.values.length) {
         return ThemeMode.values[themeIndex];
       }
     }
-    return ThemeMode.light;
+    // Identité signature TranSen Aurora Dark par défaut
+    return ThemeMode.dark;
   }
 
   void init(SharedPreferences prefs) {
@@ -29,3 +30,28 @@ class ThemeNotifier extends Notifier<ThemeMode> {
 }
 
 final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(ThemeNotifier.new);
+
+class NotificationsPreferenceNotifier extends Notifier<bool> {
+  @override
+  bool build() {
+    _load();
+    return true;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final saved = prefs.getBool('notifications_enabled');
+    if (saved != null && saved != state) {
+      state = saved;
+    }
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    state = enabled;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', enabled);
+  }
+}
+
+final notificationsPreferenceProvider =
+    NotifierProvider<NotificationsPreferenceNotifier, bool>(NotificationsPreferenceNotifier.new);

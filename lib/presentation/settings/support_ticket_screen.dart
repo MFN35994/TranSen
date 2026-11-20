@@ -151,12 +151,12 @@ class _SupportTicketScreenState extends ConsumerState<SupportTicketScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey.shade50,
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
-        title: const Text("Support Client IA", style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: isDark ? Colors.black87 : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
-        elevation: 0.5,
+        title: const Text("Support Client IA", style: TextStyle(fontWeight: FontWeight.w800)),
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),

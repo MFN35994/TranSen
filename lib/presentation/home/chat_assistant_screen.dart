@@ -76,6 +76,7 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
       final geminiService = ref.read(geminiServiceProvider);
       final responseText = await geminiService.sendMessage(_messages);
       
+      if (!mounted) return;
       setState(() {
         _messages.add({
           'text': responseText.trim(),
@@ -83,6 +84,7 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
         });
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _messages.add({
           'text': "Oups ! Une erreur est survenue lors de la communication avec l'assistant. Veuillez vérifier votre connexion.",
@@ -91,10 +93,12 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
         });
       });
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 
@@ -103,31 +107,32 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey.shade50,
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(7),
               decoration: BoxDecoration(
-                color: TranSenColors.primaryGreen.withValues(alpha: 0.15),
+                color: TranSenColors.auroraEmerald.withValues(alpha: 0.18),
                 shape: BoxShape.circle,
+                border: Border.all(color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.4)),
               ),
-              child: const Icon(Icons.psychology, color: TranSenColors.primaryGreen, size: 22),
+              child: const Icon(Icons.psychology_rounded, color: TranSenColors.auroraEmeraldLight, size: 20),
             ),
             const SizedBox(width: 10),
             const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Assistant TranSen", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text("En ligne • IA Gemini", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                Text("Assistant TranSen IA", style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.w800)),
+                Text("En ligne • Moteur Gemini Aurora", style: TextStyle(fontSize: 11, color: TranSenColors.auroraEmeraldLight)),
               ],
             ),
           ],
         ),
-        backgroundColor: isDark ? Colors.black87 : Colors.white,
-        elevation: 0.5,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
+        elevation: 0,
+        foregroundColor: Colors.white,
       ),
       body: _isInitError
           ? _buildConfigError()

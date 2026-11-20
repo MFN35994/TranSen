@@ -1,103 +1,139 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:async';
-import 'package:transen_auth/transen_auth.dart';
-import '../home/home_screen.dart';
-import '../driver/driver_home_screen.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:transen_core/transen_core.dart';
 
-class SplashScreen extends ConsumerStatefulWidget {
+/// Écran de démarrage signature **TranSen Aurora** (purement présentationnel,
+/// piloté réactivement par `InitialGate` / `AuthGate` sans Timer conflictuel).
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  ConsumerState<SplashScreen> createState() => _SplashScreenState();
+  State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends ConsumerState<SplashScreen> {
-  Timer? _timer;
-  Timer? _authTimer;
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _pulseController;
+  late final Animation<double> _scaleAnim;
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
-  }
-
-  void _startTimer() {
-    _timer = Timer(const Duration(seconds: 3), () {
-      _checkAuthAndNavigate();
-    });
-  }
-
-  void _checkAuthAndNavigate() {
-    if (!mounted) return;
-    
-    final auth = ref.read(authProvider);
-    if (auth == null) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
-      );
-    } else {
-      // Si on attend encore le rôle, on attend un peu
-      if (auth.isLoading) {
-        _authTimer = Timer(const Duration(milliseconds: 500), _checkAuthAndNavigate);
-        return;
-      }
-      
-      Widget nextScreen;
-      if (auth.role == 'none') {
-        nextScreen = const RoleSelectionScreen();
-      } else if (auth.role == 'driver') {
-        nextScreen = const DriverHomeScreen();
-      } else {
-        nextScreen = const HomeScreen();
-      }
-      
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => nextScreen),
-      );
-    }
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1900),
+    )..repeat(reverse: true);
+    _scaleAnim = Tween<double>(begin: 0.96, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _authTimer?.cancel();
+    _pulseController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Image.asset(
-              'assets/images/logo.png',
-              width: 180,
-              height: 180,
+      backgroundColor: TranSenColors.obsidianBg,
+      body: PremiumBackground(
+        blobColors: [
+          TranSenColors.auroraEmerald.withValues(alpha: 0.28),
+          TranSenColors.auroraCyan.withValues(alpha: 0.16),
+          TranSenColors.auroraGold.withValues(alpha: 0.14),
+        ],
+        child: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ScaleTransition(
+                  scale: _scaleAnim,
+                  child: Container(
+                    width: 148,
+                    height: 148,
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(38),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF0E3426), Color(0xFF061A12)],
+                      ),
+                      border: Border.all(
+                        color: TranSenColors.auroraEmeraldLight.withValues(alpha: 0.45),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: TranSenColors.auroraEmerald.withValues(alpha: 0.35),
+                          blurRadius: 46,
+                          spreadRadius: 2,
+                        ),
+                        BoxShadow(
+                          color: TranSenColors.auroraCyan.withValues(alpha: 0.18),
+                          blurRadius: 28,
+                          offset: const Offset(0, 12),
+                        ),
+                      ],
+                    ),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.directions_transit_filled_rounded,
+                        size: 72,
+                        color: TranSenColors.auroraEmeraldLight,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [
+                      TranSenColors.auroraTextPrimary,
+                      TranSenColors.auroraEmeraldLight,
+                      TranSenColors.auroraGoldBright,
+                    ],
+                  ).createShader(bounds),
+                  child: Text(
+                    'TranSen',
+                    style: GoogleFonts.sora(
+                      fontSize: 38,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'MOBILITÉ SOUVERAINE · SÉNÉGAL',
+                  style: GoogleFonts.inter(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: TranSenColors.auroraTextSecondary.withValues(alpha: 0.8),
+                    letterSpacing: 2.4,
+                  ),
+                ),
+                const SizedBox(height: 34),
+                SizedBox(
+                  width: 140,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(999),
+                    child: const LinearProgressIndicator(
+                      minHeight: 3.5,
+                      backgroundColor: Color(0x2634D399),
+                      valueColor: AlwaysStoppedAnimation<Color>(TranSenColors.auroraEmeraldLight),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 30),
-            const Text(
-              'TranSen',
-              style: TextStyle(
-                fontSize: 36,
-                fontWeight: FontWeight.w900,
-                color: TranSenColors.primaryGreen,
-                letterSpacing: 2.0,
-              ),
-            ),
-            const SizedBox(height: 10),
-            const Text(
-              'Transport & Livraison',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black54,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

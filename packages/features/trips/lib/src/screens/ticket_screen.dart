@@ -113,7 +113,7 @@ class _TicketScreenState extends State<TicketScreen>
     final String relayPoint = data['relayPoint'] as String? ?? '';
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF0F4FF),
+      backgroundColor: isDark ? const Color(0xFF03100B) : const Color(0xFFF2FAF6),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,

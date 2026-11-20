@@ -8,89 +8,184 @@ class SettingsScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final auth = ref.watch(authProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isDarkMode = ref.watch(themeProvider) == ThemeMode.dark;
+    final notificationsEnabled = ref.watch(notificationsPreferenceProvider);
+    final locale = ref.watch(localeProvider);
 
     return Scaffold(
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Paramètres'),
-        backgroundColor: auth?.role == 'driver' ? TranSenColors.darkGreen : Theme.of(context).colorScheme.primary,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
       ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          _buildSettingsSection(
+          _buildSection(
             context,
-            'Préférences de l\'App',
+            isDark,
+            'Apparence & Expérience',
             [
-              _buildSettingsTile(context, ref, Icons.notifications_outlined, 'Notifications', true),
+              ListTile(
+                leading: Icon(
+                  isDarkMode ? Icons.dark_mode_rounded : Icons.light_mode_rounded,
+                  color: TranSenColors.auroraEmeraldLight,
+                ),
+                title: Text(
+                  'Thème TranSen Aurora Sombre',
+                  style: TextStyle(color: TranSenColors.primaryText(isDark), fontWeight: FontWeight.w600),
+                ),
+                subtitle: Text(
+                  isDarkMode ? 'Émeraude-Obsidienne actif' : 'Mode Clair cristallin actif',
+                  style: TextStyle(color: TranSenColors.secondaryText(isDark), fontSize: 12),
+                ),
+                trailing: Switch(
+                  value: isDarkMode,
+                  onChanged: (val) => ref
+                      .read(themeProvider.notifier)
+                      .setThemeMode(val ? ThemeMode.dark : ThemeMode.light),
+                  activeThumbColor: TranSenColors.auroraEmeraldLight,
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.notifications_active_outlined, color: TranSenColors.auroraCyan),
+                title: Text(
+                  'Notifications & Alertes Trajets',
+                  style: TextStyle(color: TranSenColors.primaryText(isDark), fontWeight: FontWeight.w600),
+                ),
+                trailing: Switch(
+                  value: notificationsEnabled,
+                  onChanged: (val) => ref.read(notificationsPreferenceProvider.notifier).setEnabled(val),
+                  activeThumbColor: TranSenColors.auroraEmeraldLight,
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.translate_rounded, color: TranSenColors.auroraGold),
+                title: Text(
+                  'Langue de l\'application',
+                  style: TextStyle(color: TranSenColors.primaryText(isDark), fontWeight: FontWeight.w600),
+                ),
+                trailing: DropdownButton<String>(
+                  value: locale.languageCode,
+                  underline: const SizedBox.shrink(),
+                  dropdownColor: isDark ? TranSenColors.deepSurface : Colors.white,
+                  style: TextStyle(
+                    color: TranSenColors.auroraEmeraldLight,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13.5,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'fr', child: Text('Français')),
+                    DropdownMenuItem(value: 'en', child: Text('English')),
+                    DropdownMenuItem(value: 'wo', child: Text('Wolof')),
+                  ],
+                  onChanged: (code) {
+                    if (code != null) {
+                      ref.read(localeProvider.notifier).setLocale(Locale(code));
+                    }
+                  },
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 20),
-          _buildSettingsSection(
+          _buildSection(
             context,
-            'Compte & Sécurité',
+            isDark,
+            'Mentions Légales & Confidentialité',
             [
-              _buildSettingsTile(context, ref, Icons.security_outlined, 'Vérification en 2 étapes', false),
-              _buildSettingsTile(context, ref, Icons.delete_outline, 'Supprimer mon compte', null, color: Colors.red),
+              ListTile(
+                leading: const Icon(Icons.description_outlined, color: TranSenColors.auroraEmeraldLight),
+                title: Text(
+                  'Conditions Générales d\'Utilisation',
+                  style: TextStyle(color: TranSenColors.primaryText(isDark), fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LegalScreen(
+                      title: 'Conditions Générales',
+                      assetPath: 'assets/legal/cgu.md',
+                    ),
+                  ),
+                ),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined, color: TranSenColors.auroraCyan),
+                title: Text(
+                  'Politique de Confidentialité',
+                  style: TextStyle(color: TranSenColors.primaryText(isDark), fontWeight: FontWeight.w600),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LegalScreen(
+                      title: 'Politique de Confidentialité',
+                      assetPath: 'assets/legal/politique_confidentialite.md',
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
+          const SizedBox(height: 20),
+          _buildSection(
+            context,
+            isDark,
+            'Compte & Sécurité',
+            [
+              ListTile(
+                leading: const Icon(Icons.delete_forever_outlined, color: TranSenColors.auroraRose),
+                title: const Text(
+                  'Supprimer définitivement mon compte',
+                  style: TextStyle(color: TranSenColors.auroraRose, fontWeight: FontWeight.w700),
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded, color: TranSenColors.auroraRose),
+                onTap: () => _showDeleteConfirmation(context, ref),
+              ),
+            ],
+          ),
+          const SizedBox(height: 30),
+          Center(
+            child: AppVersionWidget(
+              color: TranSenColors.secondaryText(isDark).withValues(alpha: 0.7),
+            ),
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildSettingsSection(BuildContext context, String title, List<Widget> children) {
+  Widget _buildSection(BuildContext context, bool isDark, String title, List<Widget> children) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 10, bottom: 10),
+          padding: const EdgeInsets.only(left: 8, bottom: 10),
           child: Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
+            title.toUpperCase(),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 11,
+              letterSpacing: 1.2,
+              color: TranSenColors.secondaryText(isDark),
+            ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            color: Theme.of(context).brightness == Brightness.light ? Colors.white : Colors.grey.shade900,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
+        AuroraGlassCard(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          borderRadius: 20,
           child: Column(children: children),
         ),
       ],
-    );
-  }
-
-  Widget _buildSettingsTile(BuildContext context, WidgetRef ref, IconData icon, String title, bool? value, {Color? color}) {
-    final isDarkMode = ref.watch(themeProvider) == ThemeMode.dark;
-    
-    return ListTile(
-      leading: Icon(icon, color: color ?? (isDarkMode ? Colors.white70 : Colors.black87)),
-      title: Text(title, style: TextStyle(color: color ?? (isDarkMode ? Colors.white : Colors.black87), fontWeight: FontWeight.w500)),
-      trailing: value != null 
-        ? Switch(
-            value: title == 'Mode Sombre' ? isDarkMode : value, 
-            onChanged: (val) {
-              if (title == 'Mode Sombre') {
-                ref.read(themeProvider.notifier).setThemeMode(val ? ThemeMode.dark : ThemeMode.light);
-              }
-            }, 
-            activeThumbColor: Theme.of(context).colorScheme.primary
-          )
-        : const Icon(Icons.chevron_right, color: Colors.grey),
-      onTap: () {
-        if (title == 'Supprimer mon compte') {
-          _showDeleteConfirmation(context, ref);
-        }
-      },
     );
   }
 
@@ -99,7 +194,9 @@ class SettingsScreen extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Supprimer le compte ?"),
-        content: const Text("Cette action est irréversible. Toutes vos données seront définitivement supprimées."),
+        content: const Text(
+          "Cette action est irréversible. Toutes vos données personnelles seront définitivement supprimées.",
+        ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("ANNULER")),
           TextButton(
@@ -107,16 +204,18 @@ class SettingsScreen extends ConsumerWidget {
               Navigator.pop(ctx);
               try {
                 await ref.read(authProvider.notifier).deleteAccount();
-                // AuthGate s'occupe de la redirection vers Login
               } catch (e) {
                 if (context.mounted) {
-                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(e.toString().replaceAll("Exception: ", "")), backgroundColor: Colors.red),
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceAll("Exception: ", "")),
+                      backgroundColor: TranSenColors.auroraRose,
+                    ),
                   );
                 }
               }
             },
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            style: TextButton.styleFrom(foregroundColor: TranSenColors.auroraRose),
             child: const Text("SUPPRIMER DÉFINITIVEMENT"),
           ),
         ],

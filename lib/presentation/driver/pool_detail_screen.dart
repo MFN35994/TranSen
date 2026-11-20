@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:geolocator/geolocator.dart' as geo;
@@ -468,7 +469,18 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(30),
-                      child: MapWidget(
+                      child: kIsWeb
+                          ? AuroraWebMapRadar(
+                              title: 'Covoiturage · ${widget.pool.departure} → ${widget.pool.destination}',
+                              subtitle: '${widget.pool.currentFilling}/${widget.pool.maxCapacity} places occupées',
+                              latitude: _myPosition?.lat ??
+                                  (ItineraryOptimizer.getRegionCoordinates(widget.pool.departure) ?? const LatLng(14.7167, -17.4677)).latitude,
+                              longitude: _myPosition?.lng ??
+                                  (ItineraryOptimizer.getRegionCoordinates(widget.pool.departure) ?? const LatLng(14.7167, -17.4677)).longitude,
+                              departureLabel: widget.pool.departure,
+                              destinationLabel: widget.pool.destination,
+                            )
+                          : MapWidget(
                         viewport: CameraViewportState(
                           center: Point(
                             coordinates: Position(

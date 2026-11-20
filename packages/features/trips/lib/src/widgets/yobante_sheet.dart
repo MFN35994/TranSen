@@ -158,17 +158,19 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
   }
 
   Future<void> _fetchCompanies() async {
+    if (!mounted) return;
     setState(() => _isLoadingCompanies = true);
     try {
       final repo = ref.read(tripRepositoryProvider);
       final list = await repo.getCompanies();
+      if (!mounted) return;
       setState(() {
         _companies = list.where((c) => c['category'] == 'LOGISTICS' || c['category'] == 'BUS_COMPANY').toList();
         _isLoadingCompanies = false;
       });
     } catch (e) {
       debugPrint("Error fetching companies: $e");
-      setState(() => _isLoadingCompanies = false);
+      if (mounted) setState(() => _isLoadingCompanies = false);
     }
   }
 

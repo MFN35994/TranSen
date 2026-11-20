@@ -186,68 +186,84 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
+      backgroundColor: TranSenColors.scaffoldBg(isDarkMode),
       appBar: AppBar(
         title: const Text("Profil Chauffeur"),
-        backgroundColor: Colors.black87,
+        backgroundColor: isDarkMode ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 30, vertical: 40),
+      body: PremiumBackground(
+        child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Icon(Icons.local_taxi, size: 80, color: TranSenColors.primaryGreen),
-            const SizedBox(height: 20),
-            const Text(
-              "Rejoignez TranSen",
-              textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            Center(
+              child: Container(
+                width: 82,
+                height: 82,
+                decoration: BoxDecoration(
+                  color: TranSenColors.auroraGold.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(26),
+                  border: Border.all(color: TranSenColors.auroraGold.withValues(alpha: 0.45)),
+                ),
+                child: const Icon(Icons.local_taxi_rounded, size: 42, color: TranSenColors.auroraGold),
+              ),
             ),
-            const SizedBox(height: 10),
-            const Text(
-              "Renseignez vos informations pour commencer à gagner de l'argent.",
+            const SizedBox(height: 18),
+            Text(
+              "Rejoignez TranSen Aurora",
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.w800,
+                color: TranSenColors.primaryText(isDarkMode),
+              ),
             ),
-            const SizedBox(height: 30),
+            const SizedBox(height: 8),
+            Text(
+              "Renseignez vos informations pour activer votre espace chauffeur (5 jours d'essai offerts).",
+              textAlign: TextAlign.center,
+              style: TextStyle(color: TranSenColors.secondaryText(isDarkMode), fontSize: 13.5),
+            ),
+            const SizedBox(height: 24),
             OutlinedButton.icon(
               onPressed: _isScanning ? null : _showImagePickerSourceDialog,
-              icon: _isScanning 
+              icon: _isScanning
                   ? const SizedBox(
-                      width: 20, 
-                      height: 20, 
-                      child: CircularProgressIndicator(strokeWidth: 2, color: TranSenColors.primaryGreen)
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: TranSenColors.auroraEmeraldLight),
                     )
-                  : const Icon(Icons.document_scanner, color: TranSenColors.primaryGreen),
+                  : const Icon(Icons.document_scanner_rounded, color: TranSenColors.auroraEmeraldLight),
               label: Text(
-                _isScanning ? "Lecture du document..." : "Scanner mon permis ou CNI",
-                style: const TextStyle(color: TranSenColors.primaryGreen, fontWeight: FontWeight.bold),
+                _isScanning ? "Lecture IA du document..." : "Scanner mon permis ou CNI (IA)",
+                style: const TextStyle(color: TranSenColors.auroraEmeraldLight, fontWeight: FontWeight.bold),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: TranSenColors.primaryGreen, width: 2),
+                side: const BorderSide(color: TranSenColors.auroraEmeraldLight, width: 1.5),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
               ),
             ),
-            const SizedBox(height: 25),
-            
+            const SizedBox(height: 22),
+
             _buildTextField(
               controller: _firstNameController,
               label: "Prénom",
               icon: Icons.person_outline,
               isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 15),
-            
+            const SizedBox(height: 14),
+
             _buildTextField(
               controller: _lastNameController,
               label: "Nom",
               icon: Icons.person_outline,
               isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 15),
-            
+            const SizedBox(height: 14),
+
             _buildTextField(
               controller: _phoneController,
               label: "Numéro de téléphone",
@@ -255,8 +271,8 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
               keyboardType: TextInputType.phone,
               isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 15),
-            
+            const SizedBox(height: 14),
+
             _buildTextField(
               controller: _referralController,
               label: "Code de parrainage (optionnel)",
@@ -264,23 +280,17 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
               textCapitalization: TextCapitalization.characters,
               isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 40),
-            
-            if (_isLoading)
-              const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen))
-            else
-              ElevatedButton(
-                onPressed: _handleSignup,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.black87,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  elevation: 5,
-                ),
-                child: const Text("S'INSCRIRE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              ),
+            const SizedBox(height: 30),
+
+            AuroraGradientButton(
+              label: "ACTIVER MON COMPTE CHAUFFEUR",
+              icon: Icons.verified_rounded,
+              gold: true,
+              isLoading: _isLoading,
+              onPressed: _handleSignup,
+            ),
           ],
+        ),
         ),
       ),
     );
@@ -298,14 +308,21 @@ class _DriverSignupScreenState extends ConsumerState<DriverSignupScreen> {
       controller: controller,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
-      style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
+      style: TextStyle(color: TranSenColors.primaryText(isDarkMode), fontWeight: FontWeight.w600),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.grey.shade600),
-        prefixIcon: Icon(icon, color: Colors.black87),
+        labelStyle: TextStyle(color: TranSenColors.secondaryText(isDarkMode)),
+        prefixIcon: Icon(icon, color: TranSenColors.auroraEmeraldLight),
         filled: true,
-        fillColor: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        fillColor: isDarkMode ? TranSenColors.glassSurface : Colors.white,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: TranSenColors.borderColor(isDarkMode)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: const BorderSide(color: TranSenColors.auroraEmeraldLight, width: 1.6),
+        ),
         contentPadding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
       ),
     );
