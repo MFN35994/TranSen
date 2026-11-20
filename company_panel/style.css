@@ -3079,28 +3079,100 @@ button#registerBtn:hover {
     border-color: rgba(52, 211, 153, 0.55);
 }
 
-/* Harmonisation totale Aurora Dark-Mode contre les anciens styles inline clairs */
-body.dark-mode .admin-section [style*="background: white"],
-body.dark-mode .admin-section [style*="background:#fff"],
-body.dark-mode .admin-section [style*="background: #fff"],
-body.dark-mode .admin-section [style*="background: #f8fafc"],
-body.dark-mode .admin-section [style*="background:#f8fafc"],
-body.dark-mode .admin-section [style*="background: #f1f5f9"],
-body.dark-mode .admin-section [style*="background:#f1f5f9"],
-body.dark-mode .modal-overlay [style*="background: white"],
-body.dark-mode .modal-overlay [style*="background: #ffffff"] {
+/* Harmonisation totale Aurora Dark-Mode contre les anciens styles inline clairs (insensible à la casse) */
+body.dark-mode .admin-section [style*="background: white" i],
+body.dark-mode .admin-section [style*="background:#fff" i],
+body.dark-mode .admin-section [style*="background: #fff" i],
+body.dark-mode .admin-section [style*="background-color: white" i],
+body.dark-mode .admin-section [style*="background-color:#fff" i],
+body.dark-mode .admin-section [style*="background-color: #fff" i],
+body.dark-mode .admin-section [style*="background: #f8fafc" i],
+body.dark-mode .admin-section [style*="background:#f8fafc" i],
+body.dark-mode .admin-section [style*="background: #f1f5f9" i],
+body.dark-mode .admin-section [style*="background:#f1f5f9" i],
+body.dark-mode .modal-overlay [style*="background: white" i],
+body.dark-mode .modal-overlay [style*="background: #fff" i] {
     background: rgba(7, 26, 18, 0.92) !important;
     color: var(--text-main) !important;
     border-color: var(--glass-border) !important;
 }
 
-body.dark-mode .admin-section [style*="color: #0f172a"],
-body.dark-mode .admin-section [style*="color: #1e293b"],
-body.dark-mode .admin-section [style*="color: #334155"],
-body.dark-mode .admin-section [style*="color: #333"],
-body.dark-mode .modal-overlay [style*="color: #0f172a"],
-body.dark-mode .modal-overlay [style*="color: #1e293b"] {
+body.dark-mode .admin-section [style*="color: #0f172a" i],
+body.dark-mode .admin-section [style*="color: #1e293b" i],
+body.dark-mode .admin-section [style*="color: #334155" i],
+body.dark-mode .admin-section [style*="color: #333" i],
+body.dark-mode .admin-section [style*="color: #111" i],
+body.dark-mode .modal-overlay [style*="color: #0f172a" i],
+body.dark-mode .modal-overlay [style*="color: #1e293b" i],
+body.dark-mode .modal-overlay [style*="color: #111" i] {
     color: var(--text-main) !important;
+}
+
+/* Refonte Futuriste TranSen Aurora — Sidebar, Header, KPIs & Tables */
+body.dark-mode {
+    background:
+        radial-gradient(circle at 12% 8%, rgba(16, 185, 129, 0.14), transparent 34%),
+        radial-gradient(circle at 88% 12%, rgba(34, 211, 238, 0.10), transparent 32%),
+        radial-gradient(circle at 75% 88%, rgba(245, 184, 61, 0.08), transparent 36%),
+        #03100b !important;
+    font-family: 'Inter', 'Outfit', sans-serif !important;
+}
+
+body.dark-mode h1, body.dark-mode h2, body.dark-mode h3 {
+    font-family: 'Sora', 'Outfit', sans-serif;
+    letter-spacing: -0.02em;
+}
+
+body.dark-mode .sidebar {
+    background: linear-gradient(180deg, rgba(4, 20, 14, 0.97) 0%, rgba(3, 14, 10, 0.99) 100%) !important;
+    border-right: 1px solid rgba(52, 211, 153, 0.22) !important;
+    box-shadow: 12px 0 40px rgba(0, 0, 0, 0.55);
+}
+
+body.dark-mode #mainNav a.active {
+    background: linear-gradient(90deg, rgba(16, 185, 129, 0.24) 0%, rgba(34, 211, 238, 0.08) 100%) !important;
+    border-left: 3px solid #34d399 !important;
+    color: #ecfdf5 !important;
+    box-shadow: inset 0 0 20px rgba(16, 185, 129, 0.14);
+}
+
+body.dark-mode .stat-card.glass {
+    background: linear-gradient(145deg, rgba(7, 29, 20, 0.9) 0%, rgba(4, 18, 12, 0.94) 100%) !important;
+    border: 1px solid rgba(52, 211, 153, 0.24) !important;
+    box-shadow: 0 14px 36px -14px rgba(0, 0, 0, 0.65);
+    transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+}
+
+body.dark-mode .stat-card.glass:hover {
+    transform: translateY(-3px);
+    border-color: rgba(52, 211, 153, 0.52) !important;
+    box-shadow: 0 20px 44px -12px rgba(16, 185, 129, 0.28) !important;
+}
+
+body.dark-mode .stat-info p {
+    font-family: 'JetBrains Mono', monospace;
+    font-variant-numeric: tabular-nums;
+}
+
+body.dark-mode .data-table tbody tr:hover {
+    background: rgba(16, 185, 129, 0.08) !important;
+}
+
+body.dark-mode .data-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(110, 231, 183, 0.85) !important;
+    border-bottom: 1px solid rgba(52, 211, 153, 0.22) !important;
+}
+
+body.dark-mode input:focus,
+body.dark-mode select:focus,
+body.dark-mode textarea:focus {
+    outline: none;
+    border-color: #34d399 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.18) !important;
 }
 
 body.dark-mode .fc {

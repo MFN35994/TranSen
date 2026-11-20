@@ -191,6 +191,11 @@ service cloud.firestore {
       allow update, delete: if request.auth != null || isAdmin();
     }
 
+    match /companies/{companyId}/audit_logs/{logId} {
+      allow read, create: if isSignedIn();
+      allow update, delete: if request.auth != null || isAdmin();
+    }
+
     match /feature_telemetry/{featureId} {
       allow read, write: if isSignedIn();
     }

@@ -569,7 +569,11 @@ function hideApp() {
 
 document.getElementById('logoutBtn').onclick = () => {
     stopAutoRefresh();
-    localStorage.clear();
+    if (activeDriversUnsubscribe) {
+        try { activeDriversUnsubscribe(); } catch {}
+        activeDriversUnsubscribe = null;
+    }
+    ['transen_company_token', 'transen_company_id', 'transen_company_name', 'transen_company_code'].forEach(k => localStorage.removeItem(k));
     window.location.reload();
 };
 
@@ -644,6 +648,12 @@ function setupNavigation() {
                 if (typeof window.syncCompanyReviewsAndSupport === 'function') window.syncCompanyReviewsAndSupport();
             } else if (section === 'activity-logs') {
                 if (typeof window.syncCompanyActivityLogs === 'function') window.syncCompanyActivityLogs();
+            } else if (section === 'passengers-crm') {
+                if (typeof window.syncCompanyPassengersCrm === 'function') window.syncCompanyPassengersCrm();
+            } else if (section === 'communications') {
+                if (typeof window.syncCompanyCommunicationsSection === 'function') window.syncCompanyCommunicationsSection();
+            } else if (section === 'analytics') {
+                if (typeof window.syncCompanyAnalyticsSection === 'function') window.syncCompanyAnalyticsSection();
             }
         };
     });
@@ -684,13 +694,13 @@ document.getElementById('confirmSenepayBtn').onclick = async () => {
     const phone = document.getElementById('senepayPhone').value;
     
     if (!amountStr || !phone) {
-        alert("Veuillez remplir tous les champs.");
+        window.showNotificationDrawer("Champs requis", "Veuillez remplir tous les champs.", true);
         return;
     }
 
     const amount = parseFloat(amountStr);
     if (isNaN(amount) || amount <= 0) {
-        alert("Veuillez saisir un montant valide supérieur à 0 FCFA.");
+        window.showNotificationDrawer("Montant invalide", "Veuillez saisir un montant valide supérieur à 0 FCFA.", true);
         return;
     }
     const operator = document.getElementById('senepayOperator').value;
@@ -724,15 +734,15 @@ document.getElementById('confirmSenepayBtn').onclick = async () => {
             if (result.checkoutUrl) {
                 window.location.href = result.checkoutUrl;
             } else {
-                alert(result.message + "\nRéférence: " + (result.reference || "N/A"));
+                window.showNotificationDrawer("Opération SenePay Confirmée", `${result.message || "Opération effectuée"} (Réf : ${result.reference || "N/A"})`, false);
                 document.getElementById('cancelSenepayBtn').click();
                 loadDashboardData(); // Refresh wallet data
             }
         } else {
-            alert("Erreur: " + (result.message || "Action refusée"));
+            window.showNotificationDrawer("Erreur SenePay", result.error || result.message || "Action refusée", true);
         }
     } catch (error) {
-        alert("Erreur réseau avec le serveur SenePay.");
+        window.showNotificationDrawer("Erreur Réseau", "Erreur réseau avec le serveur SenePay.", true);
     } finally {
         btn.innerHTML = "Confirmer"; btn.disabled = false;
     }
@@ -2154,7 +2164,10 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
         const result = await response.json();
 
         if (response.ok) {
-            alert("Trajet(s) planifié(s) avec succès !");
+            window.showNotificationDrawer("Planification Publiée", result.message || "Trajet(s) planifié(s) avec succès !", false);
+            if (typeof window.addAuditLog === 'function') {
+                window.addAuditLog("Planification Bus", `${times.length} départ(s) ${departure} ➔ ${destination} (${parseFloat(price).toLocaleString()} F)`, "PLANIFICATION");
+            }
             
             // Try triggering automatic SMS
             try {
@@ -2172,10 +2185,10 @@ document.getElementById('scheduleTripForm').onsubmit = async (e) => {
             const tripsLink = document.querySelector('#mainNav a[data-section="trips"]');
             if (tripsLink) tripsLink.click();
         } else {
-            alert("Erreur : " + (result.error || "Action impossible"));
+            window.showNotificationDrawer("Erreur Planification", result.error || "Action impossible", true);
         }
     } catch (error) {
-        alert("Erreur de connexion lors de la planification.");
+        window.showNotificationDrawer("Erreur Réseau", "Erreur de connexion lors de la planification.", true);
     } finally {
         btn.innerHTML = originalText;
         btn.disabled = false;
@@ -6918,58 +6931,107 @@ window.submitCompanySupportTicket = async function(e) {
 };
 
 /* ── 7. Journal d'Audit & Export CSV Compagnie (#section-activity-logs) ─── */
-window.syncCompanyActivityLogs = function() {
+// Synchronise aussi chaque nouvelle entrée window.addAuditLog vers Firestore companies/{id}/audit_logs (zéro perte de données)
+(function patchCompanyAuditPersistence() {
+    const origAddAudit = window.addAuditLog;
+    if (typeof origAddAudit === 'function' && !origAddAudit.__auroraCloudPatched) {
+        const wrapped = function(action, details, type) {
+            origAddAudit(action, details, type);
+            if (currentCompanyId) {
+                addDoc(collection(db, "companies", currentCompanyId, "audit_logs"), {
+                    action: String(action || ''),
+                    details: String(details || ''),
+                    category: String(type || 'OPÉRATION'),
+                    date: new Date().toLocaleString('fr-FR'),
+                    createdAtIso: new Date().toISOString(),
+                    createdAt: serverTimestamp()
+                }).catch(() => {});
+            }
+            if (typeof window.renderCompanyActivityLogsTable === 'function') {
+                window.renderCompanyActivityLogsTable();
+            }
+        };
+        wrapped.__auroraCloudPatched = true;
+        window.addAuditLog = wrapped;
+    }
+})();
+
+window.loadedCloudAuditLogs = [];
+
+window.syncCompanyActivityLogs = async function() {
+    if (currentCompanyId) {
+        try {
+            const snap = await getDocs(query(collection(db, "companies", currentCompanyId, "audit_logs"), limit(120)));
+            const cloud = [];
+            snap.forEach(d => cloud.push({ id: d.id, ...d.data() }));
+            cloud.sort((a, b) => String(b.createdAtIso || '').localeCompare(String(a.createdAtIso || '')));
+            window.loadedCloudAuditLogs = cloud;
+        } catch {
+            // Non-blocking fallback to localStorage
+        }
+    }
     window.renderCompanyActivityLogsTable();
 };
+
+function getMergedCompanyAuditLogs() {
+    let local = [];
+    try {
+        const raw = localStorage.getItem('transen_audit_logs') || localStorage.getItem('transen_company_audit_logs') || localStorage.getItem('auditLogs');
+        if (raw) local = JSON.parse(raw);
+    } catch {}
+    if (!Array.isArray(local)) local = [];
+
+    const seen = new Set();
+    const merged = [];
+    [...(window.loadedCloudAuditLogs || []), ...local].forEach(l => {
+        const dateVal = l.date || l.time || l.timestamp || '--';
+        const actVal = l.action || l.title || '--';
+        const detVal = l.details || l.description || '--';
+        const catVal = l.category || l.type || 'OPÉRATION';
+        const sig = `${dateVal}|${actVal}|${detVal}`;
+        if (!seen.has(sig)) {
+            seen.add(sig);
+            merged.push({ date: dateVal, category: catVal, action: actVal, details: detVal });
+        }
+    });
+    return merged;
+}
 
 window.renderCompanyActivityLogsTable = function() {
     const tbody = document.getElementById('b2bActivityLogsTableBody');
     if (!tbody) return;
     const q = (document.getElementById('b2bAuditSearchInput')?.value || '').toLowerCase().trim();
-    let logs = [];
-    try {
-        const raw = localStorage.getItem('transen_company_audit_logs') || localStorage.getItem('auditLogs');
-        if (raw) logs = JSON.parse(raw);
-    } catch {}
-    if (!Array.isArray(logs)) logs = [];
+    const logs = getMergedCompanyAuditLogs();
 
     const filtered = logs.filter(l => {
         if (!q) return true;
-        return `${l.date || l.timestamp || ''} ${l.category || ''} ${l.action || l.title || ''} ${l.details || l.description || ''}`.toLowerCase().includes(q);
+        return `${l.date} ${l.category} ${l.action} ${l.details}`.toLowerCase().includes(q);
     });
 
     if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune action journalisée dans cette session.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" class="loading-cell">Aucune action journalisée pour le moment.</td></tr>`;
         return;
     }
 
     tbody.innerHTML = filtered.slice(0, 150).map(l => `
         <tr>
-            <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-dim);">${escapeHtml(l.date || l.timestamp || '--')}</td>
-            <td><span class="status-tag active">${escapeHtml(l.category || 'OPÉRATION')}</span></td>
-            <td><b>${escapeHtml(l.action || l.title || '--')}</b></td>
-            <td style="color:var(--text-dim);">${escapeHtml(l.details || l.description || '--')}</td>
+            <td style="font-family:'JetBrains Mono',monospace; font-size:0.78rem; color:var(--text-dim);">${escapeHtml(l.date)}</td>
+            <td><span class="status-tag active">${escapeHtml(l.category)}</span></td>
+            <td><b>${escapeHtml(l.action)}</b></td>
+            <td style="color:var(--text-dim);">${escapeHtml(l.details)}</td>
         </tr>
     `).join('');
 };
 
 window.exportCompanyAuditCsv = function() {
-    let logs = [];
-    try {
-        const raw = localStorage.getItem('transen_company_audit_logs') || localStorage.getItem('auditLogs');
-        if (raw) logs = JSON.parse(raw);
-    } catch {}
-    if (!Array.isArray(logs) || logs.length === 0) {
+    const logs = getMergedCompanyAuditLogs();
+    if (logs.length === 0) {
         window.showNotificationDrawer('Export CSV', "Aucune entrée d'audit à exporter.", true);
         return;
     }
     const header = "Date,Categorie,Action,Details\n";
-    const rows = logs.map(l => [
-        l.date || l.timestamp || '',
-        l.category || '',
-        l.action || l.title || '',
-        l.details || l.description || ''
-    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const rows = logs.map(l => [l.date, l.category, l.action, l.details]
+        .map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -6978,17 +7040,264 @@ window.exportCompanyAuditCsv = function() {
     window.showNotificationDrawer('Export Réussi', `${logs.length} lignes d'audit exportées en CSV.`, false);
 };
 
-/* ── 8. Palette de Commandes B2B (Ctrl+K) ───────────────────────────────── */
+/* ── 8. Base Passagers & CRM Compagnie (#section-passengers-crm) ────────── */
+window.loadedCompanyPassengersCrm = [];
+
+window.syncCompanyPassengersCrm = async function() {
+    if (!currentCompanyId) return;
+    const tbody = document.getElementById('b2bPassengersCrmTableBody');
+    try {
+        const list = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/passengers?companyId=${currentCompanyId}`);
+        window.loadedCompanyPassengersCrm = Array.isArray(list) ? list : [];
+        window.renderCompanyPassengersTable();
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Répertoire clients indisponible (${escapeHtml(e.message || 'API hors ligne')}).</td></tr>`;
+    }
+};
+
+window.renderCompanyPassengersTable = function() {
+    const tbody = document.getElementById('b2bPassengersCrmTableBody');
+    const q = (document.getElementById('crmPassengersSearchInput')?.value || '').toLowerCase().trim();
+    const list = window.loadedCompanyPassengersCrm || [];
+
+    const totalEl = document.getElementById('crmTotalPassengersCount');
+    const vipEl = document.getElementById('crmVipPassengersCount');
+    const regEl = document.getElementById('crmRegularPassengersCount');
+    const spentEl = document.getElementById('crmTotalSpentValue');
+
+    const vipCount = list.filter(p => p.tier === 'VIP').length;
+    const regCount = list.filter(p => p.tier === 'RÉGULIER').length;
+    const totalSpent = list.reduce((acc, p) => acc + Number(p.totalSpent || 0), 0);
+
+    if (totalEl) totalEl.innerText = list.length;
+    if (vipEl) vipEl.innerText = vipCount;
+    if (regEl) regEl.innerText = regCount;
+    if (spentEl) spentEl.innerText = `${totalSpent.toLocaleString('fr-FR')} F`;
+
+    if (!tbody) return;
+    const filtered = list.filter(p => {
+        if (!q) return true;
+        return `${p.name} ${p.phone} ${p.email} ${p.tier} ${p.lastRoute}`.toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Aucun passager enregistré dans votre CRM pour le moment.</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = filtered.slice(0, 200).map(p => {
+        const tierStyle = p.tier === 'VIP'
+            ? 'background:rgba(245,184,61,0.2); color:#fde68a; border:1px solid rgba(245,184,61,0.45);'
+            : (p.tier === 'RÉGULIER' ? 'background:rgba(34,211,238,0.16); color:#22d3ee;' : 'background:rgba(16,185,129,0.16); color:#6ee7b7;');
+        return `
+            <tr>
+                <td><b>${escapeHtml(p.name || 'Passager')}</b></td>
+                <td>${escapeHtml(p.phone || '--')}<br><small style="color:var(--text-dim);">${escapeHtml(p.email || '')}</small></td>
+                <td><span class="status-tag" style="${tierStyle}">${escapeHtml(p.tier || 'NOUVEAU')}</span></td>
+                <td style="font-family:'JetBrains Mono',monospace;"><b>${p.bookingsCount || 0}</b> voyage(s) · ${p.totalSeats || 0} siège(s)</td>
+                <td style="font-family:'JetBrains Mono',monospace; color:#6ee7b7; font-weight:800;">${Number(p.totalSpent || 0).toLocaleString('fr-FR')} F</td>
+                <td><b>${escapeHtml(p.lastRoute || '--')}</b><br><small style="color:var(--text-dim);">${p.lastTripDate ? new Date(p.lastTripDate).toLocaleDateString('fr-FR') : ''}</small></td>
+            </tr>
+        `;
+    }).join('');
+};
+
+window.exportCompanyPassengersCsv = function() {
+    const list = window.loadedCompanyPassengersCrm || [];
+    if (list.length === 0) {
+        window.showNotificationDrawer('Export CRM', 'Aucun passager à exporter.', true);
+        return;
+    }
+    const header = "Nom,Telephone,Email,Segment,Voyages,Sieges,TotalDepenseFCFA,DerniereLigne\n";
+    const rows = list.map(p => [
+        p.name || '', p.phone || '', p.email || '', p.tier || '', p.bookingsCount || 0, p.totalSeats || 0, p.totalSpent || 0, p.lastRoute || ''
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `crm-passagers-transen-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    window.showNotificationDrawer('Export CRM Réussi', `${list.length} fiches passagers exportées en CSV.`, false);
+};
+
+/* ── 9. Centre de Communications, Push & Inspecteur Chats (#section-communications) */
+window.syncCompanyCommunicationsSection = function() {
+    const drvSel = document.getElementById('b2bBroadcastDriverTarget');
+    const tripSel = document.getElementById('b2bNotifyTripSelect');
+    const chatSel = document.getElementById('b2bChatTripSelect');
+
+    if (drvSel) {
+        const drivers = window.loadedDriversCache || [];
+        drvSel.innerHTML = `<option value="ALL">📢 Tous les chauffeurs de ma flotte (${drivers.length})</option>` +
+            drivers.map(d => `<option value="${escapeHtml(d.id)}">🚗 ${escapeHtml(d.name)} (${escapeHtml(d.phone)})</option>`).join('');
+    }
+
+    const trips = window.loadedTrips || [];
+    const tripOptionsHtml = `<option value="">Sélectionner une course de votre flotte (${trips.length})...</option>` +
+        trips.slice(0, 80).map(t => {
+            const dt = t.scheduledTime ? new Date(t.scheduledTime).toLocaleDateString('fr-FR') : (t.createdAt ? new Date(t.createdAt).toLocaleDateString('fr-FR') : '');
+            return `<option value="${escapeHtml(t.id)}">[${escapeHtml(t.status)}] ${escapeHtml(t.departure || '--')} ➔ ${escapeHtml(t.destination || '--')} (${dt})</option>`;
+        }).join('');
+
+    if (tripSel) tripSel.innerHTML = tripOptionsHtml;
+    if (chatSel) chatSel.innerHTML = tripOptionsHtml;
+};
+
+window.sendCompanyDriversBroadcast = async function(e) {
+    if (e) e.preventDefault();
+    if (!currentCompanyId) return;
+    const driverId = document.getElementById('b2bBroadcastDriverTarget')?.value || 'ALL';
+    const title = document.getElementById('b2bBroadcastDriverTitle')?.value?.trim();
+    const message = document.getElementById('b2bBroadcastDriverMessage')?.value?.trim();
+    if (!title || !message) return;
+
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/broadcast-drivers?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ driverId, title, message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Diffusion impossible');
+        document.getElementById('b2bBroadcastDriverTitle').value = '';
+        document.getElementById('b2bBroadcastDriverMessage').value = '';
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Diffusion Chauffeurs', `Push "${title}" envoyé à ${data.sentCount} chauffeur(s)`, 'COMMUNICATION');
+        }
+        window.showNotificationDrawer('Diffusion Envoyée', data.message || 'Consigne push diffusée à votre flotte.', false);
+    } catch (err) {
+        window.showNotificationDrawer('Erreur Diffusion', err.message || 'Impossible de diffuser.', true);
+    }
+};
+
+window.sendTripPassengersAnnouncement = async function(e) {
+    if (e) e.preventDefault();
+    if (!currentCompanyId) return;
+    const tripId = document.getElementById('b2bNotifyTripSelect')?.value;
+    const title = document.getElementById('b2bNotifyTripTitle')?.value?.trim();
+    const message = document.getElementById('b2bNotifyTripMessage')?.value?.trim();
+    if (!tripId || !title || !message) {
+        window.showNotificationDrawer('Champs Requis', 'Sélectionnez un départ et saisissez le message passagers.', true);
+        return;
+    }
+
+    try {
+        const res = await customTransenFetch(`${API_BASE_URL}/api/company/dashboard/trips/${encodeURIComponent(tripId)}/notify-passengers?companyId=${currentCompanyId}`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${currentToken}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title, message })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Envoi impossible');
+        document.getElementById('b2bNotifyTripTitle').value = '';
+        document.getElementById('b2bNotifyTripMessage').value = '';
+        if (typeof window.addAuditLog === 'function') {
+            window.addAuditLog('Alerte Passagers Bus', `Notification "${title}" envoyée à ${data.sentCount} passager(s) (trajet #${tripId.substring(0, 6)})`, 'COMMUNICATION');
+        }
+        window.showNotificationDrawer('Passagers Notifiés', data.message || 'Alerte transmise aux passagers.', false);
+    } catch (err) {
+        window.showNotificationDrawer('Erreur Envoi', err.message || 'Impossible de notifier les passagers.', true);
+    }
+};
+
+window.inspectCompanyTripChat = async function() {
+    const tripId = document.getElementById('b2bChatTripSelect')?.value;
+    const box = document.getElementById('b2bTripChatMessagesBox');
+    if (!box) return;
+    if (!tripId) {
+        window.showNotificationDrawer('Sélection Requise', 'Veuillez sélectionner une course de votre flotte.', true);
+        return;
+    }
+    box.innerHTML = `<i class="fas fa-spinner fa-spin" style="color:var(--primary);"></i> Chargement du salon de discussion trips/${escapeHtml(tripId)}/messages...`;
+    try {
+        const snap = await getDocs(query(collection(db, "trips", tripId, "messages"), limit(60)));
+        if (snap.empty) {
+            box.innerHTML = `<span style="color:var(--text-dim);">Aucun message échangé entre le chauffeur et les passagers sur cette course.</span>`;
+            return;
+        }
+        const msgs = [];
+        snap.forEach(d => msgs.push({ id: d.id, ...d.data() }));
+        box.innerHTML = msgs.map(m => {
+            const sender = escapeHtml(m.senderName || m.senderRole || m.senderId || 'Participant');
+            const text = escapeHtml(m.text || m.message || '[Média / Audio]');
+            const time = m.timestamp?.toDate ? m.timestamp.toDate().toLocaleTimeString('fr-FR') : '';
+            return `
+                <div style="padding:9px 12px; margin-bottom:7px; border-radius:9px; background:rgba(255,255,255,0.04); border:1px solid rgba(52,211,153,0.18); display:flex; justify-content:space-between; gap:10px;">
+                    <div><strong style="color:#6ee7b7;">${sender} :</strong> <span style="color:var(--text-main);">${text}</span></div>
+                    <small style="color:var(--text-dim); font-family:'JetBrains Mono',monospace;">${escapeHtml(time)}</small>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        box.innerHTML = `<span style="color:var(--red);">Erreur de lecture du chat (${escapeHtml(err.message)}).</span>`;
+    }
+};
+
+/* ── 10. Analytics P&L, Rentabilité par Ligne & Réconciliation (#section-analytics) */
+window.syncCompanyAnalyticsSection = async function() {
+    if (!currentCompanyId) return;
+    const tbody = document.getElementById('b2bRouteProfitabilityTableBody');
+    try {
+        const data = await fetchWithAuth(`${API_BASE_URL}/api/company/dashboard/analytics?companyId=${currentCompanyId}`);
+        const sum = data.summary || {};
+        const routes = Array.isArray(data.routes) ? data.routes : [];
+
+        const spEl = document.getElementById('anSenePayOnlineVal');
+        const cashEl = document.getElementById('anCashOnBoardVal');
+        const costEl = document.getElementById('anTotalCostsVal');
+        const netEl = document.getElementById('anNetProfitVal');
+
+        const costs = Number(sum.totalCommission2Pct || 0) + Number(sum.approvedExpenses || 0);
+        if (spEl) spEl.innerText = `${Number(sum.onlineSenePayRevenue || 0).toLocaleString('fr-FR')} F`;
+        if (cashEl) cashEl.innerText = `${Number(sum.cashOnBoardRevenue || 0).toLocaleString('fr-FR')} F`;
+        if (costEl) costEl.innerText = `${costs.toLocaleString('fr-FR')} F`;
+        if (netEl) netEl.innerText = `${Number(sum.netProfit || 0).toLocaleString('fr-FR')} F`;
+
+        if (!tbody) return;
+        if (routes.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Aucune ligne exploitée pour le moment.</td></tr>`;
+            return;
+        }
+        tbody.innerHTML = routes.map(r => {
+            const occ = Number(r.occupancyPct || 0);
+            return `
+                <tr>
+                    <td><b>${escapeHtml(r.route)}</b></td>
+                    <td style="font-family:'JetBrains Mono',monospace;">${r.tripsCount || 0}</td>
+                    <td style="min-width:140px;">
+                        <div style="display:flex; justify-content:space-between; font-size:0.78rem; margin-bottom:4px; font-family:'JetBrains Mono',monospace;">
+                            <span style="color:#22d3ee;">${occ}%</span>
+                            <span style="color:var(--text-dim);">${r.seatsOccupied || 0}/${r.seatsTotal || 0}</span>
+                        </div>
+                        <div style="height:6px; border-radius:4px; background:rgba(255,255,255,0.06); overflow:hidden;">
+                            <div style="height:100%; width:${Math.min(100, occ)}%; background:linear-gradient(90deg, #10b981, #22d3ee, #f5b83d);"></div>
+                        </div>
+                    </td>
+                    <td style="font-family:'JetBrains Mono',monospace; font-weight:700;">${Number(r.grossRevenue || 0).toLocaleString('fr-FR')} F</td>
+                    <td style="font-family:'JetBrains Mono',monospace; color:#fda4af;">-${Number(r.commission2Pct || 0).toLocaleString('fr-FR')} F</td>
+                    <td style="font-family:'JetBrains Mono',monospace; color:#6ee7b7; font-weight:800;">${Number(r.netRevenue || 0).toLocaleString('fr-FR')} F</td>
+                </tr>
+            `;
+        }).join('');
+    } catch (e) {
+        if (tbody) tbody.innerHTML = `<tr><td colspan="6" class="loading-cell">Calcul P&L indisponible (${escapeHtml(e.message || 'API hors ligne')}).</td></tr>`;
+    }
+};
+
+/* ── 11. Palette de Commandes B2B (Ctrl+K — 14 Modules) ─────────────────── */
 const B2B_COMMAND_MODULES = [
     { section: 'dashboard', icon: 'fa-th-large', title: "Vue d'ensemble & Radar GPS Flotte" },
     { section: 'fleet-sentinel', icon: 'fa-radar', title: "Sentinelle Flotte & Alertes Opérationnelles" },
+    { section: 'analytics', icon: 'fa-chart-pie', title: "Rentabilité P&L, Performance par Ligne & Cash/SenePay" },
     { section: 'trips', icon: 'fa-route', title: "Courses & Dispatching Flotte" },
     { section: 'boarding', icon: 'fa-qrcode', title: "Scanner QR d'Embarquement, Billets & Colis Yobanté" },
     { section: 'schedule', icon: 'fa-calendar-days', title: "Planification & Calendrier des Départs" },
     { section: 'drivers', icon: 'fa-users-viewfinder', title: "Mes Chauffeurs, Véhicules & Discipline" },
+    { section: 'passengers-crm', icon: 'fa-address-book', title: "Base Clients / Passagers VIP & Export CRM" },
+    { section: 'communications', icon: 'fa-tower-broadcast', title: "Diffusion Push Chauffeurs, Alerte Bus & Chats" },
     { section: 'wallet', icon: 'fa-wallet', title: "Trésorerie TransPay, SenePay & Notes de Frais" },
     { section: 'reviews-support', icon: 'fa-star-half-stroke', title: "Avis Clients & Ticket Support TranSen" },
-    { section: 'activity-logs', icon: 'fa-clipboard-list', title: "Journal d'Audit & Export CSV" },
+    { section: 'activity-logs', icon: 'fa-clipboard-list', title: "Journal d'Audit Cloud & Export CSV" },
     { section: 'kyc', icon: 'fa-id-card-clip', title: "Dossier KYC & Agrément Transport" },
     { section: 'profile', icon: 'fa-user-gear', title: "Paramètres Compagnie & Sécurité" }
 ];
