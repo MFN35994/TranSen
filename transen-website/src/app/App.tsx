@@ -210,7 +210,7 @@ function AppContent() {
     <div className="min-h-screen flex flex-col overflow-x-clip relative bg-[#03100b] text-slate-100">
       <PremiumAmbientEngine />
       <Header emergencyBanner={emergencyBanner} />
-      <main className={`flex-1 z-10 relative ${emergencyBanner ? "pt-[116px]" : "pt-[76px]"}`}>
+      <main className={`flex-1 z-10 relative ${emergencyBanner ? "pt-[148px] lg:pt-[116px]" : "pt-[110px] lg:pt-[76px]"}`}>
         <Suspense fallback={<PageSkeleton />}>
           <AnimatePresence mode="wait">
             <Routes location={location} key={location.pathname}>

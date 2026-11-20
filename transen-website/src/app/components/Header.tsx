@@ -56,21 +56,21 @@ export function Header({ emergencyBanner }: HeaderProps) {
       style={
         scrolled
           ? {
-              backgroundColor: "rgba(3, 16, 11, 0.92)",
+              backgroundColor: "rgba(3, 16, 11, 0.94)",
               backdropFilter: "blur(24px) saturate(165%)",
               WebkitBackdropFilter: "blur(24px) saturate(165%)",
-              borderColor: "rgba(52, 211, 153, 0.28)",
+              borderColor: "rgba(52, 211, 153, 0.3)",
               boxShadow: "0 20px 52px -16px rgba(0, 0, 0, 0.85), 0 1px 0 rgba(52, 211, 153, 0.16) inset",
             }
           : {
-              backgroundColor: "rgba(3, 16, 11, 0.78)",
+              backgroundColor: "rgba(3, 16, 11, 0.82)",
               backdropFilter: "blur(18px) saturate(145%)",
               WebkitBackdropFilter: "blur(18px) saturate(145%)",
               borderColor: "rgba(255, 255, 255, 0.09)",
             }
       }
     >
-      {/* Super-Admin Emergency Broadcast Banner (integrated inside fixed header so it never overlaps) */}
+      {/* Super-Admin Emergency Broadcast Banner */}
       {emergencyBanner && (
         <div className="bg-gradient-to-r from-rose-700 via-amber-600 to-rose-700 text-white text-xs sm:text-sm font-bold py-2 px-4 text-center border-b border-white/20 flex items-center justify-center gap-2">
           <Zap className="w-3.5 h-3.5 shrink-0" />
@@ -78,7 +78,7 @@ export function Header({ emergencyBanner }: HeaderProps) {
         </div>
       )}
 
-      {/* Top micro luminous aura */}
+      {/* Main Header Row */}
       <div className="relative">
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-400/55 to-transparent pointer-events-none" />
 
@@ -88,42 +88,42 @@ export function Header({ emergencyBanner }: HeaderProps) {
           style={{ scaleX }}
         />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-[76px] gap-2">
+        <div className="max-w-[1400px] mx-auto px-3 sm:px-5 lg:px-6">
+          <div className="flex justify-between items-center h-[68px] lg:h-[76px] gap-2">
             {/* Brand Logo + Telemetry Wordmark */}
             <Link
               to="/"
-              className="flex items-center gap-3 group focus-visible:outline-2 focus-visible:outline-emerald-400 rounded-2xl shrink-0"
+              className="flex items-center gap-2.5 group focus-visible:outline-2 focus-visible:outline-emerald-400 rounded-2xl shrink-0"
             >
               <div className="relative p-[2px] rounded-2xl bg-gradient-to-br from-emerald-400 via-cyan-400 to-amber-400 shadow-[0_0_25px_rgba(16,185,129,0.35)] group-hover:shadow-[0_0_32px_rgba(34,211,238,0.55)] group-hover:scale-105 transition-all duration-300">
                 <div className="bg-slate-950 rounded-[14px] p-1">
                   <img
                     src="/logo.png"
                     alt="TranSen Logo"
-                    className="w-9 h-9 rounded-[10px] object-contain bg-white"
+                    className="w-8 h-8 lg:w-9 lg:h-9 rounded-[10px] object-contain bg-white"
                   />
                 </div>
                 <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#03100b] animate-pulse" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xl leading-none font-extrabold tracking-tight text-white font-display">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-lg lg:text-xl leading-none font-extrabold tracking-tight text-white font-display">
                     Tran<span className="text-gradient-aurora">Sen</span>
                   </span>
-                  <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+                  <span className="hidden sm:inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
                     2%
                   </span>
                 </div>
-                <div className="text-[10px] text-slate-400 font-mono uppercase tracking-[0.16em] leading-none mt-1.5 flex items-center gap-1.5">
+                <div className="text-[9.5px] text-slate-400 font-mono uppercase tracking-[0.14em] leading-none mt-1 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
                   Mobilité Sénégal
                 </div>
               </div>
             </Link>
 
-            {/* Desktop Navigation Pill Bar */}
+            {/* Desktop Navigation Pill Bar (Visible dès 1024px / lg) */}
             <nav
-              className="hidden xl:flex items-center gap-0.5 p-1.5 rounded-full bg-white/[0.03] border border-white/[0.08] backdrop-blur-xl shadow-inner"
+              className="hidden lg:flex items-center gap-0.5 p-1 rounded-full bg-white/[0.035] border border-white/[0.09] backdrop-blur-xl shadow-inner overflow-x-auto max-w-full"
               aria-label="Navigation principale"
             >
               {NAV_LINKS.map((link) => {
@@ -132,17 +132,17 @@ export function Header({ emergencyBanner }: HeaderProps) {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`relative px-3 py-1.5 rounded-full text-[12.5px] font-semibold transition-all duration-200 whitespace-nowrap ${
+                    className={`relative px-2.5 xl:px-3 py-1.5 rounded-full text-[11.5px] xl:text-[12.5px] font-semibold transition-all duration-200 whitespace-nowrap shrink-0 ${
                       active
                         ? "text-white"
-                        : "text-slate-300/85 hover:text-white hover:bg-white/[0.05]"
+                        : "text-slate-300/90 hover:text-white hover:bg-white/[0.06]"
                     }`}
                   >
                     {active && (
                       <motion.div
                         layoutId="aurora-nav-pill"
                         transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                        className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500/25 via-cyan-500/20 to-emerald-500/25 border border-emerald-400/40 shadow-[0_0_20px_rgba(16,185,129,0.25)] -z-10"
+                        className="absolute inset-0 rounded-full bg-gradient-to-r from-emerald-500/30 via-cyan-500/20 to-emerald-500/30 border border-emerald-400/45 shadow-[0_0_20px_rgba(16,185,129,0.28)] -z-10"
                       />
                     )}
                     <span className="relative z-10 flex items-center gap-1">
@@ -157,17 +157,17 @@ export function Header({ emergencyBanner }: HeaderProps) {
             </nav>
 
             {/* Desktop Action CTAs */}
-            <div className="hidden md:flex items-center gap-2.5 shrink-0">
+            <div className="hidden md:flex items-center gap-2 shrink-0">
               <Link
                 to="/chauffeurs"
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-xs font-bold text-emerald-200 bg-emerald-500/10 border border-emerald-400/30 hover:bg-emerald-500/20 hover:border-emerald-300/60 hover:text-white transition-all duration-200 hover:-translate-y-0.5"
+                className="hidden xl:inline-flex items-center gap-1.5 px-3 py-2 rounded-full text-xs font-bold text-emerald-200 bg-emerald-500/10 border border-emerald-400/30 hover:bg-emerald-500/20 hover:border-emerald-300/60 hover:text-white transition-all duration-200 hover:-translate-y-0.5 whitespace-nowrap"
               >
                 <UserPlus className="w-3.5 h-3.5 text-cyan-300" />
                 <span>Chauffeurs</span>
               </Link>
               <Link
                 to="/contact#telecharger"
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs text-slate-950 font-extrabold transition-all duration-200 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 hover:from-amber-200 hover:to-yellow-200 shadow-[0_8px_25px_-4px_rgba(245,184,61,0.55)] hover:shadow-[0_12px_32px_-4px_rgba(245,184,61,0.8)] hover:-translate-y-0.5"
+                className="inline-flex items-center gap-1.5 px-3.5 xl:px-4 py-2 rounded-full text-xs text-slate-950 font-extrabold transition-all duration-200 bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-300 hover:from-amber-200 hover:to-yellow-200 shadow-[0_8px_25px_-4px_rgba(245,184,61,0.55)] hover:shadow-[0_12px_32px_-4px_rgba(245,184,61,0.8)] hover:-translate-y-0.5 whitespace-nowrap"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Application</span>
@@ -178,7 +178,7 @@ export function Header({ emergencyBanner }: HeaderProps) {
             <button
               type="button"
               onClick={() => setMenuOpen(!menuOpen)}
-              className="xl:hidden p-2.5 rounded-xl text-emerald-300 bg-white/[0.05] border border-white/10 hover:bg-emerald-500/15 hover:border-emerald-400/40 transition-colors cursor-pointer"
+              className="lg:hidden p-2 rounded-xl text-emerald-300 bg-white/[0.05] border border-white/10 hover:bg-emerald-500/15 hover:border-emerald-400/40 transition-colors cursor-pointer"
               aria-label={menuOpen ? "Fermer le menu" : "Ouvrir le menu"}
               aria-expanded={menuOpen}
             >
@@ -186,9 +186,40 @@ export function Header({ emergencyBanner }: HeaderProps) {
             </button>
           </div>
         </div>
+
+        {/* Always-Visible Compact Page Bar on Tablet & Mobile (< 1024px) */}
+        <nav
+          className="lg:hidden border-t border-white/[0.07] bg-[#020d09]/70 px-3 py-1.5 overflow-x-auto"
+          aria-label="Accès direct pages"
+          style={{ scrollbarWidth: "none" }}
+        >
+          <div className="flex items-center gap-1.5 w-max">
+            {NAV_LINKS.map((link) => {
+              const active = isActive(link.path);
+              return (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`px-3 py-1 rounded-full text-[11.5px] font-semibold whitespace-nowrap transition-all ${
+                    active
+                      ? "bg-emerald-500/25 text-white border border-emerald-400/45 shadow-[0_0_12px_rgba(16,185,129,0.25)]"
+                      : "text-slate-300 bg-white/[0.03] border border-white/[0.06] hover:text-white"
+                  }`}
+                >
+                  <span className="inline-flex items-center gap-1">
+                    {link.name}
+                    {link.path === "/investir" && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    )}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
       </div>
 
-      {/* Mobile / Tablet Glass Drawer */}
+      {/* Mobile / Tablet Full Glass Drawer */}
       <AnimatePresence>
         {menuOpen && (
           <motion.div
@@ -196,7 +227,7 @@ export function Header({ emergencyBanner }: HeaderProps) {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="xl:hidden overflow-y-auto max-h-[calc(100vh-80px)] border-t border-emerald-500/20"
+            className="lg:hidden overflow-y-auto max-h-[calc(100vh-115px)] border-t border-emerald-500/20"
             style={{
               backgroundColor: "rgba(3, 16, 11, 0.97)",
               backdropFilter: "blur(28px)",
@@ -205,7 +236,7 @@ export function Header({ emergencyBanner }: HeaderProps) {
           >
             <nav
               className="max-w-7xl mx-auto px-4 py-5 flex flex-col gap-1.5"
-              aria-label="Navigation mobile"
+              aria-label="Navigation mobile complète"
             >
               {NAV_LINKS.map((link) => {
                 const active = isActive(link.path);
@@ -213,9 +244,9 @@ export function Header({ emergencyBanner }: HeaderProps) {
                   <Link
                     key={link.path}
                     to={link.path}
-                    className={`flex items-center justify-between py-3 px-4 rounded-2xl transition-all text-sm font-semibold ${
+                    className={`flex items-center justify-between py-2.5 px-4 rounded-2xl transition-all text-sm font-semibold ${
                       active
-                        ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/10 text-emerald-300 border border-emerald-400/35 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                        ? "bg-gradient-to-r from-emerald-500/20 to-cyan-500/10 text-emerald-300 border border-emerald-400/35"
                         : "text-slate-300 hover:bg-white/[0.04] hover:text-white"
                     }`}
                   >
@@ -232,7 +263,6 @@ export function Header({ emergencyBanner }: HeaderProps) {
                 );
               })}
 
-              {/* Quick direct links to live platforms */}
               <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-[11px] font-mono">
                 <a
                   href="https://app.transen.org"
