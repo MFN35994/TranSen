@@ -1,11 +1,11 @@
 {
-    "name": "TranSen",
+    "name": "TranSen Aurora",
     "short_name": "TranSen",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "TranSen - Transport et livraison.",
+    "background_color": "#03100B",
+    "theme_color": "#10B981",
+    "description": "TranSen Aurora — Infrastructure numérique de transport urbain, interurbain et livraison Yobanté au Sénégal.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

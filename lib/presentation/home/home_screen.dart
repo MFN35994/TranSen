@@ -947,7 +947,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1E24) : Colors.white,
+          color: isDark ? TranSenColors.deepSurface : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
         ),
         child: Column(
@@ -1892,7 +1892,7 @@ class _PremiumActionCardState extends State<PremiumActionCard> with SingleTicker
                 ),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF252525) : Colors.white,
+                    color: isDark ? TranSenColors.glassSurface : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Material(
@@ -1985,7 +1985,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.8,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
@@ -2002,7 +2002,7 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
                 child: Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF252525) : Colors.white,
+                    color: isDark ? TranSenColors.glassSurface : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: TranSenColors.primaryGreen.withValues(alpha: 0.3), width: 1),
                   ),

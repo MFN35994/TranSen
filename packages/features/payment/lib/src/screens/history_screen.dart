@@ -22,10 +22,10 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
     final isDriver = auth?.role == 'driver';
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Historique des Trajets'),
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -205,7 +205,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       elevation: 0,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      color: isDark ? TranSenColors.glassSurface : Colors.white,
       child: Column(
         children: [
           ListTile(

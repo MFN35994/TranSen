@@ -70,12 +70,12 @@ class _SubscriptionScreenState extends ConsumerState<SubscriptionScreen> {
     final userId = auth?.userId ?? '';
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1923),
+      backgroundColor: TranSenColors.obsidianBg,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
+        backgroundColor: TranSenColors.deepSurface,
         elevation: 0,
-        title: const Text('Abonnement TranSen', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: const Text('Abonnement TranSen Aurora', style: TextStyle(color: TranSenColors.auroraTextPrimary, fontWeight: FontWeight.w800)),
+        iconTheme: const IconThemeData(color: TranSenColors.auroraTextPrimary),
       ),
       body: userId.isEmpty
           ? const Center(child: CircularProgressIndicator(color: TranSenColors.primaryGreen))

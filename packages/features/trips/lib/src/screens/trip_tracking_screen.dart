@@ -217,7 +217,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           builder: (context, scrollController) {
             return Container(
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+                color: isDark ? TranSenColors.deepSurface : TranSenColors.lightBg,
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -263,7 +263,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                      color: isDark ? TranSenColors.glassSurface : Colors.white,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Row(
@@ -311,7 +311,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                                 constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
                                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
                                 decoration: BoxDecoration(
-                                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                                  color: isDark ? TranSenColors.glassSurface : Colors.white,
                                   borderRadius: BorderRadius.circular(40),
                                   border: Border.all(
                                     color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),

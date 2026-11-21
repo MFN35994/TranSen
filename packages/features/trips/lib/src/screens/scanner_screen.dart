@@ -146,19 +146,22 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFF03100B),
       appBar: AppBar(
-        title: const Text('Scanner de Billet'),
+        backgroundColor: const Color(0xFF061510),
+        foregroundColor: Colors.white,
+        title: const Text('Scanner de Billet QR', style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            color: Colors.white,
-            icon: const Icon(Icons.flash_on),
-            iconSize: 32.0,
+            color: const Color(0xFFFDE68A),
+            icon: const Icon(Icons.flash_on_rounded),
+            iconSize: 26.0,
             onPressed: () => cameraController.toggleTorch(),
           ),
           IconButton(
-            color: Colors.white,
-            icon: const Icon(Icons.cameraswitch),
-            iconSize: 32.0,
+            color: const Color(0xFF34D399),
+            icon: const Icon(Icons.cameraswitch_rounded),
+            iconSize: 26.0,
             onPressed: () => cameraController.switchCamera(),
           ),
         ],
@@ -169,21 +172,21 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             controller: cameraController,
             onDetect: _handleScan,
           ),
-          // Glowing Viewfinder Frame
+          // Glowing TranSen Aurora Viewfinder Frame
           Center(
             child: Container(
               width: 250,
               height: 250,
               decoration: BoxDecoration(
                 border: Border.all(
-                  color: const Color(0xFF1A8B44),
+                  color: const Color(0xFF34D399),
                   width: 3,
                 ),
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: const Color(0xFF1A8B44).withValues(alpha: 0.25),
-                    blurRadius: 20,
+                    color: const Color(0xFF10B981).withValues(alpha: 0.35),
+                    blurRadius: 24,
                     spreadRadius: 2,
                   ),
                 ],
@@ -194,7 +197,7 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
             Container(
               color: Colors.black54,
               child: const Center(
-                child: CircularProgressIndicator(color: Color(0xFF1A8B44)),
+                child: CircularProgressIndicator(color: Color(0xFF34D399)),
               ),
             ),
           Align(
@@ -207,12 +210,13 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
                     decoration: BoxDecoration(
-                      color: Colors.black87,
+                      color: const Color(0xE6061510),
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0x4D34D399)),
                     ),
                     child: const Text(
                       'Placez le QR Code du billet dans le cadre',
-                      style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w600),
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -220,14 +224,14 @@ class _ScannerScreenState extends ConsumerState<ScannerScreen> {
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => _showManualCodeDialog(context),
-                      icon: const Icon(Icons.keyboard_alt_outlined, color: Colors.white),
+                      icon: const Icon(Icons.keyboard_alt_outlined, color: Color(0xFF022C22)),
                       label: const Text(
                         'Saisir le code manuellement (ex: TX-...)',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13.5),
+                        style: TextStyle(color: Color(0xFF022C22), fontWeight: FontWeight.w800, fontSize: 13.5),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF1A8B44),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        backgroundColor: const Color(0xFF10B981),
+                        padding: const EdgeInsets.symmetric(vertical: 15),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),

@@ -361,7 +361,7 @@ class _ChatAssistantScreenState extends ConsumerState<ChatAssistantScreen> {
                 hintText: "Écrivez votre question...",
                 hintStyle: TextStyle(color: Colors.grey.shade500, fontSize: 14),
                 filled: true,
-                fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.grey.shade100,
+                fillColor: isDark ? TranSenColors.glassSurface : Colors.grey.shade100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(25),
                   borderSide: BorderSide.none,

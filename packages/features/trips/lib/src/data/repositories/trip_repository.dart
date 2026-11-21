@@ -612,7 +612,9 @@ class TripRepository {
             type: type,
             category: cat,
             driverName: json['driverName'],
-            createdAt: json['createdAt'] != null ? DateTime.parse(json['createdAt']) : DateTime.now(),
+            createdAt: json['createdAt'] != null
+                ? (DateTime.tryParse(json['createdAt'].toString()) ?? DateTime.now())
+                : DateTime.now(),
           );
         }).toList();
       }

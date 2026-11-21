@@ -382,7 +382,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
           return Scaffold(
             appBar: AppBar(
               title: const Text('Itinéraire Porte-à-Porte'),
-              backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1A1A1A) : Colors.black87,
+              backgroundColor: Theme.of(context).brightness == Brightness.dark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
               foregroundColor: Colors.white,
             ),
             body: Column(
@@ -393,7 +393,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: Theme.of(context).brightness == Brightness.dark 
-                        ? [const Color(0xFF1A1A1A), const Color(0xFF0A0A0A)]
+                        ? [TranSenColors.deepSurface, TranSenColors.obsidianBg]
                         : [Colors.black87, Colors.black],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
@@ -711,7 +711,7 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? TranSenColors.glassSurface : Colors.white,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05)),
         boxShadow: [

@@ -153,7 +153,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
                     child: Container(
                       padding: const EdgeInsets.all(30),
                       decoration: BoxDecoration(
-                        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                        color: isDark ? TranSenColors.deepSurface : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Column(
@@ -400,7 +400,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           elevation: 0,
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white.withValues(alpha: 0.5),
+          color: isDark ? TranSenColors.glassSurface : Colors.white.withValues(alpha: 0.7),
           child: InkWell(
             borderRadius: BorderRadius.circular(15),
             onTap: () => _showTransactionDetails(context, txn),
@@ -495,7 +495,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
       builder: (context) => Container(
         padding: const EdgeInsets.all(25),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+          color: isDark ? TranSenColors.deepSurface : Colors.white,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
         ),
         child: Column(
@@ -506,7 +506,7 @@ class _WalletScreenState extends ConsumerState<WalletScreen> {
             RepaintBoundary(
               key: _receiptBoundaryKey,
               child: Container(
-                color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+                color: isDark ? TranSenColors.deepSurface : Colors.white,
                 child: Column(
                   children: [
                     const Text('REÇU DE TRANSACTION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.5, color: Colors.grey)),

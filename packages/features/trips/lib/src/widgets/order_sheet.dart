@@ -460,7 +460,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: AnimatedSize(
@@ -1501,7 +1501,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E293B) : Colors.white,
+              color: isDark ? TranSenColors.glassSurface : Colors.white,
               borderRadius: BorderRadius.circular(40),
               border: Border.all(color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1), width: 3),
             ),
@@ -2042,7 +2042,7 @@ class _GlowingSeatWidgetState extends State<GlowingSeatWidget> with SingleTicker
             decoration: BoxDecoration(
               color: widget.isSelected 
                   ? const Color(0xFFFFD700) 
-                  : (isDark ? const Color(0xFF1E293B) : Colors.white),
+                  : (isDark ? TranSenColors.glassSurface : Colors.white),
               borderRadius: BorderRadius.circular(10),
               border: Border.all(
                 color: widget.isSelected 

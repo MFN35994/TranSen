@@ -777,7 +777,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
   Widget _buildDriverBottomNavBar(bool isDark, bool isCompanyDriver, String currentUserId) {
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF0F172A) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
@@ -1490,7 +1490,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       margin: const EdgeInsets.only(right: 15),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
@@ -1584,7 +1584,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
       width: 195,
       margin: const EdgeInsets.only(right: 14),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A).withValues(alpha: 0.9) : Colors.white.withValues(alpha: 0.9),
+        color: isDark ? TranSenColors.glassSurface.withValues(alpha: 0.94) : Colors.white.withValues(alpha: 0.94),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
             color: TranSenColors.primaryGreen.withValues(alpha: 0.4),
@@ -1708,7 +1708,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
           final isDarkTheme = Theme.of(ctx).brightness == Brightness.dark;
           return Container(
             decoration: BoxDecoration(
-              color: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+              color: isDarkTheme ? TranSenColors.deepSurface : Colors.white,
               borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             padding: EdgeInsets.only(
@@ -1759,7 +1759,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                       hint: const Text('Sélectionner le départ'),
                       value: _pubDeparture,
                       isExpanded: true,
-                      dropdownColor: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+                      dropdownColor: isDarkTheme ? TranSenColors.deepSurface : Colors.white,
                       items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                       onChanged: (val) { setState(() => _pubDeparture = val); setModalState(() {}); },
                     ),
@@ -1780,7 +1780,7 @@ class _DriverHomeScreenState extends ConsumerState<DriverHomeScreen> with Single
                       hint: const Text("Sélectionner l'arrivée"),
                       value: _pubDestination,
                       isExpanded: true,
-                      dropdownColor: isDarkTheme ? const Color(0xFF1A1A1A) : Colors.white,
+                      dropdownColor: isDarkTheme ? TranSenColors.deepSurface : Colors.white,
                       items: _regions.map((r) => DropdownMenuItem(value: r, child: Text(r))).toList(),
                       onChanged: (val) { setState(() => _pubDestination = val); setModalState(() {}); },
                     ),

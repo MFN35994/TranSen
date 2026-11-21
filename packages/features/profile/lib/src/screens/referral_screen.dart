@@ -17,11 +17,13 @@ class ReferralScreen extends ConsumerWidget {
       return const Scaffold(body: Center(child: Text("Non connecté")));
     }
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Parrainage & Gains'),
-        backgroundColor: TranSenColors.primaryGreen,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
         elevation: 0,
       ),
@@ -29,13 +31,13 @@ class ReferralScreen extends ConsumerWidget {
         stream: FirebaseFirestore.instanceFor(app: Firebase.app(), databaseId: 'transen').collection('users').doc(auth.userId).snapshots(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+            return const Center(child: CircularProgressIndicator(color: TranSenColors.auroraEmeraldLight));
           }
-          
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          final data = snapshot.data!.data() as Map<String, dynamic>;
-          String referralCode = data['referralCode'] ?? "TS${auth.userId.substring(0, 4).toUpperCase()}";
-          int points = (data['bonusPoints'] ?? 0).toInt();
+
+          final data = (snapshot.data?.data() as Map<String, dynamic>?) ?? {};
+          final shortId = auth.userId.length >= 4 ? auth.userId.substring(0, 4) : auth.userId.padRight(4, 'X');
+          String referralCode = data['referralCode']?.toString() ?? "TS${shortId.toUpperCase()}";
+          int points = ((data['bonusPoints'] as num?) ?? 0).toInt();
           int fcfaValue = points * 25;
 
           return SingleChildScrollView(
@@ -116,7 +118,7 @@ class ReferralScreen extends ConsumerWidget {
                 Container(
                   padding: const EdgeInsets.all(25),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF252525) : Colors.grey.shade50,
+                    color: isDark ? TranSenColors.glassSurface : Colors.white,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(color: isDark ? Colors.white10 : Colors.grey.shade200),
                   ),

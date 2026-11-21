@@ -636,7 +636,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
   Widget _buildStatBanner(bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      color: isDark ? const Color(0xFF1E293B) : Colors.white,
+      color: isDark ? TranSenColors.glassSurface : Colors.white,
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
@@ -847,7 +847,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
       ),
-      backgroundColor: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF1E293B) : Colors.white,
+      backgroundColor: Theme.of(context).brightness == Brightness.dark ? TranSenColors.deepSurface : Colors.white,
       builder: (context) {
         final b = seat.booking!;
         final name = b['passengerName'] ?? 'N/A';
@@ -1212,7 +1212,7 @@ class _QRScannerScreenState extends State<QRScannerScreen> with SingleTickerProv
             child: Container(
               padding: const EdgeInsets.all(24),
               decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
+                color: TranSenColors.glassSurface,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
               ),
               child: Column(

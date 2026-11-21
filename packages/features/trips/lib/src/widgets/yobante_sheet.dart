@@ -349,7 +349,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       ),
       child: AnimatedSize(
