@@ -20,10 +20,10 @@ class StatisticsScreen extends ConsumerWidget {
     final ratingCountAsync = ref.watch(driverRatingCountProvider(driverId));
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Mes Statistiques'),
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.black87,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
         foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
@@ -114,7 +114,7 @@ class StatisticsScreen extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? TranSenColors.glassSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(

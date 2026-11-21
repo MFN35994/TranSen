@@ -78,12 +78,12 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : const Color(0xFFF8F9FA),
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: const Text('Reçu de Course'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: isDark ? Colors.white : Colors.black87,
+        foregroundColor: TranSenColors.primaryText(isDark),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.pop(context),
@@ -102,7 +102,7 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                     margin: const EdgeInsets.only(top: 40),
                     padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.grey[900] : Colors.white,
+                      color: isDark ? TranSenColors.glassSurface : Colors.white,
                       borderRadius: BorderRadius.circular(24),
                       boxShadow: [
                         BoxShadow(

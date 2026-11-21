@@ -63,18 +63,18 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(widget.otherPartyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const Text('En ligne', style: TextStyle(fontSize: 12, color: TranSenColors.primaryGreen)),
+            Text(widget.otherPartyName, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+            const Text('En ligne · Messagerie chiffrée', style: TextStyle(fontSize: 11.5, color: TranSenColors.auroraEmeraldLight)),
           ],
         ),
-        backgroundColor: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        foregroundColor: isDark ? Colors.white : Colors.black,
-        elevation: 1,
+        backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
       body: Column(
         children: [
@@ -120,16 +120,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
   Widget _buildInputArea(bool isDark) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1A1A1A) : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
-          ),
-        ],
+        color: isDark ? TranSenColors.deepSurface : Colors.white,
+        border: Border(
+          top: BorderSide(color: isDark ? TranSenColors.glassBorder : TranSenColors.lightBorder),
+        ),
       ),
       child: Row(
         children: [

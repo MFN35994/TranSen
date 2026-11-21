@@ -9,6 +9,19 @@ class ApiClient {
 
   late Dio dio;
 
+  /// Client HTTP mutualisé avec timeouts pour les API tierces (Mapbox, OpenStreetMap)
+  /// sans fuite de JWT TranSen vers des serveurs externes.
+  static final Dio externalDio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 10),
+      receiveTimeout: const Duration(seconds: 12),
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'TranSenApp/2.0 (https://app.transen.org)',
+      },
+    ),
+  );
+
   // L'URL de production sur le domaine personnalisé
   final String baseUrl = 'https://api.transen.org';
 

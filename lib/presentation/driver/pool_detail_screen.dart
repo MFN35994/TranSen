@@ -10,7 +10,6 @@ import 'package:transen_core/transen_core.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_payment/transen_payment.dart';
-import 'package:dio/dio.dart';
 import 'dart:math' as math;
 import 'dart:async';
 import 'dart:convert';
@@ -173,8 +172,8 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
     coords.add("${destCoords.longitude},${destCoords.latitude}");
 
     try {
-      final dio = Dio();
-      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
       final url = "https://api.mapbox.com/optimized-trips/v1/mapbox/driving/${coords.join(';')}?source=first&destination=last&overview=full&geometries=geojson&steps=true&access_token=$mapboxToken";
 
       final response = await dio.get(url);
@@ -508,7 +507,9 @@ class _PoolDetailScreenState extends ConsumerState<PoolDetailScreen> {
                   flex: 5,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Theme.of(context).brightness == Brightness.dark ? const Color(0xFF121212) : Colors.white,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? TranSenColors.deepSurface
+                          : Colors.white,
                       boxShadow: [
                         BoxShadow(
                             color: Colors.black.withValues(alpha: Theme.of(context).brightness == Brightness.dark ? 0.3 : 0.05),

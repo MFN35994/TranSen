@@ -16,7 +16,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart' as geo;
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
 import 'package:transen_maps/transen_maps.dart';
-import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_trips/transen_trips.dart' as providers;
@@ -295,8 +294,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   void _loadIsochrones(double lng, double lat) async {
     try {
-      final dio = Dio();
-      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
       final url = "https://api.mapbox.com/isochrone/v1/mapbox/driving/$lng,$lat?contours_minutes=5,10,15&polygons=true&access_token=$mapboxToken";
       
       final response = await dio.get(url);
@@ -330,8 +329,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _loadMatrix(double userLng, double userLat, List<PointAnnotationOptions> drivers) async {
     if (drivers.isEmpty) return;
     try {
-      final dio = Dio();
-      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
       
       final List<String> coords = [];
       for (var driver in drivers) {
@@ -609,8 +608,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final double startLng = _userLng ?? -17.4677;
 
     try {
-      final dio = Dio();
-      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
       final url =
           "https://api.mapbox.com/directions/v5/mapbox/driving/$startLng,$startLat;$destLng,$destLat?geometries=geojson&overview=full&access_token=$mapboxToken";
       final response = await dio.get(url);
@@ -1955,7 +1954,8 @@ class _TripDetailsSheetState extends State<_TripDetailsSheet> {
 
       // 2. Sauvegarde temporaire
       XFile xFile;
-      final fileName = 'recu_transen_${widget.trip.id.substring(0,8)}.png';
+      final shortId = widget.trip.id.length >= 8 ? widget.trip.id.substring(0, 8) : widget.trip.id;
+      final fileName = 'recu_transen_$shortId.png';
       if (kIsWeb) {
         xFile = XFile.fromData(pngBytes, mimeType: 'image/png', name: fileName);
       } else {

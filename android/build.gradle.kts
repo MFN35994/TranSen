@@ -1,3 +1,8 @@
+val mapboxDownloadsToken: String =
+    (project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String)
+        ?: System.getenv("MAPBOX_DOWNLOADS_TOKEN")
+        ?: ""
+
 allprojects {
     repositories {
         google()
@@ -6,19 +11,19 @@ allprojects {
             url = uri("https://api.mapbox.com/downloads/v2/releases/maven")
             credentials {
                 username = "mapbox"
-                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+                password = mapboxDownloadsToken
             }
         }
         maven {
             url = uri("https://api.mapbox.com/downloads/v2/snapshots/maven")
             credentials {
                 username = "mapbox"
-                password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+                password = mapboxDownloadsToken
             }
         }
     }
 
-    // Dynamically inject Mapbox credentials into ANY Mapbox maven repository added by any plugin!
+    // Dynamically inject Mapbox credentials into ANY Mapbox maven repository added by any plugin
     repositories.all {
         if (this is MavenArtifactRepository) {
             val urlString = url.toString()
@@ -30,7 +35,7 @@ allprojects {
                 }
                 credentials {
                     username = "mapbox"
-                    password = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+                    password = mapboxDownloadsToken
                 }
             }
         }
@@ -46,7 +51,7 @@ rootProject.layout.buildDirectory.value(newBuildDir)
 subprojects {
     val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
     project.layout.buildDirectory.value(newSubprojectBuildDir)
-    extra["MAPBOX_DOWNLOADS_TOKEN"] = project.findProperty("MAPBOX_DOWNLOADS_TOKEN") as? String ?: "sk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA5eGdjcGcwejQ3MnRzZXFkeGx4dDV2In0.FUT3_Ruc7bsNdK9QpcUtUw"
+    extra["MAPBOX_DOWNLOADS_TOKEN"] = mapboxDownloadsToken
 }
 subprojects {
     project.evaluationDependsOn(":app")
@@ -64,22 +69,22 @@ subprojects {
 
 subprojects {
     val configureSubproject = {
-        val isAndroid = plugins.hasPlugin("com.android.application") || 
+        val isAndroid = plugins.hasPlugin("com.android.application") ||
                         plugins.hasPlugin("com.android.library")
-        
+
         if (isAndroid) {
             val android = extensions.findByName("android") as? com.android.build.gradle.BaseExtension
-            
+
             if (android != null && android.namespace.isNullOrEmpty()) {
                 android.namespace = project.group.toString()
             }
-            
+
             // Fix for missing Theme_AppCompat_NoActionBar in older plugins
             dependencies.add("implementation", "androidx.appcompat:appcompat:1.6.1")
             dependencies.add("implementation", "com.google.android.material:material:1.9.0")
         }
     }
-    
+
     if (state.executed) {
         configureSubproject()
     } else {

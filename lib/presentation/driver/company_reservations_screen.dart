@@ -61,7 +61,7 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: Text(
           'Mes Trajets & Réservations',
@@ -114,19 +114,18 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
     final String tripId = trip['id'];
     final double price = (trip['price'] as num?)?.toDouble() ?? 0.0;
     final String status = trip['status'] ?? 'PENDING';
-    final String dateStr = trip['createdAt'] != null
-        ? trip['createdAt'].toString().substring(0, 10)
-        : '';
+    final rawCreatedAt = trip['createdAt']?.toString() ?? '';
+    final String dateStr = rawCreatedAt.length >= 10 ? rawCreatedAt.substring(0, 10) : rawCreatedAt;
     final String category = trip['category'] ?? '';
     final bool isYobante = category == 'YOBANTE';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: isDark ? TranSenColors.glassSurface : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+          color: isDark ? TranSenColors.glassBorder : TranSenColors.lightBorder,
           width: 1,
         ),
         boxShadow: [
@@ -151,7 +150,9 @@ class _CompanyReservationsScreenState extends ConsumerState<CompanyReservationsS
                   type: 'Livraison de colis',
                   price: price,
                   status: status.toLowerCase(),
-                  createdAt: trip['createdAt'] != null ? DateTime.parse(trip['createdAt'].toString()) : DateTime.now(),
+                  createdAt: rawCreatedAt.isNotEmpty
+                      ? (DateTime.tryParse(rawCreatedAt) ?? DateTime.now())
+                      : DateTime.now(),
                   clientName: trip['clientName'] ?? 'Client',
                   clientPhone: trip['clientPhone'] ?? '770000000',
                   clientId: trip['clientId'] ?? '',
@@ -497,7 +498,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
       return Container(
         width: double.infinity,
         padding: const EdgeInsets.all(16),
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: isDark ? TranSenColors.glassSurface : Colors.white,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
@@ -530,7 +531,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
+        color: isDark ? TranSenColors.glassSurface : Colors.white,
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -571,7 +572,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      backgroundColor: TranSenColors.scaffoldBg(isDark),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -707,7 +708,7 @@ class _VisualSeatMapScreenState extends State<VisualSeatMapScreen> {
         constraints: BoxConstraints(maxWidth: crossAxisCount == 5 ? 320 : 280),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 30),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E293B) : Colors.white,
+          color: isDark ? TranSenColors.glassSurface : Colors.white,
           borderRadius: BorderRadius.circular(40),
           border: Border.all(
             color: isDark ? const Color(0xFF334155) : const Color(0xFFCBD5E1),

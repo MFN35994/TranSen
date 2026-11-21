@@ -18,10 +18,10 @@ class FavoritesScreen extends ConsumerWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        backgroundColor: isDark ? const Color(0xFF121212) : Colors.grey[50],
+        backgroundColor: TranSenColors.scaffoldBg(isDark),
         appBar: AppBar(
           title: const Text('Mes Favoris'),
-          backgroundColor: isDark ? const Color(0xFF1A1A1A) : TranSenColors.primaryGreen,
+          backgroundColor: isDark ? TranSenColors.deepSurface : TranSenColors.darkGreen,
           foregroundColor: Colors.white,
           bottom: const TabBar(
             tabs: [

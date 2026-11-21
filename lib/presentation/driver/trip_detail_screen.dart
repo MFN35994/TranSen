@@ -12,7 +12,6 @@ import 'package:geolocator/geolocator.dart' as geo;
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:dio/dio.dart';
 import 'dart:convert';
 import 'package:transen_maps/transen_maps.dart';
 
@@ -163,8 +162,8 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
     final destPos = ItineraryOptimizer.getRegionCoordinates(widget.trip.destination) ?? const LatLng(14.7167, -17.4677);
  
     try {
-      final dio = Dio();
-      const String mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
       
       final List<String> allCoords = [];
       allCoords.add("${driverPos.longitude},${driverPos.latitude}");

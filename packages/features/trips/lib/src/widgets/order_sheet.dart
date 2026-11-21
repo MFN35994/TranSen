@@ -9,7 +9,6 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class OrderSheet extends ConsumerStatefulWidget {
@@ -287,7 +286,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
     });
 
     try {
-      final dio = Dio();
+      final dio = ApiClient.externalDio;
       final encodedQuery = Uri.encodeComponent(query);
       const token = LocationHelper.mapboxToken;
       final url = "https://api.mapbox.com/geocoding/v5/mapbox.places/$encodedQuery.json?access_token=$token&country=sn&types=address,poi,neighborhood,locality&language=fr&limit=5";
@@ -304,8 +303,8 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             if (placeName != null && center != null && center.length >= 2) {
               results.add({
                 'name': placeName,
-                'lng': center[0] as double,
-                'lat': center[1] as double,
+                'lng': (center[0] as num).toDouble(),
+                'lat': (center[1] as num).toDouble(),
               });
             }
           }
@@ -338,8 +337,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
   Future<String?> _reverseGeocode(double lat, double lng) async {
     try {
-      final dio = Dio();
-      dio.options.headers['User-Agent'] = 'TranSenMobileApp/1.0';
+      final dio = ApiClient.externalDio;
       final url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=fr";
       final response = await dio.get(url);
       if (response.statusCode == 200) {
@@ -1282,7 +1280,9 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
 
       final userFirstName = userData.data()?['firstName'];
       final userLastName = userData.data()?['lastName'];
-      final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
+      final userShort5 = userId.length >= 5 ? userId.substring(0, 5) : userId;
+      final userShort4 = userId.length >= 4 ? userId.substring(0, 4) : userId;
+      final userName = userData.data()?['name'] ?? "Client $userShort5";
 
       if (discount > 0 && auth != null) {
         final usedPoints = discount ~/ 10;
@@ -1290,7 +1290,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
       }
 
       if (_selectedRoutingType == 'COMPANY_ONLY') {
-        final orderId = "TKT-${DateTime.now().millisecondsSinceEpoch}-${userId.substring(0, 4)}";
+        final orderId = "TKT-${DateTime.now().millisecondsSinceEpoch}-$userShort4";
 
         final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(
           amount: finalPrice.toDouble(),
@@ -1318,6 +1318,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
             bookingId = response.data['id'] as String?;
           }
 
+          if (!mounted) return;
           final company = _selectedCompany;
           setState(() {
             _activeBookingId = bookingId;
@@ -1340,8 +1341,6 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
               'relayPoint': _selectedScheduledTrip?['relayPoint'] ?? '',
             };
           });
-
-          if (!mounted) return;
 
           final uri = Uri.parse(checkoutUrl);
           try {
@@ -1375,9 +1374,10 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           },
         );
 
-        setState(() => _isProcessing = false);
         if (!mounted) return;
+        setState(() => _isProcessing = false);
 
+        final poolShort = poolId.length >= 5 ? poolId.substring(0, 5) : poolId;
         final navigator = Navigator.of(context);
         navigator.pop();
         SuccessDialog.show(
@@ -1387,7 +1387,7 @@ class _OrderSheetState extends ConsumerState<OrderSheet> with WidgetsBindingObse
           onDismiss: () {
             navigator.push(MaterialPageRoute(
               builder: (_) => ReceiptScreen(
-                orderId: 'POOL-${poolId.substring(0, 5).toUpperCase()}',
+                orderId: 'POOL-${poolShort.toUpperCase()}',
                 departure: departure,
                 destination: destination,
                 price: '$finalPrice FCFA',

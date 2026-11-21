@@ -8,7 +8,7 @@
         android:label="TranSen"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -48,8 +48,6 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-        <meta-data android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBw0PKiF8FdoPE26gIP2s1e7XJCozN6rLE"/>
         <meta-data
             android:name="flutter_deeplinking_enabled"
             android:value="false" />

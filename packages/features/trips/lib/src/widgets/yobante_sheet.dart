@@ -9,7 +9,6 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:transen_payment/transen_payment.dart';
 import 'package:flutter/services.dart';
-import 'package:dio/dio.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class YobanteSheet extends ConsumerStatefulWidget {
@@ -219,7 +218,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
     });
 
     try {
-      final dio = Dio();
+      final dio = ApiClient.externalDio;
       final encodedQuery = Uri.encodeComponent(query);
       const token = LocationHelper.mapboxToken;
       final url = "https://api.mapbox.com/geocoding/v5/mapbox.places/$encodedQuery.json?access_token=$token&country=sn&types=address,poi,neighborhood,locality&language=fr&limit=5";
@@ -236,8 +235,8 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
             if (placeName != null && center != null && center.length >= 2) {
               results.add({
                 'name': placeName,
-                'lng': center[0] as double,
-                'lat': center[1] as double,
+                'lng': (center[0] as num).toDouble(),
+                'lat': (center[1] as num).toDouble(),
               });
             }
           }
@@ -270,8 +269,7 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
 
   Future<String?> _reverseGeocode(double lat, double lng) async {
     try {
-      final dio = Dio();
-      dio.options.headers['User-Agent'] = 'TranSenMobileApp/1.0';
+      final dio = ApiClient.externalDio;
       final url = "https://nominatim.openstreetmap.org/reverse?lat=$lat&lon=$lng&format=json&accept-language=fr";
       final response = await dio.get(url);
       if (response.statusCode == 200) {
@@ -1047,14 +1045,16 @@ class _YobanteSheetState extends ConsumerState<YobanteSheet> {
         cleanReceiverPhone = cleanReceiverPhone.substring(3);
       }
 
-      final userName = userData.data()?['name'] ?? "Client ${userId.substring(0, 5)}";
+      final userShort5 = userId.length >= 5 ? userId.substring(0, 5) : userId;
+      final userShort4 = userId.length >= 4 ? userId.substring(0, 4) : userId;
+      final userName = userData.data()?['name'] ?? "Client $userShort5";
       final scheduledDateStr = "${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year} ${_selectedTime.hour}:${_selectedTime.minute.toString().padLeft(2, '0')}";
 
       double lat = _preciseDepartureLat ?? 14.7167;
       double lng = _preciseDepartureLng ?? -17.4677;
 
       if (_selectedRoutingType == 'COMPANY_ONLY') {
-        final orderId = "YOB-${DateTime.now().millisecondsSinceEpoch}-${userId.substring(0, 4)}";
+        final orderId = "YOB-${DateTime.now().millisecondsSinceEpoch}-$userShort4";
 
         // Generate checkout url
         final checkoutUrl = await ref.read(paymentRepositoryProvider).createSenePaySession(

@@ -43,8 +43,8 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
   String _selectedVehicleClass = "CLASSIQUE";
   String _selectedPaymentMethod = "CASH"; // CASH, WALLET, WAVEM
   
-  final String _mapboxToken = "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
-  final Dio _mapboxDio = Dio();
+  final String _mapboxToken = LocationHelper.mapboxToken;
+  final Dio _mapboxDio = ApiClient.externalDio;
   Timer? _debounceTimer;
   
   // Liste des hubs régionaux majeurs du Sénégal avec coordonnées réelles
@@ -679,14 +679,15 @@ class _VtcBookingSheetState extends ConsumerState<VtcBookingSheet> {
                         final userDataSnapshot = await firestore.collection('users').doc(userId).get();
                         final userData = userDataSnapshot.data();
 
-                        final String userName = userData?['name'] ?? "Client ${userId.substring(0, 5)}";
+                        final userShort5 = userId.length >= 5 ? userId.substring(0, 5) : userId;
+                        final String userName = userData?['name'] ?? "Client $userShort5";
                         final String userPhone = userData?['phone'] ?? (userData?['phoneNumber'] ?? (auth?.phone ?? ''));
 
                         final selectedEstimation = _pricingEstimations.firstWhere(
                           (est) => est['vehicleClass'] == _selectedVehicleClass,
                           orElse: () => {"price": 0.0},
                         );
-                        final double price = (selectedEstimation['price'] as num).toDouble();
+                        final double price = ((selectedEstimation['price'] as num?) ?? 0.0).toDouble();
 
                         final scheduledDateStr = "${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year} ${DateTime.now().hour}:${DateTime.now().minute.toString().padLeft(2, '0')}";
 

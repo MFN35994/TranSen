@@ -657,7 +657,7 @@ class _PerforatedDivider extends StatelessWidget {
   }
 
   Widget _notch(bool isDark, {required bool leftSide}) {
-    final bg = isDark ? const Color(0xFF0D0D1A) : const Color(0xFFF0F4FF);
+    final bg = isDark ? const Color(0xFF03100B) : const Color(0xFFF2FAF6);
     return Container(
       width: 20,
       height: 20,

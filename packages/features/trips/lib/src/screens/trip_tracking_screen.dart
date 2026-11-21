@@ -12,7 +12,6 @@ import 'package:transen_auth/transen_auth.dart';
 import 'package:transen_maps/transen_maps.dart';
 import 'package:transen_trips/transen_trips.dart';
 import 'package:mapbox_maps_flutter/mapbox_maps_flutter.dart';
-import 'package:dio/dio.dart';
 import 'dart:convert';
 
 import 'package:transen_rating/transen_rating.dart';
@@ -48,7 +47,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     _isSnapping = true;
 
     try {
-      final dio = Dio();
+      final dio = ApiClient.externalDio;
       const String mapboxToken = LocationHelper.mapboxToken;
       final url =
           "https://api.mapbox.com/matching/v5/mapbox/driving/$lng,$lat?access_token=$mapboxToken&gps_precision=10";
@@ -105,9 +104,8 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
     _isRoutePlotted = true;
 
     try {
-      final dio = Dio();
-      const String mapboxToken =
-          "pk.eyJ1IjoidHJhbnNlbiIsImEiOiJjbXA4Nm5menUwM205MnNwOGZmb3N3ZTM4In0.SMFaXkbJJi5bM6Bk3_p8ng";
+      final dio = ApiClient.externalDio;
+      const String mapboxToken = LocationHelper.mapboxToken;
 
       double startLng, startLat, endLng, endLat;
 
@@ -472,7 +470,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             onPressed: () {
               final type = widget.tripId.startsWith('POOL-') ? 'pool' : 'trip';
               final String shareUrl =
-                  "https://transen-api.onrender.com/share/${widget.tripId}?type=$type";
+                  "https://api.transen.org/share/${widget.tripId}?type=$type";
               Share.share("Suivez mon trajet TranSen en direct : $shareUrl");
             },
           ),

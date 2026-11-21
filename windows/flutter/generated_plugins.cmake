@@ -8,7 +8,6 @@ list(APPEND FLUTTER_PLUGIN_LIST
   file_selector_windows
   firebase_app_check
   firebase_core
-  flutter_secure_storage_windows
   flutter_tts
   geolocator_windows
   share_plus
