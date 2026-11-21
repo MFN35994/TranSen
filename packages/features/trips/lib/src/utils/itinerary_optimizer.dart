@@ -24,10 +24,13 @@ class ItineraryOptimizer {
       int closestIndex = -1;
 
       for (int i = 0; i < entries.length; i++) {
-        final lat = entries[i].value['lat'] as double;
-        final lng = entries[i].value['lng'] as double;
-        final dist = _calculateDistance(currentPos, LatLng(lat, lng));
-        
+        final val = entries[i].value is Map ? entries[i].value as Map : const {};
+        final lat = (val['lat'] as num?)?.toDouble();
+        final lng = (val['lng'] as num?)?.toDouble();
+        final dist = (lat != null && lng != null)
+            ? _calculateDistance(currentPos, LatLng(lat, lng))
+            : double.maxFinite;
+
         if (dist < minDistance) {
           minDistance = dist;
           closest = entries[i];
@@ -35,9 +38,19 @@ class ItineraryOptimizer {
         }
       }
 
+      if (closestIndex == -1) {
+        closestIndex = 0;
+        closest = entries[0];
+      }
+
       if (closest != null) {
         optimized.add(closest);
-        currentPos = LatLng(closest.value['lat'], closest.value['lng']);
+        final val = closest.value is Map ? closest.value as Map : const {};
+        final nextLat = (val['lat'] as num?)?.toDouble();
+        final nextLng = (val['lng'] as num?)?.toDouble();
+        if (nextLat != null && nextLng != null) {
+          currentPos = LatLng(nextLat, nextLng);
+        }
         entries.removeAt(closestIndex);
       }
     }
@@ -48,10 +61,10 @@ class ItineraryOptimizer {
   static double _calculateDistance(LatLng p1, LatLng p2) {
     var p = 0.017453292519943295;
     var c = cos;
-    var a = 0.5 - c((p2.latitude - p1.latitude) * p)/2 + 
-          c(p1.latitude * p) * c(p2.latitude * p) * 
-          (1 - c((p2.longitude - p1.longitude) * p))/2;
-    return 12742 * asin(sqrt(a)); // 2 * R; R = 6371 km
+    var a = 0.5 - c((p2.latitude - p1.latitude) * p) / 2 +
+        c(p1.latitude * p) * c(p2.latitude * p) *
+            (1 - c((p2.longitude - p1.longitude) * p)) / 2;
+    return 12742 * asin(sqrt(a.clamp(0.0, 1.0))); // 2 * R; R = 6371 km
   }
 
   static LatLng? getRegionCoordinates(String regionName) {

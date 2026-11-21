@@ -126,7 +126,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                             Color statusColor = Colors.red;
                             
                             if (snapshot.hasData && snapshot.data!.exists) {
-                              final status = snapshot.data!.get('status');
+                              final snapMap = snapshot.data?.data() as Map<String, dynamic>?;
+                              final status = snapMap?['status'];
                               if (status == 'pending') {
                                 statusText = "En attente";
                                 statusColor = Colors.grey;
@@ -153,7 +154,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
                                    Color pColor = Colors.red;
 
                                    if (poolSnapshot.hasData && poolSnapshot.data!.exists) {
-                                     final pStatus = poolSnapshot.data!.get('status');
+                                     final poolMap = poolSnapshot.data?.data() as Map<String, dynamic>?;
+                                     final pStatus = poolMap?['status'];
                                      if (pStatus == 'open' || pStatus == 'full') {
                                        pText = "En attente";
                                        pColor = Colors.grey;
@@ -412,8 +414,8 @@ class _ReceiptScreenState extends State<ReceiptScreen> {
               final firstKey = passengerDetails.keys.first;
               final details = passengerDetails[firstKey] as Map<String, dynamic>?;
               if (details != null) {
-                startLat = details['lat'] as double?;
-                startLng = details['lng'] as double?;
+                startLat = (details['lat'] as num?)?.toDouble();
+                startLng = (details['lng'] as num?)?.toDouble();
               }
             }
           }

@@ -352,7 +352,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           
           for (int i = 0; i < drivers.length; i++) {
             final driver = drivers[i];
-            final durationInSeconds = durations[i][0] as double?;
+            final durationInSeconds = (durations[i][0] as num?)?.toDouble();
             String text = "Chauffeur";
             if (durationInSeconds != null) {
               final minutes = (durationInSeconds / 60).round();

@@ -35,8 +35,9 @@ class PaymentRepository {
   Stream<int> watchPoints(String userId) {
     return _firestore.collection('users').doc(userId).snapshots().map((doc) {
       if (!doc.exists) return 0;
-      final data = doc.data() as Map<String, dynamic>;
-      return (data['bonusPoints'] ?? 0).toInt();
+      final data = doc.data();
+      if (data == null) return 0;
+      return ((data['bonusPoints'] as num?) ?? 0).toInt();
     });
   }
 
@@ -81,8 +82,9 @@ class PaymentRepository {
   Stream<double> watchWalletBalance(String userId) {
     return _firestore.collection('users').doc(userId).snapshots().map((doc) {
       if (!doc.exists) return 0.0;
-      final data = doc.data() as Map<String, dynamic>;
-      return (data['walletBalance'] ?? 0).toDouble();
+      final data = doc.data();
+      if (data == null) return 0.0;
+      return ((data['walletBalance'] as num?) ?? 0).toDouble();
     });
   }
 
@@ -146,8 +148,10 @@ class PaymentRepository {
 
       // Si le payout a échoué, on recrédite le wallet
       if (status['status'] == 'Failed' || status['status'] == 'Cancelled') {
-         final amount = (status['amount'] as num).toDouble();
-         await updateWalletBalance(userId, amount, "Remboursement retrait échoué : $internalId", type: 'withdrawal');
+         final amount = ((status['amount'] as num?) ?? 0).toDouble();
+         if (amount > 0) {
+           await updateWalletBalance(userId, amount, "Remboursement retrait échoué : $internalId", type: 'withdrawal');
+         }
       }
     }
     return status;
@@ -168,7 +172,8 @@ class PaymentRepository {
       // 2. Vérifier auprès de SenePay
       final session = await SenePayService().checkCheckoutStatus(orderReference);
       if (session != null && (session['status'] == 'Completed' || session['status'] == 'PAID')) {
-        final amount = (session['amount'] as num).toDouble();
+        final amount = ((session['amount'] as num?) ?? 0).toDouble();
+        if (amount <= 0) return false;
         await updateWalletBalance(userId, amount, "Dépôt SenePay réussi : $orderReference", type: 'deposit');
         return true;
       }

@@ -108,13 +108,22 @@ class SenePayService {
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        return response.data as Map<String, dynamic>;
+        return response.data is Map ? Map<String, dynamic>.from(response.data as Map) : null;
       } else {
         throw Exception("Erreur ${response.statusCode}");
       }
     } catch (e) {
       debugPrint(">>> SenePayService Payout Error: $e");
-      throw Exception("Erreur lors du retrait SenePay.");
+      String errorMsg = "Erreur lors du retrait SenePay.";
+      if (e is DioException && e.response?.data != null) {
+        final responseData = e.response!.data;
+        if (responseData is Map && responseData.containsKey('error')) {
+          errorMsg = responseData['error'].toString();
+        } else if (responseData is Map && responseData.containsKey('message')) {
+          errorMsg = responseData['message'].toString();
+        }
+      }
+      throw Exception(errorMsg);
     }
   }
 
