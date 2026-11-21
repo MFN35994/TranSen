@@ -64,10 +64,12 @@ class ReferralNotifier extends Notifier<AsyncValue<String?>> {
         'referralAppliedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      // 3. Mettre à jour le compteur du parrain
-      await db.collection('users').doc(referrerId).update({
-        'referralCount': FieldValue.increment(1),
-      });
+      // 3. Mettre à jour le compteur du parrain de manière résiliente
+      try {
+        await db.collection('users').doc(referrerId).update({
+          'referralCount': FieldValue.increment(1),
+        });
+      } catch (_) {}
 
       state = const AsyncValue.data("Code appliqué avec succès ! Vos gains seront actifs après votre premier trajet.");
       return true;

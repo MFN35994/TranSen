@@ -301,9 +301,10 @@ class _DriverPoolDetailSheetState
                                 builder: (_, snapshot) {
                                   String phoneToCall = phone;
                                   if (snapshot.hasData && snapshot.data!.exists) {
-                                    final data = snapshot.data!.data() as Map<String, dynamic>;
-                                    if (data['phone'] != null && (data['phone'] as String).isNotEmpty) {
-                                      phoneToCall = data['phone'];
+                                    final data = snapshot.data?.data() as Map<String, dynamic>?;
+                                    final fetchedPhone = data?['phone']?.toString().trim() ?? '';
+                                    if (fetchedPhone.isNotEmpty) {
+                                      phoneToCall = fetchedPhone;
                                     }
                                   }
                                   return Row(

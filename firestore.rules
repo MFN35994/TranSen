@@ -52,9 +52,21 @@ service cloud.firestore {
           )
         )
         ||
-        (!isOwner(userId) &&
-          request.resource.data.bonusPoints == (resource.data.bonusPoints + 10) &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']))
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['referralCount']) &&
+          (
+            (!('referralCount' in resource.data) && request.resource.data.referralCount == 1) ||
+            request.resource.data.referralCount == (resource.data.referralCount + 1)
+          )
+        )
+        ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bonusPoints']) &&
+          (
+            (!('bonusPoints' in resource.data) && request.resource.data.bonusPoints == 10) ||
+            request.resource.data.bonusPoints == (resource.data.bonusPoints + 10)
+          )
+        )
       );
 
       match /my_reviews/{reviewId} {

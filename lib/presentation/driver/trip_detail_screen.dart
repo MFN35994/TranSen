@@ -567,8 +567,9 @@ class _TripDetailScreenState extends ConsumerState<TripDetailScreen> {
                     builder: (context, snapshot) {
                       String phoneToCall = widget.trip.clientPhone ?? '770000000';
                       if (snapshot.hasData && snapshot.data!.exists) {
-                        final data = snapshot.data!.data() as Map<String, dynamic>;
-                        if (data['phone'] != null && (data['phone'] as String).isNotEmpty) phoneToCall = data['phone'];
+                        final data = snapshot.data?.data() as Map<String, dynamic>?;
+                        final fetchedPhone = data?['phone']?.toString().trim() ?? '';
+                        if (fetchedPhone.isNotEmpty) phoneToCall = fetchedPhone;
                       }
                       return Column(
                         children: [

@@ -708,12 +708,14 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
           .doc(trip.driverId)
           .snapshots(),
       builder: (context, driverSnapshot) {
-        if (driverSnapshot.hasData && driverSnapshot.data!.exists) {
-          final data = driverSnapshot.data!.data() as Map<String, dynamic>;
-          final pos = (
-            lat: (data['lat'] as num).toDouble(),
-            lng: (data['lng'] as num).toDouble()
-          );
+        final rawDriverData = (driverSnapshot.hasData && driverSnapshot.data!.exists)
+            ? driverSnapshot.data?.data() as Map<String, dynamic>?
+            : null;
+        final driverLat = (rawDriverData?['lat'] as num?)?.toDouble();
+        final driverLng = (rawDriverData?['lng'] as num?)?.toDouble();
+
+        if (driverLat != null && driverLng != null) {
+          final pos = (lat: driverLat, lng: driverLng);
 
           // Trigger the background snapping/Map Matching!
           _updateDriverSnapping(pos.lat, pos.lng);
@@ -906,25 +908,28 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
             String driverPhone = trip.driverPhone ?? "";
 
             if (userSnapshot.hasData && userSnapshot.data!.exists) {
-              final data = userSnapshot.data!.data() as Map<String, dynamic>;
-              final firstName = data['firstName'];
-              final lastName = data['lastName'];
-              if (firstName != null && lastName != null) {
-                driverName = "$firstName $lastName";
-              } else {
-                driverName = data['name'] ?? driverName;
+              final data = userSnapshot.data?.data() as Map<String, dynamic>?;
+              if (data != null) {
+                final firstName = data['firstName'];
+                final lastName = data['lastName'];
+                if (firstName != null && lastName != null) {
+                  driverName = "$firstName $lastName";
+                } else if (data['name'] != null) {
+                  driverName = data['name'].toString();
+                }
+                if (data['phone'] != null) driverPhone = data['phone'].toString();
               }
-              if (data['phone'] != null) driverPhone = data['phone'];
             }
 
             if (activeSnapshot.hasData && activeSnapshot.data!.exists) {
-              final activeData =
-                  activeSnapshot.data!.data() as Map<String, dynamic>;
-              if (driverName == "Chauffeur TranSen" || driverName.isEmpty) {
-                driverName = activeData['driverName'] ?? driverName;
-              }
-              if (driverPhone.isEmpty) {
-                driverPhone = activeData['driverPhone'] ?? "";
+              final activeData = activeSnapshot.data?.data() as Map<String, dynamic>?;
+              if (activeData != null) {
+                if (driverName == "Chauffeur TranSen" || driverName.isEmpty) {
+                  driverName = activeData['driverName']?.toString() ?? driverName;
+                }
+                if (driverPhone.isEmpty) {
+                  driverPhone = activeData['driverPhone']?.toString() ?? "";
+                }
               }
             }
 
@@ -937,7 +942,7 @@ class _TripTrackingScreenState extends ConsumerState<TripTrackingScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.black.withValues(alpha: 0.8)
+                        ? TranSenColors.deepSurface.withValues(alpha: 0.92)
                         : Colors.white.withValues(alpha: 0.9),
                     borderRadius:
                         const BorderRadius.vertical(top: Radius.circular(40)),
